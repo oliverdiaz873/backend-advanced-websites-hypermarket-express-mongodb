@@ -1,4 +1,5 @@
 const productRepository = require('../repositories/product.repository');
+const NotFoundError = require('../../../shared/errors/not-found.error');
 
 const getAll = () => {
   return productRepository.findAll();
@@ -7,9 +8,7 @@ const getAll = () => {
 const getById = (id) => {
   const product = productRepository.findById(id);
   if (!product) {
-    const error = new Error('Product not found');
-    error.statusCode = 404;
-    throw error;
+    throw new NotFoundError('Product not found');
   }
   return product;
 };

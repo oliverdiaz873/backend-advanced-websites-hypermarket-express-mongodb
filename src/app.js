@@ -1,6 +1,7 @@
 const express = require('express');
 const config = require('./config');
 const productRoutes = require('./modules/products/routes/product.routes');
+const errorHandler = require('./shared/middleware/error-handler');
 
 const app = express();
 
@@ -9,14 +10,6 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/products', productRoutes);
 
-// Global error handler
-app.use((err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
-  res.status(statusCode).json({
-    success: false,
-    message: err.message,
-    statusCode,
-  });
-});
+app.use(errorHandler);
 
 module.exports = app;
