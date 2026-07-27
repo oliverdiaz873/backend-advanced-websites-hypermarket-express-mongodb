@@ -1,0 +1,28 @@
+{
+  "name": "advanced-websites-hypermarket-express",
+  "version": "1.0.0",
+  "description": "Backend del hypermarket con arquitectura basada en features (Feature-Based Architecture)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oliverdiaz873/advanced-websites-hypermarket-express.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/oliverdiaz873/advanced-websites-hypermarket-express/issues"
+  },
+  "homepage": "https://github.com/oliverdiaz873/advanced-websites-hypermarket-express#readme",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
