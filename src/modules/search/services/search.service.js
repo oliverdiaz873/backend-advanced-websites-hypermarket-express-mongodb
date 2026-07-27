@@ -13,7 +13,8 @@ const search = (query, category) => {
   let results = products.filter((p) => p.name.toLowerCase().includes(term));
 
   if (category) {
-    results = results.filter((p) => p.category === category);
+    const normalizedCategory = category.trim().toLowerCase();
+    results = results.filter((p) => p.category.toLowerCase() === normalizedCategory);
   }
 
   return results;
