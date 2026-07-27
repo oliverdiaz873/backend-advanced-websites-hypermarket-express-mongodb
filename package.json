@@ -1,5 +1,5 @@
 {
-  "name": "advanced-websites-hypermarket-express",
+  "name": "backend-advanced-websites-hypermarket-express-mongodb",
   "version": "1.0.0",
   "description": "Backend del hypermarket con arquitectura basada en features (Feature-Based Architecture)",
   "main": "src/server.js",
@@ -9,15 +9,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/oliverdiaz873/advanced-websites-hypermarket-express.git"
+    "url": "git+https://github.com/oliverdiaz873/backend-advanced-websites-hypermarket-express-mongodb.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/oliverdiaz873/advanced-websites-hypermarket-express/issues"
+    "url": "https://github.com/oliverdiaz873/backend-advanced-websites-hypermarket-express-mongodb/issues"
   },
-  "homepage": "https://github.com/oliverdiaz873/advanced-websites-hypermarket-express#readme",
+  "homepage": "https://github.com/oliverdiaz873/backend-advanced-websites-hypermarket-express-mongodb#readme",
   "dependencies": {
     "dotenv": "^17.4.2",
     "express": "^5.2.1"

@@ -1,4 +1,4 @@
-# advanced-websites-hypermarket-express
+# backend-advanced-websites-hypermarket-express-mongodb
 
 Backend del hypermarket con Node.js + Express utilizando **Feature-Based Architecture**.
 
