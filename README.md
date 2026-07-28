@@ -103,6 +103,26 @@ Ubicación: `src/shared/middleware/error-handler.js`
 - Compatible con `NotFoundError` (statusCode 404).
 - Responde siempre con `{ success: false, message, statusCode }`.
 
+## Autenticación
+
+El módulo `auth/` maneja registro, inicio de sesión y verificación de tokens JWT.
+
+### Endpoints
+
+| Método | Ruta | Descripción | Auth |
+|--------|------|-------------|------|
+| POST | /api/auth/register | Registrar nuevo usuario | No |
+| POST | /api/auth/login | Iniciar sesión y obtener token | No |
+| GET | /api/auth/me | Obtener usuario actual | Sí (Bearer Token) |
+
+### JWT
+
+- Las contraseñas se hashean con `bcryptjs` antes de almacenarse.
+- El token JWT incluye `id`, `email` y `role`.
+- El middleware `auth.middleware` verifica tokens en rutas protegidas.
+- Seed users: `oliver@email.com`, `maria@email.com`, `carlos@email.com` — todas con password `123456`.
+- Configurar `JWT_SECRET` en `.env` (actual: `hypermarket_dev_secret_2026`).
+
 ## Users API
 
 ### Endpoints

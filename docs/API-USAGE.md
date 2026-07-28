@@ -347,6 +347,110 @@ Delete a user.
 
 ---
 
+## Authentication
+
+### POST /api/auth/register
+
+Register a new user.
+
+**Request body:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| name | string | Yes | User full name |
+| email | string | Yes | User email (unique) |
+| password | string | Yes | Password (min 6 characters) |
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "name": "Oliver Diaz",
+    "email": "oliver@email.com",
+    "role": "customer",
+    "createdAt": "2026-07-28T00:00:00.000Z",
+    "updatedAt": "2026-07-28T00:00:00.000Z"
+  }
+}
+```
+
+**Errors:**
+| Status | Message |
+|--------|---------|
+| 400 | Missing required fields: name, email, password |
+| 400 | Password must be at least 6 characters |
+| 409 | Email already exists |
+
+---
+
+### POST /api/auth/login
+
+Authenticate and receive a JWT token.
+
+**Request body:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| email | string | Yes | User email |
+| password | string | Yes | User password |
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIs...",
+    "user": {
+      "id": "uuid",
+      "name": "Oliver Diaz",
+      "email": "oliver@email.com",
+      "role": "admin",
+      "createdAt": "2026-01-15T00:00:00.000Z",
+      "updatedAt": "2026-01-15T00:00:00.000Z"
+    }
+  }
+}
+```
+
+**Errors:**
+| Status | Message |
+|--------|---------|
+| 400 | Invalid credentials |
+
+---
+
+### GET /api/auth/me
+
+Get current authenticated user.
+
+**Headers:**
+| Header | Value |
+|--------|-------|
+| Authorization | Bearer \<token\> |
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "name": "Oliver Diaz",
+    "email": "oliver@email.com",
+    "role": "admin",
+    "createdAt": "2026-01-15T00:00:00.000Z",
+    "updatedAt": "2026-01-15T00:00:00.000Z"
+  }
+}
+```
+
+**Errors:**
+| Status | Message |
+|--------|---------|
+| 401 | Missing or invalid authorization header |
+| 401 | Invalid or expired token |
+
+---
+
 ## Pagination (Future)
 
 Pagination is not implemented yet. Future support will use:
