@@ -1,10 +1,9 @@
 const productRepository = require('../../products/repositories/product.repository');
+const InvalidDataError = require('../../../shared/errors/invalid-data.error');
 
 const search = (query, category) => {
   if (!query || !query.trim()) {
-    const error = new Error('Search term is required');
-    error.statusCode = 400;
-    throw error;
+    throw new InvalidDataError('Search term is required');
   }
 
   const term = query.toLowerCase().trim();

@@ -64,7 +64,7 @@ Copiar `.env.example` a `.env` y configurar los valores:
 |----------|-------------|-------------|
 | `PORT` | Puerto del servidor | No (default: 3000) |
 | `NODE_ENV` | Entorno (development, production) | No (default: development) |
-| `CORS_ORIGIN` | Origen permitido para CORS | No (default: http://localhost:4200) |
+| `CORS_ORIGIN` | Orígenes permitidos para CORS (separados por coma) | No (default: http://localhost:4200) |
 | `JWT_SECRET` | Clave secreta para firmar tokens JWT | Sí (cuando se implemente Auth) |
 | `JWT_EXPIRES_IN` | Tiempo de expiración del token JWT | No (default: 1d) |
 
@@ -88,8 +88,8 @@ Ubicación: `src/shared/middleware/logger.middleware.js`
 
 ### CORS
 Configurado con el paquete oficial `cors`.
-- En desarrollo: permite `http://localhost:4200` (Angular).
-- Origen configurable via variable de entorno `CORS_ORIGIN`.
+- Soporta múltiples orígenes via `CORS_ORIGIN` separados por coma.
+- Desarrollo: `http://localhost:4200` (Angular), `http://localhost:3000` (Next.js).
 - En producción se restringirá al dominio del frontend.
 
 ### Validación
@@ -115,6 +115,34 @@ Ubicación: `src/shared/middleware/error-handler.js`
 | PATCH | /api/users/:id | Actualizar usuario parcialmente | Solo name, email, password; email unico; password mayor a 6 caracteres |
 | DELETE | /api/users/:id | Eliminar usuario | - |
 
+## Frontend Integration
+
+Esta API está diseñada para ser consumida por múltiples frontends sin depender de ninguna tecnología específica.
+
+```
+Angular (http://localhost:4200)
+  \
+   \
+    Express API (http://localhost:3000)
+   /
+  /
+Next.js (http://localhost:3000)
+```
+
+### CORS
+Configura `CORS_ORIGIN` en `.env` con los orígenes permitidos separados por coma:
+```
+CORS_ORIGIN=http://localhost:4200,http://localhost:3000,https://midominio.com
+```
+
+### Formato de respuestas
+Todas las respuestas siguen un contrato uniforme:
+- Éxito: `{ "success": true, "data": [...] }`
+- Error: `{ "success": false, "message": "...", "statusCode": 400 }`
+
+### Documentación detallada
+Ver [`docs/API-USAGE.md`](docs/API-USAGE.md) para la documentación completa de endpoints, parámetros, ejemplos de respuesta y errores.
+
 ## Arquitectura
 
-Este proyecto utiliza **Feature-Based Architecture**: cada funcionalidad del negocio (products, users, cart, orders, auth) vive en su propio módulo dentro de `src/modules/`. El código compartido entre módulos se encuentra en `src/shared/`. Es
+Este proyecto utiliza **Feature-Based Architecture**: cada funcionalidad del negocio (products, users, cart, orders, auth) vive en su propio módulo dentro de `src/modules/`. El código compartido entre módulos se encuentra en `src/shared/`.

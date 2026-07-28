@@ -39,7 +39,7 @@ const updateById = (req, res, next) => {
 const deleteById = (req, res, next) => {
   try {
     userService.deleteById(req.params.id);
-    res.json({ success: true, message: 'User deleted successfully' });
+    res.json({ success: true, data: null });
   } catch (error) {
     next(error);
   }
