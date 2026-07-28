@@ -36,11 +36,15 @@ src/
 | `server.js` | Inicio del servidor y puerto |
 | `config/` | Configuración centralizada desde variables de entorno |
 | `modules/` | Módulos de negocio independientes (features) |
+| `modules/users/` | CRUD completo de usuarios con datos en memoria |
 | `shared/middleware/` | Middlewares globales reutilizables |
 | `shared/middleware/error-handler.js` | Captura y responde errores de forma uniforme |
 | `shared/middleware/logger.middleware.js` | Registra método, URL, código de estado y tiempo de cada petición |
 | `shared/middleware/validation.middleware.js` | Valida campos obligatorios en el body de la petición |
 | `shared/errors/` | Clases de errores personalizados |
+| `shared/errors/not-found.error.js` | Error 404 para recursos no encontrados |
+| `shared/errors/email-already-exists.error.js` | Error 409 para email duplicado |
+| `shared/errors/invalid-data.error.js` | Error 400 para datos invalidos |
 | `shared/utils/` | Funciones utilitarias transversales |
 | `shared/constants/` | Constantes globales (roles, códigos, mensajes) |
 
@@ -84,6 +88,18 @@ Ubicación: `src/shared/middleware/error-handler.js`
 - Captura errores lanzados en rutas y middlewares.
 - Compatible con `NotFoundError` (statusCode 404).
 - Responde siempre con `{ success: false, message, statusCode }`.
+
+## Users API
+
+### Endpoints
+
+| Metodo | Ruta | Descripcion | Validaciones |
+|--------|------|-------------|-------------|
+| GET | /api/users | Listar todos los usuarios | - |
+| GET | /api/users/:id | Obtener usuario por ID | - |
+| POST | /api/users | Crear nuevo usuario | name, email, password obligatorios; email unico; password mayor a 6 caracteres |
+| PATCH | /api/users/:id | Actualizar usuario parcialmente | Solo name, email, password; email unico; password mayor a 6 caracteres |
+| DELETE | /api/users/:id | Eliminar usuario | - |
 
 ## Arquitectura
 

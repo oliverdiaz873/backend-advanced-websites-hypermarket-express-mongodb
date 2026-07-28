@@ -5,6 +5,7 @@ const productRoutes = require('./modules/products/routes/product.routes');
 const categoryRoutes = require('./modules/categories/routes/category.routes');
 const offerRoutes = require('./modules/offers/routes/offer.routes');
 const searchRoutes = require('./modules/search/routes/search.routes');
+const userRoutes = require('./modules/users/routes/user.routes');
 const errorHandler = require('./shared/middleware/error-handler');
 const logger = require('./shared/middleware/logger.middleware');
 
@@ -23,6 +24,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/offers', offerRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/users', userRoutes);
 
 app.use(errorHandler);
 
