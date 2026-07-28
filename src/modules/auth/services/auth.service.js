@@ -8,7 +8,7 @@ const EmailAlreadyExistsError = require('../../../shared/errors/email-already-ex
 
 const SALT_ROUNDS = 10;
 
-const register = (data) => {
+const register = async (data) => {
   const email = data.email.toLowerCase().trim();
   const existing = userRepository.findByEmail(email);
   if (existing) throw new EmailAlreadyExistsError();
@@ -17,7 +17,7 @@ const register = (data) => {
     throw new InvalidDataError('Password must be at least 6 characters');
   }
 
-  const hashedPassword = bcrypt.hashSync(data.password, SALT_ROUNDS);
+  const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
 
   const user = userService.create({
     name: data.name,
@@ -28,7 +28,7 @@ const register = (data) => {
   return user;
 };
 
-const login = (email, password) => {
+const login = async (email, password) => {
   if (!email || !password) {
     throw new InvalidDataError('Email and password are required');
   }
@@ -38,7 +38,7 @@ const login = (email, password) => {
     throw new InvalidDataError('Invalid credentials');
   }
 
-  const isMatch = bcrypt.compareSync(password, user.password);
+  const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
     throw new InvalidDataError('Invalid credentials');
   }
