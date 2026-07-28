@@ -56,6 +56,20 @@ src/
 - dotenv (variables de entorno)
 - nodemon (desarrollo)
 
+## Variables de entorno
+
+Copiar `.env.example` a `.env` y configurar los valores:
+
+| Variable | Descripción | Obligatorio |
+|----------|-------------|-------------|
+| `PORT` | Puerto del servidor | No (default: 3000) |
+| `NODE_ENV` | Entorno (development, production) | No (default: development) |
+| `CORS_ORIGIN` | Origen permitido para CORS | No (default: http://localhost:4200) |
+| `JWT_SECRET` | Clave secreta para firmar tokens JWT | Sí (cuando se implemente Auth) |
+| `JWT_EXPIRES_IN` | Tiempo de expiración del token JWT | No (default: 1d) |
+
+> `MONGODB_URI` está definida en `.env.example` como preparación para la futura migración a MongoDB.
+
 ## Middlewares
 
 ### Orden de ejecución
