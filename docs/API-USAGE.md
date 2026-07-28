@@ -451,6 +451,188 @@ Get current authenticated user.
 
 ---
 
+## Orders
+
+All order endpoints require authentication via Bearer token.
+
+**Headers:**
+| Header | Value |
+|--------|-------|
+| Authorization | Bearer \<token\> |
+
+---
+
+### POST /api/orders
+
+Create an order from the current cart. The cart must exist and contain at least one item. After successful creation, the cart is automatically cleared.
+
+**Request body:** None (items are taken from the cart)
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "4c81d682-cb03-44c1-8d2f-4cef099573cb",
+    "items": [
+      {
+        "productId": "coca_cola",
+        "name": "Coca Cola",
+        "price": 80,
+        "image": "products/bebidas/coca-cola.avif",
+        "quantity": 2
+      }
+    ],
+    "totalItems": 2,
+    "subtotal": 160,
+    "status": "pending",
+    "paymentStatus": "pending",
+    "createdAt": "2026-07-28T23:08:08.120Z",
+    "updatedAt": "2026-07-28T23:08:08.120Z"
+  }
+}
+```
+
+**Errors:**
+| Status | Message |
+|--------|--------|
+| 400 | Cart is empty |
+| 404 | Cart not found |
+| 404 | Product not found |
+
+---
+
+### GET /api/orders
+
+List all orders for the authenticated user, sorted by most recent first.
+
+**Parameters:** None
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "4c81d682-cb03-44c1-8d2f-4cef099573cb",
+      "items": [
+        {
+          "productId": "coca_cola",
+          "name": "Coca Cola",
+          "price": 80,
+          "image": "products/bebidas/coca-cola.avif",
+          "quantity": 2
+        }
+      ],
+      "totalItems": 2,
+      "subtotal": 160,
+      "status": "pending",
+      "paymentStatus": "pending",
+      "createdAt": "2026-07-28T23:08:08.120Z",
+      "updatedAt": "2026-07-28T23:08:08.120Z"
+    }
+  ]
+}
+```
+
+**Errors:** None
+
+---
+
+### GET /api/orders/:id
+
+Get a specific order by ID. Only the owner can access their orders.
+
+**Parameters:**
+| Name | Type | Description |
+|------|------|-------------|
+| id | string | Order UUID |
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "4c81d682-cb03-44c1-8d2f-4cef099573cb",
+    "items": [
+      {
+        "productId": "coca_cola",
+        "name": "Coca Cola",
+        "price": 80,
+        "image": "products/bebidas/coca-cola.avif",
+        "quantity": 2
+      }
+    ],
+    "totalItems": 2,
+    "subtotal": 160,
+    "status": "pending",
+    "paymentStatus": "pending",
+    "createdAt": "2026-07-28T23:08:08.120Z",
+    "updatedAt": "2026-07-28T23:08:08.120Z"
+  }
+}
+```
+
+**Errors:**
+| Status | Message |
+|--------|--------|
+| 404 | Order not found |
+
+---
+
+### PATCH /api/orders/:id/status
+
+Update the status of an order. Only valid transitions are allowed.
+
+**Parameters:**
+| Name | Type | Description |
+|------|------|-------------|
+| id | string | Order UUID |
+
+**Request body:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| status | string | Yes | New status (`pending`, `processing`, `completed`, `cancelled`) |
+
+**Valid transitions:**
+- `pending` → `processing` or `cancelled`
+- `processing` → `completed`
+- `completed` → (none)
+- `cancelled` → (none)
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "4c81d682-cb03-44c1-8d2f-4cef099573cb",
+    "items": [
+      {
+        "productId": "coca_cola",
+        "name": "Coca Cola",
+        "price": 80,
+        "image": "products/bebidas/coca-cola.avif",
+        "quantity": 2
+      }
+    ],
+    "totalItems": 2,
+    "subtotal": 160,
+    "status": "processing",
+    "paymentStatus": "pending",
+    "createdAt": "2026-07-28T23:08:08.120Z",
+    "updatedAt": "2026-07-28T23:08:17.745Z"
+  }
+}
+```
+
+**Errors:**
+| Status | Message |
+|--------|--------|
+| 400 | Cannot transition from ... to ... |
+| 404 | Order not found |
+
+---
+
 ## Pagination (Future)
 
 Pagination is not implemented yet. Future support will use:
