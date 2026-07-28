@@ -7,6 +7,7 @@ const offerRoutes = require('./modules/offers/routes/offer.routes');
 const searchRoutes = require('./modules/search/routes/search.routes');
 const userRoutes = require('./modules/users/routes/user.routes');
 const authRoutes = require('./modules/auth/routes/auth.routes');
+const cartRoutes = require('./modules/cart/routes/cart.routes');
 const errorHandler = require('./shared/middleware/error-handler');
 const logger = require('./shared/middleware/logger.middleware');
 
@@ -27,6 +28,7 @@ app.use('/api/offers', offerRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/cart', cartRoutes);
 
 app.use(errorHandler);
 
