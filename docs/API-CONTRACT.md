@@ -3,7 +3,7 @@
 Documento que define la comunicación entre:
 - **Angular frontend**
 - **Next.js frontend**
-- **Express backend**
+- **Express + TypeScript backend**
 
 ---
 
@@ -14,7 +14,7 @@ Documento que define la comunicación entre:
 | **Base URL (dev)** | `http://localhost:3000/api` |
 | **Base URL (prod)** | `https://api.hipermercadosuperior.com/api` |
 | **Formato** | JSON |
-| **Autenticación** | JWT (futuro) |
+| **Autenticación** | JWT |
 
 ---
 
@@ -49,6 +49,9 @@ Repository   → Acceso a datos
   ↓
 Database     → MongoDB (futuro)
 ```
+
+> **Stack**: Node.js + Express + TypeScript (strict mode)
+> **Estado**: Migración de JavaScript a TypeScript completada ✅
 
 ---
 

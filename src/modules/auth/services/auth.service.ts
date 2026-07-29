@@ -1,0 +1,69 @@
+import bcrypt from "bcryptjs";
+import jwt, { SignOptions } from "jsonwebtoken";
+import config from "../../../config";
+import * as userRepository from "../../users/repositories/user.repository";
+import * as userService from "../../users/services/user.service";
+import { InvalidDataError } from "../../../shared/errors/invalid-data.error";
+import { EmailAlreadyExistsError } from "../../../shared/errors/email-already-exists.error";
+import type { PublicUser } from "../../../types";
+
+const SALT_ROUNDS = 10;
+
+export const register = async (data: { name: string; email: string; password: string }): Promise<PublicUser> => {
+  const email = data.email.toLowerCase().trim();
+  const existing = userRepository.findByEmail(email);
+  if (existing) throw new EmailAlreadyExistsError();
+
+  if (!data.password || data.password.length < 6) {
+    throw new InvalidDataError("Password must be at least 6 characters");
+  }
+
+  const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
+
+  const user = userService.create({
+    name: data.name,
+    email,
+    password: hashedPassword,
+  });
+
+  return user;
+};
+
+export const login = async (email: string, password: string): Promise<{ token: string; user: PublicUser }> => {
+  if (!email || !password) {
+    throw new InvalidDataError("Email and password are required");
+  }
+
+  const user = userRepository.findByEmail(email.toLowerCase().trim());
+  if (!user) {
+    throw new InvalidDataError("Invalid credentials");
+  }
+
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) {
+    throw new InvalidDataError("Invalid credentials");
+  }
+
+  if (!config.jwtSecret) {
+    throw new Error("JWT_SECRET is not configured");
+  }
+
+  const token = jwt.sign(
+    { id: user.id, email: user.email, role: user.role },
+    config.jwtSecret,
+    { expiresIn: config.jwtExpiresIn } as SignOptions
+  );
+
+  const { password: _, ...publicUser } = user;
+
+  return { token, user: publicUser };
+};
+
+export const getMe = (userId: string): PublicUser => {
+  const user = userRepository.findById(userId);
+  if (!user) {
+    throw new InvalidDataError("User not found");
+  }
+  const { password: _, ...publicUser } = user;
+  return publicUser;
+};

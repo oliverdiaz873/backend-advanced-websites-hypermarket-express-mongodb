@@ -1,6 +1,8 @@
 # backend-advanced-websites-hypermarket-express-mongodb
 
-Backend del hypermarket con Node.js + Express utilizando **Feature-Based Architecture**.
+Backend del hypermarket con Node.js + Express + TypeScript utilizando **Feature-Based Architecture**.
+
+> Migración de JavaScript a TypeScript completada ✅
 
 ## Arquitectura
 
@@ -17,34 +19,34 @@ src/
 │   └── auth/      # Autenticación
 ├── shared/        # Código transversal reutilizable
 │   ├── middleware/ # Middlewares globales (logger, cors, validación, errores)
-│   │   ├── error-handler.js       # Manejo centralizado de errores
-│   │   ├── logger.middleware.js   # Registro de peticiones HTTP
-│   │   └── validation.middleware.js # Validación de campos requeridos
+│   │   ├── error-handler.ts       # Manejo centralizado de errores
+│   │   ├── logger.middleware.ts   # Registro de peticiones HTTP
+│   │   └── validation.middleware.ts # Validación de campos requeridos
 │   ├── errors/    # Clases de errores personalizados
 │   ├── utils/     # Funciones utilitarias reutilizables
 │   └── constants/ # Constantes globales (roles, códigos, mensajes)
 ├── config/        # Configuración centralizada (variables de entorno)
-├── app.js         # Configuración de Express (middlewares, rutas)
-└── server.js      # Inicio del servidor
+├── app.ts         # Configuración de Express (middlewares, rutas)
+└── server.ts      # Inicio del servidor
 ```
 
 ## Responsabilidades
 
 | Archivo/Carpeta | Responsabilidad |
 |----------------|----------------|
-| `app.js` | Configuración de Express (middlewares, rutas) |
-| `server.js` | Inicio del servidor y puerto |
+| `app.ts` | Configuración de Express (middlewares, rutas) |
+| `server.ts` | Inicio del servidor y puerto |
 | `config/` | Configuración centralizada desde variables de entorno |
 | `modules/` | Módulos de negocio independientes (features) |
 | `modules/users/` | CRUD completo de usuarios con datos en memoria |
 | `shared/middleware/` | Middlewares globales reutilizables |
-| `shared/middleware/error-handler.js` | Captura y responde errores de forma uniforme |
-| `shared/middleware/logger.middleware.js` | Registra método, URL, código de estado y tiempo de cada petición |
-| `shared/middleware/validation.middleware.js` | Valida campos obligatorios en el body de la petición |
+| `shared/middleware/error-handler.ts` | Captura y responde errores de forma uniforme |
+| `shared/middleware/logger.middleware.ts` | Registra método, URL, código de estado y tiempo de cada petición |
+| `shared/middleware/validation.middleware.ts` | Valida campos obligatorios en el body de la petición |
 | `shared/errors/` | Clases de errores personalizados |
-| `shared/errors/not-found.error.js` | Error 404 para recursos no encontrados |
-| `shared/errors/email-already-exists.error.js` | Error 409 para email duplicado |
-| `shared/errors/invalid-data.error.js` | Error 400 para datos invalidos |
+| `shared/errors/not-found.error.ts` | Error 404 para recursos no encontrados |
+| `shared/errors/email-already-exists.error.ts` | Error 409 para email duplicado |
+| `shared/errors/invalid-data.error.ts` | Error 400 para datos invalidos |
 | `shared/utils/` | Funciones utilitarias transversales |
 | `shared/constants/` | Constantes globales (roles, códigos, mensajes) |
 
@@ -52,9 +54,11 @@ src/
 
 - Node.js
 - Express
+- TypeScript (strict mode)
 - cors (Cross-Origin Resource Sharing)
 - dotenv (variables de entorno)
 - nodemon (desarrollo)
+- tsx (ejecución TypeScript en desarrollo)
 
 ## Variables de entorno
 
@@ -82,7 +86,7 @@ Copiar `.env.example` a `.env` y configurar los valores:
 6. **errorHandler** - Middleware de errores que captura cualquier error no manejado y responde con formato uniforme.
 
 ### Logger
-Ubicación: `src/shared/middleware/logger.middleware.js`
+Ubicación: `src/shared/middleware/logger.middleware.ts`
 - Registra timestamp ISO, método HTTP, URL, código de estado y tiempo de respuesta.
 - Se ejecuta en cada petición antes de llegar a las rutas.
 
@@ -93,12 +97,12 @@ Configurado con el paquete oficial `cors`.
 - En producción se restringirá al dominio del frontend.
 
 ### Validación
-Ubicación: `src/shared/middleware/validation.middleware.js`
+Ubicación: `src/shared/middleware/validation.middleware.ts`
 - Middleware `validateRequiredFields(fields)` que verifica que los campos especificados existan en `req.body`.
 - Retorna 400 Bad Request si faltan campos.
 
 ### Error Handler
-Ubicación: `src/shared/middleware/error-handler.js`
+Ubicación: `src/shared/middleware/error-handler.ts`
 - Captura errores lanzados en rutas y middlewares.
 - Compatible con `NotFoundError` (statusCode 404).
 - Responde siempre con `{ success: false, message, statusCode }`.

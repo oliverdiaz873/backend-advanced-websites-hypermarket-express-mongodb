@@ -1,5 +1,7 @@
 # API Usage
 
+**Stack**: Node.js + Express + TypeScript · Migración JS→TS completada ✅
+
 Base URL: `http://localhost:3000`
 
 All responses follow a consistent format:
