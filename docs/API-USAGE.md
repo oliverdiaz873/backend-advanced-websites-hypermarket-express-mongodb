@@ -26,10 +26,16 @@ List all products.
   "data": [
     {
       "id": "coca_cola",
+      "sku": "BEB-001",
       "name": "Coca Cola",
       "price": 80,
       "image": "products/bebidas/coca-cola.avif",
-      "category": "bebidas"
+      "categoryId": "bebidas",
+      "category": { "name": "Bebidas", "slug": "bebidas" },
+      "unit": "l",
+      "unitQuantity": 1,
+      "status": "active",
+      "isAvailable": true
     }
   ]
 }
@@ -54,10 +60,16 @@ Get a product by ID.
   "success": true,
   "data": {
     "id": "coca_cola",
+    "sku": "BEB-001",
     "name": "Coca Cola",
     "price": 80,
     "image": "products/bebidas/coca-cola.avif",
-    "category": "bebidas"
+    "categoryId": "bebidas",
+    "category": { "name": "Bebidas", "slug": "bebidas" },
+    "unit": "l",
+    "unitQuantity": 1,
+    "status": "active",
+    "isAvailable": true
   }
 }
 ```
@@ -83,11 +95,17 @@ List all categories with subcategories.
   "success": true,
   "data": [
     {
-      "id": "alimentos",
-      "name": "Alimentos",
-      "subcategories": [
-        { "name": "Frutas y Verduras", "slug": "frutas-y-verduras" }
-      ]
+      "id": "coca_cola",
+      "sku": "BEB-001",
+      "name": "Coca Cola",
+      "price": 80,
+      "image": "products/bebidas/coca-cola.avif",
+      "categoryId": "bebidas",
+      "category": { "name": "Bebidas", "slug": "bebidas" },
+      "unit": "l",
+      "unitQuantity": 1,
+      "status": "active",
+      "isAvailable": true
     }
   ]
 }
@@ -142,14 +160,20 @@ List all discounted products.
       "id": "manzanas_verdes",
       "name": "Manzanas verdes por libras",
       "price": 45,
-      "oldPrice": "RD$ 56.25",
+      "originalPrice": 56,
+      "discountPrice": 45,
       "discountPercentage": 20,
       "image": "products/frutas-y-verduras/manzana-verde.avif",
-      "category": "frutas-y-verduras"
+      "category": "frutas-y-verduras",
+      "unit": "lb",
+      "unitQuantity": 1,
+      "priceLabel": "Precio: $45 / lb"
     }
   ]
 }
 ```
+
+> `price` es el precio final (`discountPrice`). `category` es el `categoryId` del producto. `originalPrice`, `discountPrice` y `discountPercentage` son **números**, no strings.
 
 **Errors:** None
 
@@ -174,14 +198,22 @@ Search products by name.
   "data": [
     {
       "id": "coca_cola",
+      "sku": "BEB-001",
       "name": "Coca Cola",
       "price": 80,
       "image": "products/bebidas/coca-cola.avif",
-      "category": "bebidas"
+      "categoryId": "bebidas",
+      "category": { "name": "Bebidas", "slug": "bebidas" },
+      "unit": "l",
+      "unitQuantity": 1,
+      "status": "active",
+      "isAvailable": true
     }
   ]
 }
 ```
+
+> Devuelve la misma estructura que `GET /api/products`.
 
 **Errors:**
 | Status | Message |
@@ -545,7 +577,10 @@ Get an inventory record by ID.
 
 Get the inventory record for a product.
 
-**Errors:** None (returns `data: null` if not found)
+**Errors:**
+| Status | Message |
+|--------|--------|
+| 404 | Inventory not found |
 
 ---
 
@@ -587,6 +622,8 @@ Adjust stock levels. **Admin only.**
 
 Submit a contact message. Public endpoint (no auth).
 
+**Rate limit:** 10 requests per minute per IP.
+
 **Request body:**
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -620,6 +657,7 @@ Submit a contact message. Public endpoint (no auth).
 | 400 | Invalid email format |
 | 400 | Phone must be between 8 and 15 digits |
 | 400 | Message must be between 10 and 500 characters |
+| 429 | Too many messages, please try again later |
 
 ---
 

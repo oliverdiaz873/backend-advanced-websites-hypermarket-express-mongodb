@@ -28,7 +28,7 @@ La API utiliza nombres en **inglés** para todos los campos.
 {
   "price": 80,
   "image": "products/arroz.jpg",
-  "category": "despensa"
+  "category": { "name": "Despensa", "slug": "despensa" }
 }
 ```
 
@@ -74,13 +74,16 @@ Todas las respuestas exitosas:
   "data": [
     {
       "id": "arroz-superior",
+      "sku": "ARROZ-001",
       "name": "Arroz Superior",
       "price": 80,
       "image": "products/arroz-superior.jpg",
-      "category": "despensa",
+      "categoryId": "alimentos",
+      "category": { "name": "Despensa", "slug": "despensa" },
       "unit": "kg",
       "unitQuantity": 1,
-      "priceLabel": "Precio: $80 / kg"
+      "status": "active",
+      "isAvailable": true
     }
   ]
 }
@@ -105,6 +108,7 @@ Todas las respuestas exitosas:
 | 403 | Forbidden |
 | 404 | Not Found |
 | 409 | Conflict (ej. stock insuficiente, email duplicado) |
+| 429 | Too Many Requests (rate limit) |
 | 500 | Internal Server Error |
 
 ---
@@ -129,13 +133,21 @@ Obtiene todos los productos.
   "data": [
     {
       "id": "string",
+      "sku": "string",
       "name": "string",
+      "description": "string | null",
       "price": "number",
       "image": "string",
-      "category": "string",
+      "categoryId": "string",
+      "category": { "name": "string", "slug": "string" },
+      "brandId": "string | null",
+      "brand": { "name": "string", "slug": "string" } | null,
       "unit": "string | null",
       "unitQuantity": "number | null",
-      "priceLabel": "string"
+      "status": "active | inactive",
+      "isAvailable": "boolean",
+      "createdAt": "string (ISO)",
+      "updatedAt": "string (ISO)"
     }
   ]
 }
@@ -152,13 +164,16 @@ Obtiene un producto específico.
   "success": true,
   "data": {
     "id": "arroz-superior",
+    "sku": "ARROZ-001",
     "name": "Arroz Superior",
     "price": 80,
     "image": "products/arroz-superior.jpg",
-    "category": "despensa",
+    "categoryId": "alimentos",
+    "category": { "name": "Despensa", "slug": "despensa" },
     "unit": "kg",
     "unitQuantity": 1,
-    "priceLabel": "Precio: $80 / kg"
+    "status": "active",
+    "isAvailable": true
   }
 }
 ```
@@ -227,18 +242,22 @@ Obtiene productos con descuento activo.
   "data": [
     {
       "id": "manzanas_verdes",
-      "name": "Manzanas verdes",
+      "name": "Manzanas verdes por libras",
       "price": 45,
-      "oldPrice": "RD$ 56.25",
+      "originalPrice": 56,
+      "discountPrice": 45,
       "discountPercentage": 20,
-      "image": "products/manzanas-verdes.jpg",
+      "image": "products/frutas-y-verduras/manzana-verde.avif",
       "category": "frutas-y-verduras",
       "unit": "lb",
+      "unitQuantity": 1,
       "priceLabel": "Precio: $45 / lb"
     }
   ]
 }
 ```
+
+> `price` es el precio final (`discountPrice`). `category` es el `categoryId` del producto. `originalPrice`, `discountPrice` y `discountPercentage` son **números**, no strings.
 
 ---
 
@@ -260,18 +279,18 @@ Busca productos por término.
   "data": [
     {
       "id": "arroz-superior",
+      "sku": "ARROZ-001",
       "name": "Arroz Superior",
       "price": 80,
-      "image": "products/arroz-superior.jpg"
+      "image": "products/arroz-superior.jpg",
+      "categoryId": "alimentos",
+      "category": { "name": "Despensa", "slug": "despensa" }
     }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total": 1
-  }
+  ]
 }
 ```
+
+> Devuelve la misma estructura que `GET /products` (ver sección 5).
 
 ---
 
@@ -389,6 +408,8 @@ Lectura pública; gestión admin.
 
 Todos los registros incluyen **`availableStock = stock - reservedStock`** (campo virtual calculado, nunca persistido).
 
+`GET /inventory/product/:productId` responde `404 { success: false, message: "Inventory not found", statusCode: 404 }` si el producto no tiene registro de inventario.
+
 ---
 
 ## 13. Contact API
@@ -400,6 +421,12 @@ Todos los registros incluyen **`availableStock = stock - reservedStock`** (campo
 **Request body:** `{ name, email, message }` + `phone?`
 
 El mensaje se guarda con `status: "pending" | "read" | "answered"` (default `pending`), preparado para el futuro panel admin.
+
+**Rate limit:** el endpoint público está limitado a **10 peticiones por minuto por IP**. Al exceder el límite responde `429`.
+
+| Status | Mensaje |
+|--------|---------|
+| 429 | Too many messages, please try again later |
 
 ---
 

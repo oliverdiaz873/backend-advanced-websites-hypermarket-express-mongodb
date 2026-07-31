@@ -56,9 +56,6 @@ export const create = async (userId: string, addressId: string) => {
 
   for (const item of items) {
     const inventory = await inventoryService.getByProductId(item.productId);
-    if (!inventory) {
-      throw new NotFoundError("Inventory record not found");
-    }
     if (inventory.availableStock < item.quantity) {
       throw new InsufficientStockError(`Insufficient stock for product ${item.name}`);
     }

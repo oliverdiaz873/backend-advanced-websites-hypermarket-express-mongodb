@@ -18,6 +18,8 @@ import logger from "./shared/middleware/logger.middleware";
 
 const app = express();
 
+app.set("trust proxy", 1);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(logger);

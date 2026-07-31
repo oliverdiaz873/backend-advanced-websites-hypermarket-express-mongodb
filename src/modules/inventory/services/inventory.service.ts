@@ -16,8 +16,12 @@ export const getById = async (id: string): Promise<Inventory> => {
   return record;
 };
 
-export const getByProductId = async (productId: string): Promise<Inventory | null> => {
-  return inventoryRepository.findByProductId(productId);
+export const getByProductId = async (productId: string): Promise<Inventory> => {
+  const record = await inventoryRepository.findByProductId(productId);
+  if (!record) {
+    throw new NotFoundError("Inventory not found");
+  }
+  return record;
 };
 
 export const getLowStock = async (): Promise<Inventory[]> => {
