@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import orders from "../data/orders.data";
 import { ORDER_STATUS, PAYMENT_STATUS } from "../../../shared/constants/order-status";
-import type { Order, OrderItem } from "../../../types";
+import type { Order, OrderItem, OrderStatus } from "../../../types";
 
 export const findByUserId = (userId: string): Order[] => {
   return orders
@@ -14,7 +14,7 @@ export const findById = (orderId: string): Order | null => {
 };
 
 export const create = (userId: string, items: OrderItem[], totalItems: number, subtotal: number): Order => {
-  const now = new Date().toISOString();
+  const now = new Date();
   const order: Order = {
     id: randomUUID(),
     userId,
@@ -30,11 +30,11 @@ export const create = (userId: string, items: OrderItem[], totalItems: number, s
   return order;
 };
 
-export const updateStatus = (orderId: string, status: string): Order | null => {
+export const updateStatus = (orderId: string, status: OrderStatus): Order | null => {
   const order = orders.find((o) => o.id === orderId);
   if (!order) return null;
 
   order.status = status;
-  order.updatedAt = new Date().toISOString();
+  order.updatedAt = new Date();
   return order;
 };

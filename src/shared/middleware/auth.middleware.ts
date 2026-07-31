@@ -31,4 +31,28 @@ const authMiddleware = (req: Request, res: Response, next: NextFunction): void =
   }
 };
 
+export const authorizeRole = (...roles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        message: "Authentication required",
+        statusCode: 401,
+      });
+      return;
+    }
+
+    if (!roles.includes(req.user.role)) {
+      res.status(403).json({
+        success: false,
+        message: "Forbidden: insufficient permissions",
+        statusCode: 403,
+      });
+      return;
+    }
+
+    next();
+  };
+};
+
 export default authMiddleware;

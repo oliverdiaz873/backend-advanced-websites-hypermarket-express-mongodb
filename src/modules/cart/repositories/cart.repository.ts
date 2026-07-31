@@ -7,7 +7,7 @@ export const findByUserId = (userId: string): Cart | null => {
 };
 
 export const createCart = (userId: string): Cart => {
-  const now = new Date().toISOString();
+  const now = new Date();
   const cart: Cart = {
     id: randomUUID(),
     userId,
@@ -30,7 +30,7 @@ export const addItem = (userId: string, productId: string, quantity: number): Ca
     cart.items.push({ productId, quantity });
   }
 
-  cart.updatedAt = new Date().toISOString();
+  cart.updatedAt = new Date();
   return cart;
 };
 
@@ -42,7 +42,7 @@ export const updateItem = (userId: string, productId: string, quantity: number):
   if (!item) return null;
 
   item.quantity = quantity;
-  cart.updatedAt = new Date().toISOString();
+  cart.updatedAt = new Date();
   return cart;
 };
 
@@ -54,7 +54,7 @@ export const removeItem = (userId: string, productId: string): Cart | null => {
   if (index === -1) return null;
 
   cart.items.splice(index, 1);
-  cart.updatedAt = new Date().toISOString();
+  cart.updatedAt = new Date();
   return cart;
 };
 
@@ -63,6 +63,6 @@ export const clearCart = (userId: string): Cart | null => {
   if (!cart) return null;
 
   cart.items = [];
-  cart.updatedAt = new Date().toISOString();
+  cart.updatedAt = new Date();
   return cart;
 };

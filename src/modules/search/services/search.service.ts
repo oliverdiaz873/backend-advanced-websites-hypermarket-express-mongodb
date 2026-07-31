@@ -14,7 +14,7 @@ export const search = (query: string, category?: string): Product[] => {
 
   if (category) {
     const normalizedCategory = category.trim().toLowerCase();
-    results = results.filter((p) => p.category.toLowerCase() === normalizedCategory);
+    results = results.filter((p) => p.category.slug === normalizedCategory);
   }
 
   return results;

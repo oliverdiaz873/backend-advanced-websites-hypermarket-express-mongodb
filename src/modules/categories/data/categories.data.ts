@@ -2,6 +2,7 @@ const categories = [
   {
     id: "alimentos",
     name: "Alimentos",
+    slug: "alimentos",
     subcategories: [
       { name: "Frutas y Verduras", slug: "frutas-y-verduras" },
       { name: "Despensa", slug: "despensa" },
@@ -14,6 +15,7 @@ const categories = [
   {
     id: "electrodomesticos",
     name: "Electrodomésticos",
+    slug: "electrodomesticos",
     subcategories: [
       { name: "Cocina", slug: "cocina" },
       { name: "Lavado", slug: "lavado" },
@@ -23,6 +25,7 @@ const categories = [
   {
     id: "tecnologia",
     name: "Tecnología",
+    slug: "tecnologia",
     subcategories: [
       { name: "Televisores", slug: "televisores" },
       { name: "Laptops", slug: "laptops" },
@@ -34,6 +37,7 @@ const categories = [
   {
     id: "ropa",
     name: "Ropa",
+    slug: "ropa",
     subcategories: [
       { name: "Pantalones para Hombres", slug: "pantalones-para-hombres" },
       { name: "Pantalones para Mujeres", slug: "pantalones-para-mujeres" },
@@ -45,6 +49,7 @@ const categories = [
   {
     id: "muebles-y-decoracion",
     name: "Muebles y Decoración",
+    slug: "muebles-y-decoracion",
     subcategories: [
       { name: "Sofás", slug: "sofas" },
       { name: "Sillones", slug: "sillones" },
@@ -55,6 +60,7 @@ const categories = [
   {
     id: "farmacia",
     name: "Farmacia",
+    slug: "farmacia",
     subcategories: [
       { name: "Analgésicos", slug: "analgesicos" },
       { name: "Dermocosmética", slug: "dermocosmetica" },
@@ -65,6 +71,7 @@ const categories = [
   {
     id: "ferreteria",
     name: "Ferretería",
+    slug: "ferreteria",
     subcategories: [
       { name: "Herramientas Manuales", slug: "herramientas-manuales" },
       { name: "Pinturas", slug: "pinturas-y-acabados" },
@@ -75,6 +82,7 @@ const categories = [
   {
     id: "juguetes",
     name: "Juguetes",
+    slug: "juguetes",
     subcategories: [
       { name: "Juguetes para Niños", slug: "juguetes-para-ninos" },
       { name: "Juguetes para Niñas", slug: "juguetes-para-ninas" },
@@ -83,3 +91,4 @@ const categories = [
 ];
 
 export default categories;
+

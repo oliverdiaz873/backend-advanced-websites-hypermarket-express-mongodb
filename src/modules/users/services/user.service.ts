@@ -33,7 +33,7 @@ export const create = (data: { name: string; email: string; password: string }):
     throw new InvalidDataError("Password must be at least 6 characters");
   }
 
-  const now = new Date().toISOString();
+  const now = new Date();
   const newUser: User = {
     id: randomUUID(),
     name: data.name,
@@ -69,7 +69,7 @@ export const updateById = (id: string, data: Record<string, unknown>): PublicUse
     throw new InvalidDataError("Password must be at least 6 characters");
   }
 
-  updates.updatedAt = new Date().toISOString();
+  updates.updatedAt = new Date();
 
   const updated = userRepository.updateById(id, updates);
   return toPublicUser(updated) as PublicUser;

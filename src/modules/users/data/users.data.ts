@@ -12,8 +12,8 @@ const users: User[] = [
     email: "oliver@email.com",
     password: hash,
     role: "admin",
-    createdAt: new Date("2026-01-15").toISOString(),
-    updatedAt: new Date("2026-01-15").toISOString(),
+    createdAt: new Date("2026-01-15"),
+    updatedAt: new Date("2026-01-15"),
   },
   {
     id: randomUUID(),
@@ -21,8 +21,8 @@ const users: User[] = [
     email: "maria@email.com",
     password: hash,
     role: "customer",
-    createdAt: new Date("2026-03-20").toISOString(),
-    updatedAt: new Date("2026-03-20").toISOString(),
+    createdAt: new Date("2026-03-20"),
+    updatedAt: new Date("2026-03-20"),
   },
   {
     id: randomUUID(),
@@ -30,9 +30,10 @@ const users: User[] = [
     email: "carlos@email.com",
     password: hash,
     role: "customer",
-    createdAt: new Date("2026-05-10").toISOString(),
-    updatedAt: new Date("2026-05-10").toISOString(),
+    createdAt: new Date("2026-05-10"),
+    updatedAt: new Date("2026-05-10"),
   },
 ];
 
 export default users;
+

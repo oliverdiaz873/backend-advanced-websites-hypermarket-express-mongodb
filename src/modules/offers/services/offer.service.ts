@@ -9,22 +9,24 @@ export const getAll = (): OfferResponse[] => {
     const product = productRepository.findById(offer.productId);
     if (!product) return null;
 
-    const price = product.price;
-    const oldPriceNumeric = parseFloat(offer.oldPrice.replace(/[RD$\s,]/g, ""));
-    const discountPercentage = oldPriceNumeric
-      ? Math.round(((oldPriceNumeric - price) / oldPriceNumeric) * 100)
+    const discountPercentage = offer.originalPrice
+      ? Math.round(((offer.originalPrice - offer.discountPrice) / offer.originalPrice) * 100)
       : 0;
+
+    const unitLabel = product.unit ? ` / ${product.unit}` : "";
 
     return {
       id: product.id,
       name: product.name,
-      price: product.price,
-      oldPrice: offer.oldPrice,
+      price: offer.discountPrice,
+      originalPrice: offer.originalPrice,
+      discountPrice: offer.discountPrice,
       discountPercentage,
       image: product.image,
-      category: product.category,
+      category: product.categoryId,
       unit: product.unit,
       unitQuantity: product.unitQuantity,
+      priceLabel: `Precio: $${offer.discountPrice}${unitLabel}`
     };
   }).filter(Boolean) as OfferResponse[];
 };

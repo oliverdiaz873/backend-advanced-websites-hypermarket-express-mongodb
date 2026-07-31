@@ -12,7 +12,16 @@ export const getAll = (req: Request, res: Response, next: NextFunction): void =>
 
 export const getById = (req: Request, res: Response, next: NextFunction): void => {
   try {
-    const user = userService.getById(req.params.id as string);
+    const targetId = req.params.id as string;
+    if (req.user && req.user.role !== "admin" && req.user.id !== targetId) {
+      res.status(403).json({
+        success: false,
+        message: "Forbidden: you can only access your own data",
+        statusCode: 403,
+      });
+      return;
+    }
+    const user = userService.getById(targetId);
     res.json({ success: true, data: user });
   } catch (error) {
     next(error);

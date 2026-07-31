@@ -4,7 +4,7 @@ import * as productRepository from "../../products/repositories/product.reposito
 import { NotFoundError } from "../../../shared/errors/not-found.error";
 import { InvalidDataError } from "../../../shared/errors/invalid-data.error";
 import { ORDER_STATUS, ALLOWED_TRANSITIONS } from "../../../shared/constants/order-status";
-import type { Order, OrderItem } from "../../../types";
+import type { Order, OrderItem, OrderStatus } from "../../../types";
 
 const toResponse = (order: Order) => ({
   id: order.id,
@@ -65,7 +65,7 @@ export const findById = (userId: string, orderId: string) => {
   return toResponse(order);
 };
 
-export const updateStatus = (userId: string, orderId: string, newStatus: string) => {
+export const updateStatus = (userId: string, orderId: string, newStatus: OrderStatus) => {
   const order = orderRepository.findById(orderId);
   if (!order) {
     throw new NotFoundError("Order not found");
@@ -74,8 +74,8 @@ export const updateStatus = (userId: string, orderId: string, newStatus: string)
     throw new NotFoundError("Order not found");
   }
 
-  const allowed = ALLOWED_TRANSITIONS[order.status as keyof typeof ALLOWED_TRANSITIONS] as readonly string[] | undefined;
-  if (!allowed || !allowed.includes(newStatus as typeof allowed[number])) {
+  const allowed = ALLOWED_TRANSITIONS[order.status] as readonly OrderStatus[] | undefined;
+  if (!allowed || !allowed.includes(newStatus)) {
     throw new InvalidDataError(`Cannot transition from ${order.status} to ${newStatus}`);
   }
 
