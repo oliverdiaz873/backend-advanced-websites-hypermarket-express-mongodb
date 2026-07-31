@@ -1,16 +1,16 @@
 import { Request, Response, NextFunction } from "express";
 import * as userService from "../services/user.service";
 
-export const getAll = (req: Request, res: Response, next: NextFunction): void => {
+export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const users = userService.getAll();
+    const users = await userService.getAll();
     res.json({ success: true, data: users });
   } catch (error) {
     next(error);
   }
 };
 
-export const getById = (req: Request, res: Response, next: NextFunction): void => {
+export const getById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const targetId = req.params.id as string;
     if (req.user && req.user.role !== "admin" && req.user.id !== targetId) {
@@ -21,34 +21,34 @@ export const getById = (req: Request, res: Response, next: NextFunction): void =
       });
       return;
     }
-    const user = userService.getById(targetId);
+    const user = await userService.getById(targetId);
     res.json({ success: true, data: user });
   } catch (error) {
     next(error);
   }
 };
 
-export const create = (req: Request, res: Response, next: NextFunction): void => {
+export const create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const user = userService.create(req.body);
+    const user = await userService.create(req.body);
     res.status(201).json({ success: true, data: user });
   } catch (error) {
     next(error);
   }
 };
 
-export const updateById = (req: Request, res: Response, next: NextFunction): void => {
+export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const user = userService.updateById(req.params.id as string, req.body);
+    const user = await userService.updateById(req.params.id as string, req.body);
     res.json({ success: true, data: user });
   } catch (error) {
     next(error);
   }
 };
 
-export const deleteById = (req: Request, res: Response, next: NextFunction): void => {
+export const deleteById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    userService.deleteById(req.params.id as string);
+    await userService.deleteById(req.params.id as string);
     res.json({ success: true, data: null });
   } catch (error) {
     next(error);

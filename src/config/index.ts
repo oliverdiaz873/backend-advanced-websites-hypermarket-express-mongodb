@@ -12,7 +12,7 @@ const config: Config = {
     : ["http://localhost:4200"],
   jwtSecret: process.env.JWT_SECRET || "",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "1d",
-  mongodbUri: process.env.MONGODB_URI,
+  mongodbUri: process.env.MONGODB_URI || "mongodb://localhost:27017/hypermarket",
 };
 
 export default config;

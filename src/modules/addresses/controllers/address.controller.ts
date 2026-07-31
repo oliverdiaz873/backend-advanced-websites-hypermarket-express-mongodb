@@ -1,27 +1,27 @@
 import { Request, Response, NextFunction } from "express";
 import * as addressService from "../services/address.service";
 
-export const getAll = (req: Request, res: Response, next: NextFunction): void => {
+export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const addresses = addressService.getAll();
+    const addresses = await addressService.getAll();
     res.json({ success: true, data: addresses });
   } catch (error) {
     next(error);
   }
 };
 
-export const getById = (req: Request, res: Response, next: NextFunction): void => {
+export const getById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const address = addressService.getById(req.params.id as string);
+    const address = await addressService.getById(req.params.id as string);
     res.json({ success: true, data: address });
   } catch (error) {
     next(error);
   }
 };
 
-export const getByUser = (req: Request, res: Response, next: NextFunction): void => {
+export const getByUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const addresses = addressService.getByUser(req.params.userId as string);
+    const addresses = await addressService.getByUser(req.params.userId as string);
     res.json({ success: true, data: addresses });
   } catch (error) {
     next(error);

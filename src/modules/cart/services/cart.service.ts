@@ -4,8 +4,8 @@ import { NotFoundError } from "../../../shared/errors/not-found.error";
 import { InvalidDataError } from "../../../shared/errors/invalid-data.error";
 import type { CartItem, CartResponse } from "../../../types";
 
-const resolveItem = (item: { productId: string; quantity: number }): CartItem | null => {
-  const product = productRepository.findById(item.productId);
+const resolveItem = async (item: { productId: string; quantity: number }): Promise<CartItem | null> => {
+  const product = await productRepository.findById(item.productId);
   if (!product) return null;
   return {
     productId: item.productId,
@@ -16,13 +16,13 @@ const resolveItem = (item: { productId: string; quantity: number }): CartItem | 
   };
 };
 
-export const getCart = (userId: string): CartResponse => {
-  let cart = cartRepository.findByUserId(userId);
+export const getCart = async (userId: string): Promise<CartResponse> => {
+  let cart = await cartRepository.findByUserId(userId);
   if (!cart) {
-    cart = cartRepository.createCart(userId);
+    cart = await cartRepository.createCart(userId);
   }
 
-  const resolvedItems = cart.items.map(resolveItem).filter(Boolean) as CartItem[];
+  const resolvedItems = (await Promise.all(cart.items.map(resolveItem))).filter(Boolean) as CartItem[];
   const totalItems = resolvedItems.reduce((sum, i) => sum + i.quantity, 0);
   const subtotal = resolvedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
@@ -35,36 +35,36 @@ export const getCart = (userId: string): CartResponse => {
   };
 };
 
-export const addItem = (userId: string, productId: string, quantity: number): CartResponse => {
+export const addItem = async (userId: string, productId: string, quantity: number): Promise<CartResponse> => {
   if (!Number.isInteger(quantity) || quantity < 1) {
     throw new InvalidDataError("Quantity must be a positive integer");
   }
 
-  const product = productRepository.findById(productId);
+  const product = await productRepository.findById(productId);
   if (!product) {
     throw new NotFoundError("Product not found");
   }
 
-  let cart = cartRepository.findByUserId(userId);
+  let cart = await cartRepository.findByUserId(userId);
   if (!cart) {
-    cart = cartRepository.createCart(userId);
+    cart = await cartRepository.createCart(userId);
   }
 
-  cartRepository.addItem(userId, productId, quantity);
+  await cartRepository.addItem(userId, productId, quantity);
   return getCart(userId);
 };
 
-export const updateItem = (userId: string, productId: string, quantity: number): CartResponse => {
+export const updateItem = async (userId: string, productId: string, quantity: number): Promise<CartResponse> => {
   if (!Number.isInteger(quantity) || quantity < 1) {
     throw new InvalidDataError("Quantity must be a positive integer");
   }
 
-  const cart = cartRepository.findByUserId(userId);
+  const cart = await cartRepository.findByUserId(userId);
   if (!cart) {
     throw new NotFoundError("Cart not found");
   }
 
-  const updated = cartRepository.updateItem(userId, productId, quantity);
+  const updated = await cartRepository.updateItem(userId, productId, quantity);
   if (!updated) {
     throw new NotFoundError("Cart item not found");
   }
@@ -72,13 +72,13 @@ export const updateItem = (userId: string, productId: string, quantity: number):
   return getCart(userId);
 };
 
-export const removeItem = (userId: string, productId: string): CartResponse => {
-  const cart = cartRepository.findByUserId(userId);
+export const removeItem = async (userId: string, productId: string): Promise<CartResponse> => {
+  const cart = await cartRepository.findByUserId(userId);
   if (!cart) {
     throw new NotFoundError("Cart not found");
   }
 
-  const updated = cartRepository.removeItem(userId, productId);
+  const updated = await cartRepository.removeItem(userId, productId);
   if (!updated) {
     throw new NotFoundError("Cart item not found");
   }
@@ -86,12 +86,12 @@ export const removeItem = (userId: string, productId: string): CartResponse => {
   return getCart(userId);
 };
 
-export const clearCart = (userId: string): CartResponse => {
-  let cart = cartRepository.findByUserId(userId);
+export const clearCart = async (userId: string): Promise<CartResponse> => {
+  let cart = await cartRepository.findByUserId(userId);
   if (!cart) {
-    cart = cartRepository.createCart(userId);
+    cart = await cartRepository.createCart(userId);
   }
 
-  cartRepository.clearCart(userId);
+  await cartRepository.clearCart(userId);
   return getCart(userId);
 };

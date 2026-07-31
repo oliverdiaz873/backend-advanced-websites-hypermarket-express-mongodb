@@ -1,33 +1,37 @@
-import usersData from "../data/users.data";
+import { UserModel } from "../models/user.model";
+import { isValidObjectId } from "../../../shared/utils/mongo";
+import type { IUser } from "../models/user.model";
 import type { User } from "../../../types";
 
-export const findAll = (): User[] => {
-  return usersData;
+export const findAll = async (): Promise<User[]> => {
+  const docs = await UserModel.find();
+  return docs.map((doc) => doc.toJSON() as unknown as User);
 };
 
-export const findById = (id: string): User | null => {
-  return usersData.find((u) => u.id === id) || null;
+export const findById = async (id: string): Promise<User | null> => {
+  if (!isValidObjectId(id)) return null;
+  const doc = await UserModel.findById(id);
+  return doc ? (doc.toJSON() as unknown as User) : null;
 };
 
-export const findByEmail = (email: string): User | null => {
-  return usersData.find((u) => u.email === email) || null;
+export const findByEmail = async (email: string): Promise<User | null> => {
+  const doc = await UserModel.findOne({ email: email.toLowerCase().trim() });
+  return doc ? (doc.toJSON() as unknown as User) : null;
 };
 
-export const create = (user: User): User => {
-  usersData.push(user);
-  return user;
+export const create = async (user: Omit<User, "id">): Promise<User> => {
+  const doc = await UserModel.create(user as unknown as IUser);
+  return doc.toJSON() as unknown as User;
 };
 
-export const updateById = (id: string, data: Partial<User>): User | null => {
-  const index = usersData.findIndex((u) => u.id === id);
-  if (index === -1) return null;
-  usersData[index] = { ...usersData[index], ...data };
-  return usersData[index];
+export const updateById = async (id: string, data: Partial<User>): Promise<User | null> => {
+  if (!isValidObjectId(id)) return null;
+  const doc = await UserModel.findByIdAndUpdate(id, data, { returnDocument: "after" });
+  return doc ? (doc.toJSON() as unknown as User) : null;
 };
 
-export const deleteById = (id: string): boolean => {
-  const index = usersData.findIndex((u) => u.id === id);
-  if (index === -1) return false;
-  usersData.splice(index, 1);
-  return true;
+export const deleteById = async (id: string): Promise<boolean> => {
+  if (!isValidObjectId(id)) return false;
+  const result = await UserModel.findByIdAndDelete(id);
+  return result !== null;
 };

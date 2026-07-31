@@ -17,8 +17,8 @@ const toResponse = (order: Order) => ({
   updatedAt: order.updatedAt,
 });
 
-export const create = (userId: string) => {
-  const cart = cartRepository.findByUserId(userId);
+export const create = async (userId: string) => {
+  const cart = await cartRepository.findByUserId(userId);
   if (!cart) {
     throw new NotFoundError("Cart not found");
   }
@@ -26,36 +26,37 @@ export const create = (userId: string) => {
     throw new InvalidDataError("Cart is empty");
   }
 
-  const items: OrderItem[] = cart.items.map((item) => {
-    const product = productRepository.findById(item.productId);
+  const items: OrderItem[] = [];
+  for (const item of cart.items) {
+    const product = await productRepository.findById(item.productId);
     if (!product) {
       throw new NotFoundError("Product not found");
     }
-    return {
+    items.push({
       productId: item.productId,
       name: product.name,
       price: product.price,
       image: product.image,
       quantity: item.quantity,
-    };
-  });
+    });
+  }
 
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
   const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
-  const order = orderRepository.create(userId, items, totalItems, subtotal);
-  cartRepository.clearCart(userId);
+  const order = await orderRepository.create(userId, items, totalItems, subtotal);
+  await cartRepository.clearCart(userId);
 
   return toResponse(order);
 };
 
-export const findByUser = (userId: string) => {
-  const orders = orderRepository.findByUserId(userId);
+export const findByUser = async (userId: string) => {
+  const orders = await orderRepository.findByUserId(userId);
   return orders.map(toResponse);
 };
 
-export const findById = (userId: string, orderId: string) => {
-  const order = orderRepository.findById(orderId);
+export const findById = async (userId: string, orderId: string) => {
+  const order = await orderRepository.findById(orderId);
   if (!order) {
     throw new NotFoundError("Order not found");
   }
@@ -65,8 +66,8 @@ export const findById = (userId: string, orderId: string) => {
   return toResponse(order);
 };
 
-export const updateStatus = (userId: string, orderId: string, newStatus: OrderStatus) => {
-  const order = orderRepository.findById(orderId);
+export const updateStatus = async (userId: string, orderId: string, newStatus: OrderStatus) => {
+  const order = await orderRepository.findById(orderId);
   if (!order) {
     throw new NotFoundError("Order not found");
   }
@@ -79,6 +80,6 @@ export const updateStatus = (userId: string, orderId: string, newStatus: OrderSt
     throw new InvalidDataError(`Cannot transition from ${order.status} to ${newStatus}`);
   }
 
-  const updated = orderRepository.updateStatus(orderId, newStatus);
+  const updated = await orderRepository.updateStatus(orderId, newStatus);
   return toResponse(updated!);
 };

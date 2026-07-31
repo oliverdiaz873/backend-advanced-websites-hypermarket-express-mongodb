@@ -1,10 +1,12 @@
-import categories from "../data/categories.data";
+import { CategoryModel } from "../models/category.model";
 import type { Category } from "../../../types";
 
-export const findAll = (): Category[] => {
-  return categories;
+export const findAll = async (): Promise<Category[]> => {
+  const docs = await CategoryModel.find();
+  return docs.map((doc) => doc.toJSON() as unknown as Category);
 };
 
-export const findById = (id: string): Category | null => {
-  return categories.find((c) => c.id === id) || null;
+export const findById = async (id: string): Promise<Category | null> => {
+  const doc = await CategoryModel.findById(id);
+  return doc ? (doc.toJSON() as unknown as Category) : null;
 };

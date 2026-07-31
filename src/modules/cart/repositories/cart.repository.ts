@@ -1,26 +1,21 @@
-import { randomUUID } from "crypto";
-import carts from "../data/cart.data";
+import { CartModel } from "../models/cart.model";
+import { isValidObjectId, toObjectId } from "../../../shared/utils/mongo";
 import type { Cart } from "../../../types";
 
-export const findByUserId = (userId: string): Cart | null => {
-  return carts.find((c) => c.userId === userId) || null;
+export const findByUserId = async (userId: string): Promise<Cart | null> => {
+  if (!isValidObjectId(userId)) return null;
+  const doc = await CartModel.findOne({ userId: toObjectId(userId) });
+  return doc ? (doc.toJSON() as unknown as Cart) : null;
 };
 
-export const createCart = (userId: string): Cart => {
-  const now = new Date();
-  const cart: Cart = {
-    id: randomUUID(),
-    userId,
-    items: [],
-    createdAt: now,
-    updatedAt: now,
-  };
-  carts.push(cart);
-  return cart;
+export const createCart = async (userId: string): Promise<Cart> => {
+  const doc = await CartModel.create({ userId: toObjectId(userId), items: [] });
+  return doc.toJSON() as unknown as Cart;
 };
 
-export const addItem = (userId: string, productId: string, quantity: number): Cart | null => {
-  const cart = carts.find((c) => c.userId === userId);
+export const addItem = async (userId: string, productId: string, quantity: number): Promise<Cart | null> => {
+  if (!isValidObjectId(userId)) return null;
+  const cart = await CartModel.findOne({ userId: toObjectId(userId) });
   if (!cart) return null;
 
   const existing = cart.items.find((i) => i.productId === productId);
@@ -30,39 +25,42 @@ export const addItem = (userId: string, productId: string, quantity: number): Ca
     cart.items.push({ productId, quantity });
   }
 
-  cart.updatedAt = new Date();
-  return cart;
+  await cart.save();
+  return cart.toJSON() as unknown as Cart;
 };
 
-export const updateItem = (userId: string, productId: string, quantity: number): Cart | null => {
-  const cart = carts.find((c) => c.userId === userId);
+export const updateItem = async (userId: string, productId: string, quantity: number): Promise<Cart | null> => {
+  if (!isValidObjectId(userId)) return null;
+  const cart = await CartModel.findOne({ userId: toObjectId(userId) });
   if (!cart) return null;
 
   const item = cart.items.find((i) => i.productId === productId);
   if (!item) return null;
 
   item.quantity = quantity;
-  cart.updatedAt = new Date();
-  return cart;
+  await cart.save();
+  return cart.toJSON() as unknown as Cart;
 };
 
-export const removeItem = (userId: string, productId: string): Cart | null => {
-  const cart = carts.find((c) => c.userId === userId);
+export const removeItem = async (userId: string, productId: string): Promise<Cart | null> => {
+  if (!isValidObjectId(userId)) return null;
+  const cart = await CartModel.findOne({ userId: toObjectId(userId) });
   if (!cart) return null;
 
   const index = cart.items.findIndex((i) => i.productId === productId);
   if (index === -1) return null;
 
   cart.items.splice(index, 1);
-  cart.updatedAt = new Date();
-  return cart;
+  await cart.save();
+  return cart.toJSON() as unknown as Cart;
 };
 
-export const clearCart = (userId: string): Cart | null => {
-  const cart = carts.find((c) => c.userId === userId);
-  if (!cart) return null;
-
-  cart.items = [];
-  cart.updatedAt = new Date();
-  return cart;
+export const clearCart = async (userId: string): Promise<Cart | null> => {
+  if (!isValidObjectId(userId)) return null;
+  const doc = await CartModel.findOneAndUpdate(
+    { userId: toObjectId(userId) },
+    { $set: { items: [] } },
+    { returnDocument: "after" }
+  );
+  return doc ? (doc.toJSON() as unknown as Cart) : null;
 };

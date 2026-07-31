@@ -1,4 +1,3 @@
-import { randomUUID } from "crypto";
 import * as userRepository from "../repositories/user.repository";
 import { NotFoundError } from "../../../shared/errors/not-found.error";
 import { EmailAlreadyExistsError } from "../../../shared/errors/email-already-exists.error";
@@ -13,20 +12,20 @@ const toPublicUser = (user: User | null): PublicUser | null => {
   return publicUser;
 };
 
-export const getAll = (): PublicUser[] => {
-  const users = userRepository.findAll();
+export const getAll = async (): Promise<PublicUser[]> => {
+  const users = await userRepository.findAll();
   return users.map(toPublicUser) as PublicUser[];
 };
 
-export const getById = (id: string): PublicUser => {
-  const user = userRepository.findById(id);
+export const getById = async (id: string): Promise<PublicUser> => {
+  const user = await userRepository.findById(id);
   if (!user) throw new NotFoundError("User not found");
   return toPublicUser(user) as PublicUser;
 };
 
-export const create = (data: { name: string; email: string; password: string }): PublicUser => {
+export const create = async (data: { name: string; email: string; password: string }): Promise<PublicUser> => {
   const email = data.email.toLowerCase().trim();
-  const existing = userRepository.findByEmail(email);
+  const existing = await userRepository.findByEmail(email);
   if (existing) throw new EmailAlreadyExistsError();
 
   if (!data.password || data.password.length < 6) {
@@ -34,8 +33,7 @@ export const create = (data: { name: string; email: string; password: string }):
   }
 
   const now = new Date();
-  const newUser: User = {
-    id: randomUUID(),
+  const newUser: Omit<User, "id"> = {
     name: data.name,
     email,
     password: data.password,
@@ -44,12 +42,12 @@ export const create = (data: { name: string; email: string; password: string }):
     updatedAt: now,
   };
 
-  userRepository.create(newUser);
-  return toPublicUser(newUser) as PublicUser;
+  const created = await userRepository.create(newUser);
+  return toPublicUser(created) as PublicUser;
 };
 
-export const updateById = (id: string, data: Record<string, unknown>): PublicUser => {
-  const user = userRepository.findById(id);
+export const updateById = async (id: string, data: Record<string, unknown>): Promise<PublicUser> => {
+  const user = await userRepository.findById(id);
   if (!user) throw new NotFoundError("User not found");
 
   const updates: Record<string, unknown> = {};
@@ -57,7 +55,7 @@ export const updateById = (id: string, data: Record<string, unknown>): PublicUse
     if (data[key] !== undefined) {
       if (key === "email") {
         updates.email = (data[key] as string).toLowerCase().trim();
-        const existing = userRepository.findByEmail(updates.email as string);
+        const existing = await userRepository.findByEmail(updates.email as string);
         if (existing && existing.id !== id) throw new EmailAlreadyExistsError();
       } else {
         updates[key] = data[key];
@@ -71,13 +69,13 @@ export const updateById = (id: string, data: Record<string, unknown>): PublicUse
 
   updates.updatedAt = new Date();
 
-  const updated = userRepository.updateById(id, updates);
+  const updated = await userRepository.updateById(id, updates);
   return toPublicUser(updated) as PublicUser;
 };
 
-export const deleteById = (id: string): boolean => {
-  const user = userRepository.findById(id);
+export const deleteById = async (id: string): Promise<boolean> => {
+  const user = await userRepository.findById(id);
   if (!user) throw new NotFoundError("User not found");
-  userRepository.deleteById(id);
+  await userRepository.deleteById(id);
   return true;
 };

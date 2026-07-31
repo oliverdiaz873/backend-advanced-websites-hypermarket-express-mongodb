@@ -11,7 +11,7 @@ const SALT_ROUNDS = 10;
 
 export const register = async (data: { name: string; email: string; password: string }): Promise<PublicUser> => {
   const email = data.email.toLowerCase().trim();
-  const existing = userRepository.findByEmail(email);
+  const existing = await userRepository.findByEmail(email);
   if (existing) throw new EmailAlreadyExistsError();
 
   if (!data.password || data.password.length < 6) {
@@ -20,7 +20,7 @@ export const register = async (data: { name: string; email: string; password: st
 
   const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
 
-  const user = userService.create({
+  const user = await userService.create({
     name: data.name,
     email,
     password: hashedPassword,
@@ -34,7 +34,7 @@ export const login = async (email: string, password: string): Promise<{ token: s
     throw new InvalidDataError("Email and password are required");
   }
 
-  const user = userRepository.findByEmail(email.toLowerCase().trim());
+  const user = await userRepository.findByEmail(email.toLowerCase().trim());
   if (!user) {
     throw new InvalidDataError("Invalid credentials");
   }
@@ -59,8 +59,8 @@ export const login = async (email: string, password: string): Promise<{ token: s
   return { token, user: publicUser };
 };
 
-export const getMe = (userId: string): PublicUser => {
-  const user = userRepository.findById(userId);
+export const getMe = async (userId: string): Promise<PublicUser> => {
+  const user = await userRepository.findById(userId);
   if (!user) {
     throw new InvalidDataError("User not found");
   }
