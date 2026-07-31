@@ -1,4 +1,5 @@
 import * as userRepository from "../repositories/user.repository";
+import * as orderRepository from "../../orders/repositories/order.repository";
 import { NotFoundError } from "../../../shared/errors/not-found.error";
 import { EmailAlreadyExistsError } from "../../../shared/errors/email-already-exists.error";
 import { InvalidDataError } from "../../../shared/errors/invalid-data.error";
@@ -76,6 +77,13 @@ export const updateById = async (id: string, data: Record<string, unknown>): Pro
 export const deleteById = async (id: string): Promise<boolean> => {
   const user = await userRepository.findById(id);
   if (!user) throw new NotFoundError("User not found");
+
+  const orders = await orderRepository.findByUserId(id);
+  const hasActiveOrders = orders.some((order) => order.status === "pending" || order.status === "processing");
+  if (hasActiveOrders) {
+    throw new InvalidDataError("Cannot delete user with active orders");
+  }
+
   await userRepository.deleteById(id);
   return true;
 };

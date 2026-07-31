@@ -24,4 +24,8 @@ const inventorySchema = new Schema<IInventory>(
 inventorySchema.index({ productId: 1 }, { unique: true });
 inventorySchema.index({ stock: 1 });
 
+inventorySchema.virtual("availableStock").get(function () {
+  return this.stock - this.reservedStock;
+});
+
 export const InventoryModel = model<IInventory>("Inventory", inventorySchema);

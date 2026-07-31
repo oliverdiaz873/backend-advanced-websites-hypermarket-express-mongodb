@@ -3,7 +3,7 @@ import * as orderService from "../services/order.service";
 
 export const create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const order = await orderService.create(req.user!.id);
+    const order = await orderService.create(req.user!.id, req.body.addressId);
     res.status(201).json({ success: true, data: order });
   } catch (error) {
     next(error);

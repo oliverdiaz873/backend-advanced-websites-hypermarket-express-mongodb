@@ -101,7 +101,10 @@ Todas las respuestas exitosas:
 | Código | Significado |
 |--------|-------------|
 | 400 | Bad Request |
+| 401 | Unauthorized |
+| 403 | Forbidden |
 | 404 | Not Found |
+| 409 | Conflict (ej. stock insuficiente, email duplicado) |
 | 500 | Internal Server Error |
 
 ---
@@ -295,7 +298,112 @@ GET /products?page=1&limit=20
 
 ---
 
-## 10. Versioning (futuro)
+## 10. Orders API
+
+Todos los endpoints de órdenes requieren autenticación (Bearer token).
+
+### POST /orders
+
+Crea una orden a partir del carrito actual. La dirección se guarda como **snapshot** (`shippingAddress`), no como referencia, para preservar la historia de la compra.
+
+**Request body:**
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| addressId | string | Sí | ID de la dirección del usuario |
+
+**Comportamiento:**
+1. Obtener carrito
+2. Validar dirección (snapshot → `shippingAddress`)
+3. Obtener productos actuales
+4. Validar stock (`availableStock >= quantity` por ítem)
+5. Crear la orden con snapshot de precio/nombre/imagen/cantidad
+6. `decreaseStock()` atómico por producto
+7. Vaciar carrito
+
+> Si falla una operación de inventario a mitad del ciclo, se compensa con `restoreStock()` (best-effort, Mongo standalone sin transacciones).
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "string",
+    "items": [{ "productId": "string", "name": "string", "price": "number", "image": "string", "quantity": "number" }],
+    "shippingAddress": {
+      "label": "string",
+      "street": "string",
+      "city": "string",
+      "state": "string",
+      "zipCode": "string",
+      "country": "string",
+      "reference": "string"
+    },
+    "totalItems": "number",
+    "subtotal": "number",
+    "status": "pending",
+    "paymentStatus": "pending",
+    "createdAt": "date",
+    "updatedAt": "date"
+  }
+}
+```
+
+### PATCH /orders/:id/status
+
+Actualiza el estado de la orden. Transiciones válidas:
+- `pending` → `processing` | `cancelled`
+- `processing` → `completed`
+
+Al transicionar a `cancelled` se restaura el stock de todos los ítems (`restoreStock`).
+
+---
+
+## 11. Addresses API
+
+Todos los endpoints de direcciones requieren autenticación (Bearer token) y están scoped al usuario autenticado.
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | `/addresses` | Direcciones del usuario autenticado |
+| GET | `/addresses/:id` | Dirección por ID (owner o admin) |
+| GET | `/addresses/user/:userId` | Direcciones de un usuario (admin o el propio usuario; si no, `403`) |
+| POST | `/addresses` | Crea dirección (`label, street, city, state, zipCode, country` requeridos) |
+| PATCH | `/addresses/:id` | Actualiza dirección (owner). `isDefault: true` desactiva la anterior |
+| DELETE | `/addresses/:id` | Elimina dirección (owner) |
+
+Regla: **una sola `isDefault` por usuario**. La primera dirección de un usuario es default automáticamente.
+
+---
+
+## 12. Inventory API
+
+Lectura pública; gestión admin.
+
+| Método | Endpoint | Rol | Descripción |
+|--------|----------|-----|-------------|
+| GET | `/inventory` | público | Todos los registros |
+| GET | `/inventory/:id` | público | Registro por ID |
+| GET | `/inventory/product/:productId` | público | Registro por producto |
+| GET | `/inventory/low-stock` | admin | Stock bajo (`stock <= minStock`) |
+| PATCH | `/inventory/:id` | admin | Ajusta `stock` y/o `minStock` |
+
+Todos los registros incluyen **`availableStock = stock - reservedStock`** (campo virtual calculado, nunca persistido).
+
+---
+
+## 13. Contact API
+
+| Método | Endpoint | Autenticación | Descripción |
+|--------|----------|---------------|-------------|
+| POST | `/contact` | pública | Envía mensaje de contacto |
+
+**Request body:** `{ name, email, message }` + `phone?`
+
+El mensaje se guarda con `status: "pending" | "read" | "answered"` (default `pending`), preparado para el futuro panel admin.
+
+---
+
+## 14. Versioning (futuro)
 
 ```
 /api/v1/products

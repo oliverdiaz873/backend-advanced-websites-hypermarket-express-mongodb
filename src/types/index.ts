@@ -3,6 +3,7 @@ export type ProductStatus = "active" | "inactive";
 export type OrderStatus = "pending" | "processing" | "completed" | "cancelled";
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 export type BrandStatus = "active" | "inactive";
+export type ContactMessageStatus = "pending" | "read" | "answered";
 
 export interface JwtPayload {
   id: string;
@@ -70,6 +71,7 @@ export interface Inventory {
   productId: string;
   stock: number;
   reservedStock: number;
+  availableStock: number;
   minStock?: number;
   updatedAt: Date;
 }
@@ -171,6 +173,17 @@ export interface Order {
   subtotal: number;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  message: string;
+  status: ContactMessageStatus;
   createdAt: Date;
   updatedAt: Date;
 }

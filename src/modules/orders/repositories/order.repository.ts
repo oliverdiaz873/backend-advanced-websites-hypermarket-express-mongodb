@@ -15,10 +15,17 @@ export const findById = async (orderId: string): Promise<Order | null> => {
   return doc ? (doc.toJSON() as unknown as Order) : null;
 };
 
-export const create = async (userId: string, items: OrderItem[], totalItems: number, subtotal: number): Promise<Order> => {
+export const create = async (
+  userId: string,
+  items: OrderItem[],
+  totalItems: number,
+  subtotal: number,
+  shippingAddress?: Order["shippingAddress"]
+): Promise<Order> => {
   const doc = await OrderModel.create({
     userId: toObjectId(userId),
     items,
+    shippingAddress,
     totalItems,
     subtotal,
     status: ORDER_STATUS.PENDING,
@@ -27,8 +34,18 @@ export const create = async (userId: string, items: OrderItem[], totalItems: num
   return doc.toJSON() as unknown as Order;
 };
 
-export const updateStatus = async (orderId: string, status: OrderStatus): Promise<Order | null> => {
+export const updateStatus = async (orderId: string, expectedStatus: OrderStatus, status: OrderStatus): Promise<Order | null> => {
   if (!isValidObjectId(orderId)) return null;
-  const doc = await OrderModel.findByIdAndUpdate(orderId, { status }, { returnDocument: "after" });
+  const doc = await OrderModel.findOneAndUpdate(
+    { _id: orderId, status: expectedStatus },
+    { status },
+    { returnDocument: "after" }
+  );
   return doc ? (doc.toJSON() as unknown as Order) : null;
+};
+
+export const deleteById = async (orderId: string): Promise<boolean> => {
+  if (!isValidObjectId(orderId)) return false;
+  const doc = await OrderModel.findByIdAndDelete(orderId);
+  return doc !== null;
 };

@@ -44,6 +44,9 @@ export const addItem = async (userId: string, productId: string, quantity: numbe
   if (!product) {
     throw new NotFoundError("Product not found");
   }
+  if (!product.isAvailable) {
+    throw new InvalidDataError("Product is not available");
+  }
 
   let cart = await cartRepository.findByUserId(userId);
   if (!cart) {
@@ -57,6 +60,14 @@ export const addItem = async (userId: string, productId: string, quantity: numbe
 export const updateItem = async (userId: string, productId: string, quantity: number): Promise<CartResponse> => {
   if (!Number.isInteger(quantity) || quantity < 1) {
     throw new InvalidDataError("Quantity must be a positive integer");
+  }
+
+  const product = await productRepository.findById(productId);
+  if (!product) {
+    throw new NotFoundError("Product not found");
+  }
+  if (!product.isAvailable) {
+    throw new InvalidDataError("Product is not available");
   }
 
   const cart = await cartRepository.findByUserId(userId);

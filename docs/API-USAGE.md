@@ -344,8 +344,282 @@ Delete a user.
 
 **Errors:**
 | Status | Message |
-|--------|---------|
+|--------|--------|
 | 404 | User not found |
+| 400 | Cannot delete user with active orders |
+
+---
+
+## Addresses
+
+All address endpoints require authentication via Bearer token and are scoped to the authenticated user. A non-admin user can only read/manage their own addresses.
+
+### GET /api/addresses
+
+List the authenticated user's addresses.
+
+**Headers:**
+| Header | Value |
+|--------|-------|
+| Authorization | Bearer \<token\> |
+
+**Parameters:** None
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "uuid",
+      "userId": "uuid",
+      "label": "Casa",
+      "street": "Av. Central 123",
+      "city": "Santo Domingo",
+      "state": "Distrito Nacional",
+      "zipCode": "10101",
+      "country": "República Dominicana",
+      "reference": "Casa azul",
+      "isDefault": true,
+      "createdAt": "2026-07-28T00:00:00.000Z",
+      "updatedAt": "2026-07-28T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+**Errors:** None
+
+---
+
+### GET /api/addresses/:id
+
+Get an address by ID. Only the owner (or an admin) can access it.
+
+**Parameters:**
+| Name | Type | Description |
+|------|------|-------------|
+| id | string | Address UUID |
+
+**Errors:**
+| Status | Message |
+|--------|--------|
+| 404 | Address not found |
+
+---
+
+### GET /api/addresses/user/:userId
+
+Get all addresses of a given user. Allowed only for admins or for the same authenticated user.
+
+**Parameters:**
+| Name | Type | Description |
+|------|------|-------------|
+| userId | string | User UUID |
+
+**Errors:**
+| Status | Message |
+|--------|--------|
+| 403 | Forbidden: insufficient permissions |
+
+---
+
+### POST /api/addresses
+
+Create an address. The first address of a user becomes `isDefault: true`.
+
+**Request body:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| label | string | Yes | Address label (e.g., `Casa`) |
+| street | string | Yes | Street |
+| city | string | Yes | City |
+| state | string | Yes | State |
+| zipCode | string | Yes | ZIP code |
+| country | string | Yes | Country |
+| reference | string | No | Landmark/reference |
+| isDefault | boolean | No | Set as the user's default address |
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "userId": "uuid",
+    "label": "Casa",
+    "street": "Av. Central 123",
+    "city": "Santo Domingo",
+    "state": "Distrito Nacional",
+    "zipCode": "10101",
+    "country": "República Dominicana",
+    "isDefault": true,
+    "createdAt": "2026-07-28T00:00:00.000Z",
+    "updatedAt": "2026-07-28T00:00:00.000Z"
+  }
+}
+```
+
+**Errors:**
+| Status | Message |
+|--------|--------|
+| 400 | Missing required fields: label, street, city, state, zipCode, country |
+
+---
+
+### PATCH /api/addresses/:id
+
+Update an address. Only the owner can update it. Setting `isDefault: true` unsets the previous default.
+
+**Request body:** (any field)
+| Field | Type | Description |
+|-------|------|-------------|
+| label / street / city / state / zipCode / country / reference | string | Updated value |
+| isDefault | boolean | Set as default |
+
+**Errors:**
+| Status | Message |
+|--------|--------|
+| 404 | Address not found |
+
+---
+
+### DELETE /api/addresses/:id
+
+Delete an address. Only the owner can delete it.
+
+**Parameters:**
+| Name | Type | Description |
+|------|------|-------------|
+| id | string | Address UUID |
+
+**Response (204):** No content
+
+**Errors:**
+| Status | Message |
+|--------|--------|
+| 404 | Address not found |
+
+---
+
+## Inventory
+
+Read endpoints are public. Admin endpoints require a Bearer token with the `admin` role.
+
+### GET /api/inventory
+
+List all inventory records. Each record includes `availableStock = stock - reservedStock` (computed, never persisted).
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "uuid",
+      "productId": "coca_cola",
+      "stock": 100,
+      "reservedStock": 0,
+      "availableStock": 100,
+      "minStock": 10,
+      "updatedAt": "2026-07-28T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+### GET /api/inventory/:id
+
+Get an inventory record by ID.
+
+**Errors:**
+| Status | Message |
+|--------|--------|
+| 404 | Inventory record not found |
+
+---
+
+### GET /api/inventory/product/:productId
+
+Get the inventory record for a product.
+
+**Errors:** None (returns `data: null` if not found)
+
+---
+
+### GET /api/inventory/low-stock
+
+List inventory records where `stock <= minStock`. **Admin only.**
+
+**Errors:**
+| Status | Message |
+|--------|--------|
+| 401 | Missing or invalid authorization header |
+| 403 | Forbidden: insufficient permissions |
+
+---
+
+### PATCH /api/inventory/:id
+
+Adjust stock levels. **Admin only.**
+
+**Request body:** (at least one field)
+| Field | Type | Description |
+|-------|------|-------------|
+| stock | integer ≥ 0 | Absolute stock value |
+| minStock | integer ≥ 0 | Low-stock threshold |
+
+**Errors:**
+| Status | Message |
+|--------|--------|
+| 400 | Stock must be a non-negative integer |
+| 400 | minStock must be a non-negative integer |
+| 404 | Inventory record not found |
+| 401 / 403 | Auth / permission errors |
+
+---
+
+## Contact
+
+### POST /api/contact
+
+Submit a contact message. Public endpoint (no auth).
+
+**Request body:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| name | string | Yes | Name (2-50 characters) |
+| email | string | Yes | Valid email |
+| phone | string | No | Phone (8-15 digits) |
+| message | string | Yes | Message (10-500 characters) |
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "name": "Juan Perez",
+    "email": "juan@email.com",
+    "phone": "8091234567",
+    "message": "Quiero saber si hacen entregas a domicilio.",
+    "status": "pending",
+    "createdAt": "2026-07-28T00:00:00.000Z",
+    "updatedAt": "2026-07-28T00:00:00.000Z"
+  }
+}
+```
+
+**Errors:**
+| Status | Message |
+|--------|--------|
+| 400 | Missing required fields: name, email, message |
+| 400 | Name must be between 2 and 50 characters |
+| 400 | Invalid email format |
+| 400 | Phone must be between 8 and 15 digits |
+| 400 | Message must be between 10 and 500 characters |
 
 ---
 
@@ -466,9 +740,12 @@ All order endpoints require authentication via Bearer token.
 
 ### POST /api/orders
 
-Create an order from the current cart. The cart must exist and contain at least one item. After successful creation, the cart is automatically cleared.
+Create an order from the current cart. The cart must exist and contain at least one item. The shipping address is snapshotted into the order (`shippingAddress`), so later changes to the user's address do not alter the order history. Stock is deducted for each item (atomically) and the cart is cleared on success.
 
-**Request body:** None (items are taken from the cart)
+**Request body:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| addressId | string | Yes | Address ID of the user (snapshot is taken) |
 
 **Response (201):**
 ```json
@@ -485,6 +762,15 @@ Create an order from the current cart. The cart must exist and contain at least 
         "quantity": 2
       }
     ],
+    "shippingAddress": {
+      "label": "Casa",
+      "street": "Av. Central 123",
+      "city": "Santo Domingo",
+      "state": "Distrito Nacional",
+      "zipCode": "10101",
+      "country": "República Dominicana",
+      "reference": "Casa azul"
+    },
     "totalItems": 2,
     "subtotal": 160,
     "status": "pending",
@@ -498,9 +784,13 @@ Create an order from the current cart. The cart must exist and contain at least 
 **Errors:**
 | Status | Message |
 |--------|--------|
+| 400 | Missing required fields: addressId |
 | 400 | Cart is empty |
 | 404 | Cart not found |
 | 404 | Product not found |
+| 404 | Address not found |
+| 404 | Inventory record not found |
+| 409 | Insufficient stock for product ... |
 
 ---
 
@@ -584,7 +874,7 @@ Get a specific order by ID. Only the owner can access their orders.
 
 ### PATCH /api/orders/:id/status
 
-Update the status of an order. Only valid transitions are allowed.
+Update the status of an order. Only valid transitions are allowed. When transitioning to `cancelled`, the stock of each order item is restored.
 
 **Parameters:**
 | Name | Type | Description |
@@ -601,6 +891,9 @@ Update the status of an order. Only valid transitions are allowed.
 - `processing` → `completed`
 - `completed` → (none)
 - `cancelled` → (none)
+
+**Behavior:**
+- `pending` → `cancelled`: stock of all items is restored via `restoreStock`.
 
 **Response (200):**
 ```json
@@ -632,6 +925,7 @@ Update the status of an order. Only valid transitions are allowed.
 |--------|--------|
 | 400 | Cannot transition from ... to ... |
 | 404 | Order not found |
+| 404 | Inventory record not found |
 
 ---
 

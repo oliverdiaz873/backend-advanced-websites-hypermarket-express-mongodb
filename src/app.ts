@@ -12,6 +12,7 @@ import orderRoutes from "./modules/orders/routes/order.routes";
 import brandRoutes from "./modules/brands/routes/brand.routes";
 import addressRoutes from "./modules/addresses/routes/address.routes";
 import inventoryRoutes from "./modules/inventory/routes/inventory.routes";
+import contactRoutes from "./modules/contact/routes/contact.routes";
 import errorHandler from "./shared/middleware/error-handler";
 import logger from "./shared/middleware/logger.middleware";
 
@@ -37,6 +38,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/brands", brandRoutes);
 app.use("/api/addresses", addressRoutes);
 app.use("/api/inventory", inventoryRoutes);
+app.use("/api/contact", contactRoutes);
 
 app.use((req: Request, res: Response) => {
   res.status(404).json({
