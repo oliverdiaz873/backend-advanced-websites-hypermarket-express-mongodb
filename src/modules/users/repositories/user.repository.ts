@@ -26,8 +26,11 @@ export const create = async (user: Omit<User, "id">): Promise<User> => {
 
 export const updateById = async (id: string, data: Partial<User>): Promise<User | null> => {
   if (!isValidObjectId(id)) return null;
-  const doc = await UserModel.findByIdAndUpdate(id, data, { returnDocument: "after" });
-  return doc ? (doc.toJSON() as unknown as User) : null;
+  const user = await UserModel.findById(id);
+  if (!user) return null;
+  Object.assign(user, data);
+  await user.save();
+  return user.toJSON() as unknown as User;
 };
 
 export const deleteById = async (id: string): Promise<boolean> => {

@@ -23,8 +23,8 @@ const offerSchema = new Schema<IOffer>(
       required: true,
       min: 0,
       validate: {
-        validator: function (this: any, value: number): boolean {
-          return value < this.originalPrice;
+        validator: function (this: unknown, value: number): boolean {
+          return value < (this as IOffer).originalPrice;
         },
         message: "discountPrice must be less than originalPrice",
       },

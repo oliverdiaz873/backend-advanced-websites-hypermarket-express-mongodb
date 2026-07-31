@@ -1,5 +1,8 @@
 import { Schema, model } from "mongoose";
+import bcrypt from "bcryptjs";
 import { toJSONOptions } from "../../../shared/utils/mongo";
+
+const SALT_ROUNDS = 10;
 
 export interface IUser {
   id: string;
@@ -20,5 +23,11 @@ const userSchema = new Schema<IUser>(
   },
   { timestamps: true, toJSON: toJSONOptions }
 );
+
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
+  if (/^\$2[aby]\$/.test(this.password)) return;
+  this.password = await bcrypt.hash(this.password, SALT_ROUNDS);
+});
 
 export const UserModel = model<IUser>("User", userSchema);

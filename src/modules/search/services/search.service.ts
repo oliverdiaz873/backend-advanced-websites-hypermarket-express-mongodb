@@ -7,15 +7,5 @@ export const search = async (query: string, category?: string): Promise<Product[
     throw new InvalidDataError("Search term is required");
   }
 
-  const term = query.toLowerCase().trim();
-  const products = await productRepository.findAll();
-
-  let results = products.filter((p) => p.name.toLowerCase().includes(term));
-
-  if (category) {
-    const normalizedCategory = category.trim().toLowerCase();
-    results = results.filter((p) => p.category.slug === normalizedCategory);
-  }
-
-  return results;
+  return productRepository.search(query, category);
 };

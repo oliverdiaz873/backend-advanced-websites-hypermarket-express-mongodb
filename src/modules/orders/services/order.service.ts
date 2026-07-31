@@ -27,8 +27,11 @@ export const create = async (userId: string) => {
   }
 
   const items: OrderItem[] = [];
+  const products = await productRepository.findByIds(cart.items.map((item) => item.productId));
+  const productsById = new Map(products.map((product) => [product.id, product]));
+
   for (const item of cart.items) {
-    const product = await productRepository.findById(item.productId);
+    const product = productsById.get(item.productId);
     if (!product) {
       throw new NotFoundError("Product not found");
     }

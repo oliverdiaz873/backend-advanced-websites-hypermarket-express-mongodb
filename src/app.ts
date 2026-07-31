@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Request, Response } from "express";
 import cors from "cors";
 import config from "./config";
 import productRoutes from "./modules/products/routes/product.routes";
@@ -37,6 +37,14 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/brands", brandRoutes);
 app.use("/api/addresses", addressRoutes);
 app.use("/api/inventory", inventoryRoutes);
+
+app.use((req: Request, res: Response) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+    statusCode: 404,
+  });
+});
 
 app.use(errorHandler);
 

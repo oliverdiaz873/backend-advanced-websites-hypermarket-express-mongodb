@@ -7,8 +7,6 @@ import { InvalidDataError } from "../../../shared/errors/invalid-data.error";
 import { EmailAlreadyExistsError } from "../../../shared/errors/email-already-exists.error";
 import type { PublicUser } from "../../../types";
 
-const SALT_ROUNDS = 10;
-
 export const register = async (data: { name: string; email: string; password: string }): Promise<PublicUser> => {
   const email = data.email.toLowerCase().trim();
   const existing = await userRepository.findByEmail(email);
@@ -18,12 +16,10 @@ export const register = async (data: { name: string; email: string; password: st
     throw new InvalidDataError("Password must be at least 6 characters");
   }
 
-  const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
-
   const user = await userService.create({
     name: data.name,
     email,
-    password: hashedPassword,
+    password: data.password,
   });
 
   return user;

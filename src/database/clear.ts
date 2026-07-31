@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import type { Model } from "mongoose";
 import { connectDB } from "../config/database";
 import { CategoryModel } from "../modules/categories/models/category.model";
 import { ProductModel } from "../modules/products/models/product.model";
@@ -11,10 +10,14 @@ import { AddressModel } from "../modules/addresses/models/address.model";
 import { CartModel } from "../modules/cart/models/cart.model";
 import { OrderModel } from "../modules/orders/models/order.model";
 
+interface ClearableModel {
+  deleteMany(filter: object): PromiseLike<{ deletedCount?: number | null }>;
+}
+
 const clear = async (): Promise<void> => {
   await connectDB();
 
-  const models: Array<{ name: string; model: Model<any> }> = [
+  const models: Array<{ name: string; model: ClearableModel }> = [
     { name: "users", model: UserModel },
     { name: "addresses", model: AddressModel },
     { name: "categories", model: CategoryModel },
