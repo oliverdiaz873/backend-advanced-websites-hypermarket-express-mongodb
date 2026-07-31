@@ -26,7 +26,7 @@ const userSchema = new Schema<IUser>(
 
 userSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
-  if (/^\$2[aby]\$/.test(this.password)) return;
+  if (/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(this.password)) return;
   this.password = await bcrypt.hash(this.password, SALT_ROUNDS);
 });
 

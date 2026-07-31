@@ -3,7 +3,7 @@ import * as cartRepository from "../../cart/repositories/cart.repository";
 import * as productRepository from "../../products/repositories/product.repository";
 import { NotFoundError } from "../../../shared/errors/not-found.error";
 import { InvalidDataError } from "../../../shared/errors/invalid-data.error";
-import { ORDER_STATUS, ALLOWED_TRANSITIONS } from "../../../shared/constants/order-status";
+import { ALLOWED_TRANSITIONS } from "../../../shared/constants/order-status";
 import type { Order, OrderItem, OrderStatus } from "../../../types";
 
 const toResponse = (order: Order) => ({
@@ -84,5 +84,8 @@ export const updateStatus = async (userId: string, orderId: string, newStatus: O
   }
 
   const updated = await orderRepository.updateStatus(orderId, newStatus);
-  return toResponse(updated!);
+  if (!updated) {
+    throw new NotFoundError("Order not found");
+  }
+  return toResponse(updated);
 };

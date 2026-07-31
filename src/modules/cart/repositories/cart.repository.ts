@@ -9,7 +9,14 @@ export const findByUserId = async (userId: string): Promise<Cart | null> => {
 };
 
 export const createCart = async (userId: string): Promise<Cart> => {
-  const doc = await CartModel.create({ userId: toObjectId(userId), items: [] });
+  const doc = await CartModel.findOneAndUpdate(
+    { userId: toObjectId(userId) },
+    { $setOnInsert: { items: [] } },
+    { upsert: true, returnDocument: "after" }
+  );
+  if (!doc) {
+    throw new Error("Unable to create cart");
+  }
   return doc.toJSON() as unknown as Cart;
 };
 
