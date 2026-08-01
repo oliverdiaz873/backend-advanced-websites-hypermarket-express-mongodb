@@ -170,3 +170,51 @@ Ver [`docs/API-USAGE.md`](docs/API-USAGE.md) para la documentación completa de 
 ## Arquitectura
 
 Este proyecto utiliza **Feature-Based Architecture**: cada funcionalidad del negocio (products, users, cart, orders, auth) vive en su propio módulo dentro de `src/modules/`. El código compartido entre módulos se encuentra en `src/shared/`.
+
+## Testing
+
+Infraestructura de testing profesional con **Jest + ts-jest + MongoDB Memory Server**.
+
+### Stack
+
+| Herramienta | Uso |
+|-------------|-----|
+| `jest` | Runner de tests (multi-proyecto: unit e integration) |
+| `ts-jest` | Transpilación de TypeScript para Jest |
+| `supertest` | Tests de endpoints HTTP (API) |
+| `mongodb-memory-server` | MongoDB en memoria aislado (nunca toca la BD local ni de desarrollo) |
+
+### Scripts
+
+| Comando | Descripción |
+|---------|-------------|
+| `npm test` | Ejecuta todos los tests |
+| `npm run test:unit` | Solo tests unitarios (`tests/unit/**`) |
+| `npm run test:integration` | Solo tests de integración (`tests/integration/**`) con MongoDB en memoria |
+| `npm run test:watch` | Modo watch |
+| `npm run test:coverage` | Ejecuta tests con cobertura (reporte en `coverage/`) |
+
+### Estructura
+
+```
+tests/
+├── setup/          # Configuración global: MongoMemoryServer, conexión/limpieza BD
+│   ├── global-setup.ts      # Arranca MongoMemoryServer y carga .env.test
+│   ├── global-teardown.ts   # Detiene MongoMemoryServer
+│   ├── unit.setup.ts        # Setup liviano (sin Mongo/Mongoose)
+│   └── integration.setup.ts # Conecta, limpia colecciones y desconecta
+├── unit/           # Tests unitarios (services, controllers, middleware, utils, repositories-mocks)
+├── integration/    # Tests de integración (repositories, auth, products, orders, ...)
+├── helpers/        # Helpers reutilizables
+├── fixtures/       # Datos estáticos
+├── factories/      # Factories de datos
+└── utils/          # Utilidades de test
+```
+
+### Entorno de testing
+
+- Se utiliza `.env.test` (aislado del entorno de desarrollo).
+- `MONGODB_URI` se sobreescribe automáticamente con la URI de `MongoMemoryServer`.
+- Cada worker de Jest usa una base única (`test_${JEST_WORKER_ID}`) dentro del memory server, por lo que los tests de integración en paralelo no se pisan entre sí.
+- Cada suite de integración inicia con la base limpia (limpieza en `afterEach`).
+- Configuración: `jest.config.ts` (multi-proyecto, `testEnvironment: node`, `detectOpenHandles`) y `tsconfig.test.json`.

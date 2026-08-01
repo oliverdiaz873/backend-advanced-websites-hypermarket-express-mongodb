@@ -1,0 +1,251 @@
+import * as orderService from "../../../src/modules/orders/services/order.service";
+import { NotFoundError } from "../../../src/shared/errors/not-found.error";
+import { InvalidDataError } from "../../../src/shared/errors/invalid-data.error";
+import { InsufficientStockError } from "../../../src/shared/errors/insufficient-stock.error";
+import { makeOrder, ORDER_ID } from "../factories/order.factory";
+import { makeCart } from "../factories/cart.factory";
+import { makeProduct, PRODUCT_ID } from "../factories/product.factory";
+import { makeAddress } from "../factories/address.factory";
+import { makeInventory } from "../factories/inventory.factory";
+import { USER_ID } from "../factories/user.factory";
+
+const SECOND_PRODUCT_ID = "64b0000000000000000000a2";
+
+jest.mock("../../../src/modules/orders/repositories/order.repository", () =>
+  require("../mocks/repositories").mockOrderRepository
+);
+jest.mock("../../../src/modules/cart/repositories/cart.repository", () =>
+  require("../mocks/repositories").mockCartRepository
+);
+jest.mock("../../../src/modules/products/repositories/product.repository", () =>
+  require("../mocks/repositories").mockProductRepository
+);
+jest.mock("../../../src/modules/addresses/repositories/address.repository", () =>
+  require("../mocks/repositories").mockAddressRepository
+);
+jest.mock("../../../src/modules/inventory/services/inventory.service", () =>
+  require("../mocks/repositories").mockInventoryService
+);
+
+import { mockOrderRepository, mockCartRepository, mockProductRepository, mockAddressRepository, mockInventoryService } from "../mocks/repositories";
+
+const { id: _id, userId: _userId, isDefault: _isDefault, ...shippingAddress } = makeAddress();
+
+describe("order.service", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe("create", () => {
+    it("lanza NotFoundError si el carrito no existe", async () => {
+      mockCartRepository.findByUserId.mockResolvedValue(null);
+
+      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow(NotFoundError);
+      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow("Cart not found");
+    });
+
+    it("lanza InvalidDataError si el carrito está vacío", async () => {
+      mockCartRepository.findByUserId.mockResolvedValue(makeCart({ items: [] }));
+
+      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow(InvalidDataError);
+      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow("Cart is empty");
+    });
+
+    it("lanza NotFoundError si la dirección no existe", async () => {
+      mockCartRepository.findByUserId.mockResolvedValue(makeCart());
+      mockAddressRepository.findById.mockResolvedValue(null);
+
+      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow(NotFoundError);
+      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow("Address not found");
+    });
+
+    it("lanza NotFoundError si la dirección es de otro usuario", async () => {
+      mockCartRepository.findByUserId.mockResolvedValue(makeCart());
+      mockAddressRepository.findById.mockResolvedValue(makeAddress({ userId: "otro-usuario" }));
+
+      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow(NotFoundError);
+    });
+
+    it("lanza NotFoundError si un producto del carrito ya no existe", async () => {
+      mockCartRepository.findByUserId.mockResolvedValue(makeCart());
+      mockAddressRepository.findById.mockResolvedValue(makeAddress());
+      mockProductRepository.findByIds.mockResolvedValue([]);
+
+      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow(NotFoundError);
+      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow("Product not found");
+    });
+
+    it("lanza InsufficientStockError si no hay stock disponible", async () => {
+      mockCartRepository.findByUserId.mockResolvedValue(makeCart());
+      mockAddressRepository.findById.mockResolvedValue(makeAddress());
+      mockProductRepository.findByIds.mockResolvedValue([makeProduct()]);
+      mockInventoryService.getByProductId.mockResolvedValue(makeInventory({ stock: 1, reservedStock: 1, availableStock: 0 }));
+
+      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow(InsufficientStockError);
+      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow("Insufficient stock for product Arroz 1kg");
+    });
+
+    it("crea la orden, decrementa stock y limpia el carrito", async () => {
+      const order = makeOrder();
+      mockCartRepository.findByUserId.mockResolvedValue(makeCart());
+      mockAddressRepository.findById.mockResolvedValue(makeAddress());
+      mockProductRepository.findByIds.mockResolvedValue([makeProduct()]);
+      mockInventoryService.getByProductId.mockResolvedValue(makeInventory());
+      mockInventoryService.decreaseStock.mockResolvedValue(undefined);
+      mockOrderRepository.create.mockResolvedValue(order);
+      mockCartRepository.clearCart.mockResolvedValue(true);
+
+      const result = await orderService.create(USER_ID, "address-id");
+
+      const expectedItems = [{ productId: PRODUCT_ID, name: "Arroz 1kg", price: 89.5, image: "https://example.com/arroz.png", quantity: 2 }];
+      expect(mockOrderRepository.create).toHaveBeenCalledWith(USER_ID, expectedItems, 2, 179, shippingAddress);
+      expect(mockInventoryService.decreaseStock).toHaveBeenCalledWith(PRODUCT_ID, 2);
+      expect(mockCartRepository.clearCart).toHaveBeenCalledWith(USER_ID);
+      expect(result).toEqual({
+        id: order.id,
+        items: order.items,
+        shippingAddress: order.shippingAddress,
+        totalItems: order.totalItems,
+        subtotal: order.subtotal,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
+      });
+    });
+
+    it("hace rollback restaurando stock y eliminando la orden si falla el decremento", async () => {
+      const order = makeOrder({
+        items: [
+          { productId: PRODUCT_ID, name: "Arroz 1kg", price: 89.5, image: "https://example.com/arroz.png", quantity: 2 },
+          { productId: SECOND_PRODUCT_ID, name: "Aceite 1L", price: 15, image: "https://example.com/aceite.png", quantity: 1 },
+        ],
+      });
+      const cart = makeCart({
+        items: [{ productId: PRODUCT_ID, quantity: 2 }, { productId: SECOND_PRODUCT_ID, quantity: 1 }],
+      });
+      mockCartRepository.findByUserId.mockResolvedValue(cart);
+      mockAddressRepository.findById.mockResolvedValue(makeAddress());
+      mockProductRepository.findByIds.mockResolvedValue([
+        makeProduct(),
+        makeProduct({ id: SECOND_PRODUCT_ID, name: "Aceite 1L", price: 15, image: "https://example.com/aceite.png" }),
+      ]);
+      mockInventoryService.getByProductId.mockResolvedValue(makeInventory());
+      mockOrderRepository.create.mockResolvedValue(order);
+      mockInventoryService.decreaseStock
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new InsufficientStockError("stock"));
+      mockInventoryService.restoreStock.mockResolvedValue(undefined);
+      mockOrderRepository.deleteById.mockResolvedValue(true);
+
+      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow(InsufficientStockError);
+
+      expect(mockInventoryService.restoreStock).toHaveBeenCalledWith(PRODUCT_ID, 2);
+      expect(mockOrderRepository.deleteById).toHaveBeenCalledWith(ORDER_ID);
+      expect(mockCartRepository.clearCart).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("findByUser", () => {
+    it("retorna las órdenes del usuario", async () => {
+      const orders = [makeOrder()];
+      mockOrderRepository.findByUserId.mockResolvedValue(orders);
+
+      const result = await orderService.findByUser(USER_ID);
+
+      expect(mockOrderRepository.findByUserId).toHaveBeenCalledWith(USER_ID);
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ id: ORDER_ID, status: "pending", totalItems: 2, subtotal: 179 });
+    });
+  });
+
+  describe("findById", () => {
+    it("lanza NotFoundError si la orden no existe", async () => {
+      mockOrderRepository.findById.mockResolvedValue(null);
+
+      await expect(orderService.findById(USER_ID, ORDER_ID)).rejects.toThrow(NotFoundError);
+    });
+
+    it("lanza NotFoundError si la orden es de otro usuario", async () => {
+      mockOrderRepository.findById.mockResolvedValue(makeOrder());
+
+      await expect(orderService.findById("otro-usuario", ORDER_ID)).rejects.toThrow(NotFoundError);
+    });
+
+    it("retorna la orden del propio usuario", async () => {
+      const order = makeOrder();
+      mockOrderRepository.findById.mockResolvedValue(order);
+
+      const result = await orderService.findById(USER_ID, ORDER_ID);
+
+      expect(mockOrderRepository.findById).toHaveBeenCalledWith(ORDER_ID);
+      expect(result).toMatchObject({ id: ORDER_ID, status: "pending" });
+      expect(result).not.toHaveProperty("userId");
+    });
+  });
+
+  describe("updateStatus", () => {
+    it("lanza NotFoundError si la orden no existe", async () => {
+      mockOrderRepository.findById.mockResolvedValue(null);
+
+      await expect(orderService.updateStatus(USER_ID, ORDER_ID, "processing")).rejects.toThrow(NotFoundError);
+    });
+
+    it("lanza NotFoundError si la orden es de otro usuario", async () => {
+      mockOrderRepository.findById.mockResolvedValue(makeOrder());
+
+      await expect(orderService.updateStatus("otro-usuario", ORDER_ID, "processing")).rejects.toThrow(NotFoundError);
+    });
+
+    it("lanza InvalidDataError si la transición no está permitida", async () => {
+      mockOrderRepository.findById.mockResolvedValue(makeOrder());
+
+      await expect(orderService.updateStatus(USER_ID, ORDER_ID, "completed")).rejects.toThrow(InvalidDataError);
+      await expect(orderService.updateStatus(USER_ID, ORDER_ID, "completed")).rejects.toThrow(
+        "Cannot transition from pending to completed"
+      );
+    });
+
+    it("actualiza el estado y retorna la orden", async () => {
+      const updated = makeOrder({ status: "processing" });
+      mockOrderRepository.findById.mockResolvedValue(makeOrder());
+      mockOrderRepository.updateStatus.mockResolvedValue(updated);
+
+      const result = await orderService.updateStatus(USER_ID, ORDER_ID, "processing");
+
+      expect(mockOrderRepository.updateStatus).toHaveBeenCalledWith(ORDER_ID, "pending", "processing");
+      expect(mockInventoryService.restoreStock).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ status: "processing" });
+    });
+
+    it("restaura el stock de los items al cancelar", async () => {
+      const cancelled = makeOrder({ status: "cancelled" });
+      mockOrderRepository.findById.mockResolvedValue(makeOrder());
+      mockOrderRepository.updateStatus.mockResolvedValue(cancelled);
+      mockInventoryService.restoreStock.mockResolvedValue(undefined);
+
+      const result = await orderService.updateStatus(USER_ID, ORDER_ID, "cancelled");
+
+      expect(mockInventoryService.restoreStock).toHaveBeenCalledWith(PRODUCT_ID, 2);
+      expect(result).toMatchObject({ status: "cancelled" });
+    });
+
+    it("retorna la orden actual si la actualización concurrente devuelve null", async () => {
+      const original = makeOrder();
+      const current = makeOrder({ status: "processing" });
+      mockOrderRepository.findById.mockResolvedValueOnce(original).mockResolvedValueOnce(current);
+      mockOrderRepository.updateStatus.mockResolvedValue(null);
+
+      const result = await orderService.updateStatus(USER_ID, ORDER_ID, "processing");
+
+      expect(result).toMatchObject({ status: "processing" });
+    });
+
+    it("lanza NotFoundError si la actualización concurrente devuelve null y la orden ya no existe", async () => {
+      mockOrderRepository.findById.mockResolvedValueOnce(makeOrder()).mockResolvedValueOnce(null);
+      mockOrderRepository.updateStatus.mockResolvedValue(null);
+
+      await expect(orderService.updateStatus(USER_ID, ORDER_ID, "processing")).rejects.toThrow(NotFoundError);
+    });
+  });
+});
