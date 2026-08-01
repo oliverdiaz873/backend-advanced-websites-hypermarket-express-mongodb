@@ -64,7 +64,7 @@ export const updateById = async (id: string, data: Record<string, unknown>): Pro
     }
   }
 
-  if (data.password && (data.password as string).length < 6) {
+  if (data.password !== undefined && (data.password as string).length < 6) {
     throw new InvalidDataError("Password must be at least 6 characters");
   }
 
