@@ -30,7 +30,7 @@ export const getById = async (req: Request, res: Response, next: NextFunction): 
 
 export const create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const user = await userService.create(req.body);
+    const user = await userService.create(req.body, req.user?.id);
     res.status(201).json({ success: true, data: user });
   } catch (error) {
     next(error);
@@ -39,7 +39,7 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
 
 export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const user = await userService.updateById(req.params.id as string, req.body);
+    const user = await userService.updateById(req.params.id as string, req.body, req.user?.id);
     res.json({ success: true, data: user });
   } catch (error) {
     next(error);
@@ -48,7 +48,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
 
 export const deleteById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    await userService.deleteById(req.params.id as string);
+    await userService.deleteById(req.params.id as string, req.user?.id);
     res.json({ success: true, data: null });
   } catch (error) {
     next(error);

@@ -80,7 +80,7 @@ describe("category.controller", () => {
         .set("Authorization", `Bearer ${adminToken}`)
         .send({ name: "Bebidas" });
 
-      expect(mockCategoryService.create).toHaveBeenCalledWith({ name: "Bebidas" });
+      expect(mockCategoryService.create).toHaveBeenCalledWith({ name: "Bebidas" }, "64b000000000000000000002");
       expect(res.status).toBe(201);
       expect(res.body).toEqual({ success: true, data: toJson(category) });
     });
@@ -122,7 +122,7 @@ describe("category.controller", () => {
         .set("Authorization", `Bearer ${adminToken}`)
         .send({ name: "Bebidas y refrescos" });
 
-      expect(mockCategoryService.updateById).toHaveBeenCalledWith(CATEGORY_ID, { name: "Bebidas y refrescos" });
+      expect(mockCategoryService.updateById).toHaveBeenCalledWith(CATEGORY_ID, { name: "Bebidas y refrescos" }, "64b000000000000000000002");
       expect(res.status).toBe(200);
       expect(res.body.data).toEqual(toJson(updated));
     });
@@ -150,7 +150,7 @@ describe("category.controller", () => {
         .delete(`/api/categories/${CATEGORY_ID}`)
         .set("Authorization", `Bearer ${adminToken}`);
 
-      expect(mockCategoryService.remove).toHaveBeenCalledWith(CATEGORY_ID);
+      expect(mockCategoryService.remove).toHaveBeenCalledWith(CATEGORY_ID, "64b000000000000000000002");
       expect(res.status).toBe(204);
     });
 

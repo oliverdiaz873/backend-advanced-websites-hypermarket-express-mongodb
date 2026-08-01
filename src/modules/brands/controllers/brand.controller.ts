@@ -21,7 +21,7 @@ export const getById = async (req: Request, res: Response, next: NextFunction): 
 
 export const create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const brand = await brandService.create(req.body);
+    const brand = await brandService.create(req.body, req.user?.id);
     res.status(201).json({ success: true, data: brand });
   } catch (error) {
     next(error);
@@ -30,7 +30,7 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
 
 export const update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const brand = await brandService.updateById(req.params.id as string, req.body);
+    const brand = await brandService.updateById(req.params.id as string, req.body, req.user?.id);
     res.json({ success: true, data: brand });
   } catch (error) {
     next(error);
@@ -39,7 +39,7 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
 
 export const remove = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    await brandService.remove(req.params.id as string);
+    await brandService.remove(req.params.id as string, req.user?.id);
     res.status(204).send();
   } catch (error) {
     next(error);

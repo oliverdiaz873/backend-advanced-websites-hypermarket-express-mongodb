@@ -19,6 +19,35 @@ export interface Config {
   jwtExpiresIn: string;
   corsOrigin: string[];
   mongodbUri?: string;
+  mongodbBackupUri?: string;
+  backupDir: string;
+}
+
+export type AuditAction =
+  | "CREATE_PRODUCT"
+  | "UPDATE_PRODUCT"
+  | "DELETE_PRODUCT"
+  | "CREATE_CATEGORY"
+  | "UPDATE_CATEGORY"
+  | "DELETE_CATEGORY"
+  | "CREATE_BRAND"
+  | "UPDATE_BRAND"
+  | "DELETE_BRAND"
+  | "CREATE_OFFER"
+  | "UPDATE_OFFER"
+  | "DELETE_OFFER"
+  | "CREATE_USER"
+  | "UPDATE_USER"
+  | "DELETE_USER";
+
+export interface AuditLog {
+  id: string;
+  userId?: string;
+  action: AuditAction;
+  resource: string;
+  resourceId?: string;
+  success: boolean;
+  createdAt: Date;
 }
 
 export interface Subcategory {

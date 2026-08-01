@@ -9,6 +9,7 @@ const baseConfig: Config = {
   jwtExpiresIn: "1d",
   corsOrigin: ["http://localhost:4200"],
   mongodbUri: "mongodb://localhost:27017/hypermarket",
+  backupDir: "backups",
 };
 
 describe("config validation", () => {

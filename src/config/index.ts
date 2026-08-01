@@ -14,6 +14,8 @@ const config: Config = {
   jwtSecret: process.env.JWT_SECRET || "",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "1d",
   mongodbUri: process.env.MONGODB_URI || "mongodb://localhost:27017/hypermarket",
+  mongodbBackupUri: process.env.MONGODB_BACKUP_URI || undefined,
+  backupDir: process.env.BACKUP_DIR || "backups",
 };
 
 export default config;

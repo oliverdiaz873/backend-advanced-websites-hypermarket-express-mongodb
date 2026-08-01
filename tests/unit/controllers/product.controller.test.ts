@@ -86,7 +86,7 @@ describe("product.controller", () => {
         price: 89.5,
         image: "https://example.com/arroz.png",
         categoryId: "cat_granos",
-      });
+      }, "64b000000000000000000002");
       expect(res.status).toBe(201);
       expect(res.body).toEqual({ success: true, data: toJson(product) });
     });
@@ -117,7 +117,7 @@ describe("product.controller", () => {
         .set("Authorization", `Bearer ${adminToken}`)
         .send({ name: "Arroz Premium" });
 
-      expect(mockProductService.updateById).toHaveBeenCalledWith(PRODUCT_ID, { name: "Arroz Premium" });
+      expect(mockProductService.updateById).toHaveBeenCalledWith(PRODUCT_ID, { name: "Arroz Premium" }, "64b000000000000000000002");
       expect(res.status).toBe(200);
       expect(res.body.data).toEqual(toJson(updated));
     });
@@ -145,7 +145,7 @@ describe("product.controller", () => {
         .delete(`/api/products/${PRODUCT_ID}`)
         .set("Authorization", `Bearer ${adminToken}`);
 
-      expect(mockProductService.remove).toHaveBeenCalledWith(PRODUCT_ID);
+      expect(mockProductService.remove).toHaveBeenCalledWith(PRODUCT_ID, "64b000000000000000000002");
       expect(res.status).toBe(204);
     });
   });

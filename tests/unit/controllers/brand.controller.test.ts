@@ -80,7 +80,7 @@ describe("brand.controller", () => {
         .set("Authorization", `Bearer ${adminToken}`)
         .send({ name: "Coca-Cola" });
 
-      expect(mockBrandService.create).toHaveBeenCalledWith({ name: "Coca-Cola" });
+      expect(mockBrandService.create).toHaveBeenCalledWith({ name: "Coca-Cola" }, "64b000000000000000000002");
       expect(res.status).toBe(201);
       expect(res.body).toEqual({ success: true, data: toJson(brand) });
     });
@@ -122,7 +122,7 @@ describe("brand.controller", () => {
         .set("Authorization", `Bearer ${adminToken}`)
         .send({ name: "Coca-Cola Company" });
 
-      expect(mockBrandService.updateById).toHaveBeenCalledWith(BRAND_ID, { name: "Coca-Cola Company" });
+      expect(mockBrandService.updateById).toHaveBeenCalledWith(BRAND_ID, { name: "Coca-Cola Company" }, "64b000000000000000000002");
       expect(res.status).toBe(200);
       expect(res.body.data).toEqual(toJson(updated));
     });
@@ -150,7 +150,7 @@ describe("brand.controller", () => {
         .delete(`/api/brands/${BRAND_ID}`)
         .set("Authorization", `Bearer ${adminToken}`);
 
-      expect(mockBrandService.remove).toHaveBeenCalledWith(BRAND_ID);
+      expect(mockBrandService.remove).toHaveBeenCalledWith(BRAND_ID, "64b000000000000000000002");
       expect(res.status).toBe(204);
     });
 

@@ -73,7 +73,7 @@ describe("offer.controller", () => {
         productId: PRODUCT_ID,
         originalPrice: 100,
         discountPrice: 80,
-      });
+      }, "64b000000000000000000002");
       expect(res.status).toBe(201);
       expect(res.body).toEqual({ success: true, data: toJson(offer) });
     });
@@ -126,7 +126,7 @@ describe("offer.controller", () => {
         .set("Authorization", `Bearer ${adminToken}`)
         .send({ isActive: false });
 
-      expect(mockOfferService.updateById).toHaveBeenCalledWith(OFFER_ID, { isActive: false });
+      expect(mockOfferService.updateById).toHaveBeenCalledWith(OFFER_ID, { isActive: false }, "64b000000000000000000002");
       expect(res.status).toBe(200);
       expect(res.body.data).toEqual(toJson(updated));
     });
@@ -165,7 +165,7 @@ describe("offer.controller", () => {
         .delete(`/api/offers/${OFFER_ID}`)
         .set("Authorization", `Bearer ${adminToken}`);
 
-      expect(mockOfferService.remove).toHaveBeenCalledWith(OFFER_ID);
+      expect(mockOfferService.remove).toHaveBeenCalledWith(OFFER_ID, "64b000000000000000000002");
       expect(res.status).toBe(204);
     });
   });

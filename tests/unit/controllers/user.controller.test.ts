@@ -92,7 +92,7 @@ describe("user.controller", () => {
 
       const res = await request(app).post("/api/users").set("Authorization", `Bearer ${adminToken}`).send(body);
 
-      expect(mockUserService.create).toHaveBeenCalledWith(body);
+      expect(mockUserService.create).toHaveBeenCalledWith(body, "64b000000000000000000002");
       expect(res.status).toBe(201);
       expect(res.body.data).toEqual(toJson(created));
     });
@@ -108,7 +108,7 @@ describe("user.controller", () => {
         .set("Authorization", `Bearer ${adminToken}`)
         .send({ name: "Nuevo" });
 
-      expect(mockUserService.updateById).toHaveBeenCalledWith(USER_ID, { name: "Nuevo" });
+      expect(mockUserService.updateById).toHaveBeenCalledWith(USER_ID, { name: "Nuevo" }, "64b000000000000000000002");
       expect(res.status).toBe(200);
       expect(res.body.data).toEqual(toJson(updated));
     });
@@ -122,7 +122,7 @@ describe("user.controller", () => {
         .delete(`/api/users/${USER_ID}`)
         .set("Authorization", `Bearer ${adminToken}`);
 
-      expect(mockUserService.deleteById).toHaveBeenCalledWith(USER_ID);
+      expect(mockUserService.deleteById).toHaveBeenCalledWith(USER_ID, "64b000000000000000000002");
       expect(res.status).toBe(200);
       expect(res.body.data).toBeNull();
     });

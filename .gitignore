@@ -3,6 +3,7 @@ node_modules/
 dist/
 build/
 coverage/
+backups/
 *.log
 .DS_Store
 Thumbs.db
