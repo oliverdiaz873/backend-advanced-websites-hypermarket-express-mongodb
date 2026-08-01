@@ -62,6 +62,26 @@ describe("auth.controller", () => {
         statusCode: 400,
       });
     });
+
+    it("responde 400 sin body", async () => {
+      const res = await request(app).post("/api/auth/register").send({});
+
+      expect(mockAuthService.register).not.toHaveBeenCalled();
+      expect(res.status).toBe(400);
+      expect(res.body).toEqual({
+        success: false,
+        message: "Missing required fields: email, password",
+        statusCode: 400,
+      });
+    });
+
+    it("responde 400 si falta el email", async () => {
+      const res = await request(app).post("/api/auth/register").send({ password: "123456" });
+
+      expect(mockAuthService.register).not.toHaveBeenCalled();
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe("Missing required fields: email");
+    });
   });
 
   describe("POST /api/auth/login", () => {
