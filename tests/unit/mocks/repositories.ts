@@ -63,6 +63,48 @@ export const mockUserService = {
   deleteById: jest.fn(),
 };
 
+export const mockAuthService = {
+  register: jest.fn(),
+  login: jest.fn(),
+  getMe: jest.fn(),
+};
+
+export const mockProductService = {
+  getAll: jest.fn(),
+  getById: jest.fn(),
+};
+
+export const mockCartService = {
+  getCart: jest.fn(),
+  addItem: jest.fn(),
+  updateItem: jest.fn(),
+  removeItem: jest.fn(),
+  clearCart: jest.fn(),
+};
+
+export const mockOrderService = {
+  create: jest.fn(),
+  findByUser: jest.fn(),
+  findById: jest.fn(),
+  updateStatus: jest.fn(),
+};
+
+export const mockAddressService = {
+  getById: jest.fn(),
+  getByUser: jest.fn(),
+  create: jest.fn(),
+  updateById: jest.fn(),
+  deleteById: jest.fn(),
+};
+
+export const mockContactService = {
+  create: jest.fn(),
+};
+
+export const mockSearchService = {
+  search: jest.fn(),
+};
+
 export const mockInventoryService = {
   getAll: jest.fn(),
   getById: jest.fn(),

@@ -4,6 +4,7 @@ import config from "../../../config";
 import * as userRepository from "../../users/repositories/user.repository";
 import * as userService from "../../users/services/user.service";
 import { InvalidDataError } from "../../../shared/errors/invalid-data.error";
+import { UnauthorizedError } from "../../../shared/errors/unauthorized.error";
 import { EmailAlreadyExistsError } from "../../../shared/errors/email-already-exists.error";
 import type { PublicUser } from "../../../types";
 
@@ -32,12 +33,12 @@ export const login = async (email: string, password: string): Promise<{ token: s
 
   const user = await userRepository.findByEmail(email.toLowerCase().trim());
   if (!user) {
-    throw new InvalidDataError("Invalid credentials");
+    throw new UnauthorizedError("Invalid credentials");
   }
 
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
-    throw new InvalidDataError("Invalid credentials");
+    throw new UnauthorizedError("Invalid credentials");
   }
 
   if (!config.jwtSecret) {

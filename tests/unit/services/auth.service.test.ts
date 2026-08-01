@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import config from "../../../src/config";
 import * as authService from "../../../src/modules/auth/services/auth.service";
 import { EmailAlreadyExistsError } from "../../../src/shared/errors/email-already-exists.error";
+import { UnauthorizedError } from "../../../src/shared/errors/unauthorized.error";
 import { InvalidDataError } from "../../../src/shared/errors/invalid-data.error";
 import { makeUser, makePublicUser, USER_ID } from "../factories/user.factory";
 
@@ -100,18 +101,18 @@ describe("auth.service", () => {
       expect(mockUserRepository.findByEmail).not.toHaveBeenCalled();
     });
 
-    it("lanza InvalidDataError si el usuario no existe", async () => {
+    it("lanza UnauthorizedError si el usuario no existe", async () => {
       mockUserRepository.findByEmail.mockResolvedValue(null);
 
-      await expect(authService.login("oliver@example.com", "secret123")).rejects.toThrow(InvalidDataError);
+      await expect(authService.login("oliver@example.com", "secret123")).rejects.toThrow(UnauthorizedError);
       await expect(authService.login("oliver@example.com", "secret123")).rejects.toThrow("Invalid credentials");
     });
 
-    it("lanza InvalidDataError si la contraseña no coincide", async () => {
+    it("lanza UnauthorizedError si la contraseña no coincide", async () => {
       mockUserRepository.findByEmail.mockResolvedValue(makeUser());
       mockCompare.mockResolvedValue(false);
 
-      await expect(authService.login("oliver@example.com", "wrong-pass")).rejects.toThrow(InvalidDataError);
+      await expect(authService.login("oliver@example.com", "wrong-pass")).rejects.toThrow(UnauthorizedError);
       await expect(authService.login("oliver@example.com", "wrong-pass")).rejects.toThrow("Invalid credentials");
     });
 
