@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 beforeAll(async () => {
+  jest.spyOn(console, "log").mockImplementation(() => undefined);
   const uri = process.env.MONGODB_URI;
   if (!uri) {
     throw new Error("MONGODB_URI no definido. Ejecuta el globalSetup primero.");
@@ -18,4 +19,5 @@ afterEach(async () => {
 
 afterAll(async () => {
   await mongoose.disconnect();
+  jest.restoreAllMocks();
 });
