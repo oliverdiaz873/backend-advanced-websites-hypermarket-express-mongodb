@@ -9,6 +9,9 @@ import { createTestApp, createAuthToken, toJson } from "../helpers/test-app";
 jest.mock("../../../src/modules/auth/services/auth.service", () =>
   require("../mocks/repositories").mockAuthService
 );
+jest.mock("../../../src/shared/middleware/rate-limit.middleware", () => ({
+  rateLimit: () => (req: unknown, res: unknown, next: () => void) => next(),
+}));
 
 import { mockAuthService } from "../mocks/repositories";
 

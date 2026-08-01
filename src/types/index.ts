@@ -14,6 +14,7 @@ export interface JwtPayload {
 export interface Config {
   port: number;
   nodeEnv: string;
+  appVersion: string;
   jwtSecret: string;
   jwtExpiresIn: string;
   corsOrigin: string[];

@@ -11,10 +11,18 @@ interface Bucket {
   resetAt: number;
 }
 
-const store = new Map<string, Bucket>();
-
 export const rateLimit = (options: RateLimitOptions) => {
   const { windowMs, max, message = "Too many requests, please try again later" } = options;
+  const store = new Map<string, Bucket>();
+
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, bucket] of store) {
+      if (bucket.resetAt <= now) {
+        store.delete(key);
+      }
+    }
+  }, 60000).unref();
 
   return (req: Request, res: Response, next: NextFunction): void => {
     const key = req.ip ?? "unknown";
@@ -36,12 +44,3 @@ export const rateLimit = (options: RateLimitOptions) => {
     next();
   };
 };
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, bucket] of store) {
-    if (bucket.resetAt <= now) {
-      store.delete(key);
-    }
-  }
-}, 60000).unref();

@@ -1,5 +1,7 @@
 import express, { Request, Response } from "express";
+import helmet from "helmet";
 import cors from "cors";
+import mongoose from "mongoose";
 import config from "./config";
 import productRoutes from "./modules/products/routes/product.routes";
 import categoryRoutes from "./modules/categories/routes/category.routes";
@@ -20,6 +22,7 @@ const app = express();
 
 app.set("trust proxy", 1);
 
+app.use(helmet());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(logger);
@@ -28,6 +31,16 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   credentials: true,
 }));
+
+app.get("/api/health", (req: Request, res: Response) => {
+  res.json({
+    status: "ok",
+    version: config.appVersion,
+    mongo: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
 
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
