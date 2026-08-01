@@ -191,3 +191,17 @@ export const mockInventoryService = {
   restoreStock: jest.fn(),
   adjustStock: jest.fn(),
 };
+
+export const mockStatsRepository = {
+  countOrders: jest.fn(),
+  countOrdersByStatus: jest.fn(),
+  countCustomers: jest.fn(),
+  countProducts: jest.fn(),
+  countLowStock: jest.fn(),
+  countPendingContactMessages: jest.fn(),
+  sumRevenueSince: jest.fn(),
+};
+
+export const mockStatsService = {
+  getOverview: jest.fn(),
+};

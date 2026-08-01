@@ -462,7 +462,48 @@ Requiere rol `admin` (Bearer token).
 
 ---
 
-## 14. Versioning (futuro)
+## 14. Admin Stats API (`/admin/stats`)
+
+Requiere rol `admin` (Bearer token).
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | `/admin/stats` | Métricas agregadas para el dashboard (KPIs) |
+
+**Response shape:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "summary": {
+      "totalOrders": 0,
+      "grossRevenue": 0,
+      "averageOrderValue": 0,
+      "completedOrders": 0,
+      "totalCustomers": 0,
+      "totalProducts": 0,
+      "lowStockCount": 0,
+      "pendingContactMessages": 0
+    },
+    "ordersByStatus": { "pending": 0, "processing": 0, "completed": 0, "cancelled": 0 },
+    "revenue": { "gross": { "today": 0, "week": 0, "month": 0 } }
+  }
+}
+```
+
+**Definiciones:**
+
+- `grossRevenue`: suma del `subtotal` de **todas** las órdenes creadas, **incluyendo canceladas** (facturación bruta, no ganancia).
+- `revenue.gross`: facturación bruta por ventana de tiempo — `today` (desde inicio del día UTC), `week` (últimos 7 días), `month` (últimos 30 días).
+- `averageOrderValue`: `grossRevenue / completedOrders` (subtotal de todas las órdenes dividido entre las órdenes `completed`). Es `0` si `completedOrders === 0`.
+- `completedOrders`: número de órdenes con status `completed`.
+- `lowStockCount`: registros de inventario con `minStock` definido y `stock <= minStock` (misma regla que `GET /inventory/low-stock`).
+- `pendingContactMessages`: mensajes de contacto con status `pending`.
+
+---
+
+## 15. Versioning (futuro)
 
 ```
 /api/v1/products

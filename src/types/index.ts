@@ -190,3 +190,35 @@ export interface ContactMessage {
   updatedAt: Date;
 }
 
+export interface StatsSummary {
+  totalOrders: number;
+  grossRevenue: number;
+  averageOrderValue: number;
+  completedOrders: number;
+  totalCustomers: number;
+  totalProducts: number;
+  lowStockCount: number;
+  pendingContactMessages: number;
+}
+
+export interface StatsOrdersByStatus {
+  pending: number;
+  processing: number;
+  completed: number;
+  cancelled: number;
+}
+
+export interface StatsGrossRevenue {
+  today: number;
+  week: number;
+  month: number;
+}
+
+export interface StatsOverview {
+  summary: StatsSummary;
+  ordersByStatus: StatsOrdersByStatus;
+  revenue: {
+    gross: StatsGrossRevenue;
+  };
+}
+
