@@ -1,9 +1,31 @@
 import * as offerRepository from "../repositories/offer.repository";
 import * as productRepository from "../../products/repositories/product.repository";
-import type { OfferResponse } from "../../../types";
+import { NotFoundError } from "../../../shared/errors/not-found.error";
+import { InvalidDataError } from "../../../shared/errors/invalid-data.error";
+import type { OfferData, OfferResponse } from "../../../types";
+
+export interface CreateOfferInput {
+  productId: string;
+  originalPrice: number;
+  discountPrice: number;
+  startDate?: Date;
+  endDate?: Date;
+  isActive?: boolean;
+  title?: string;
+}
+
+export interface UpdateOfferInput {
+  productId?: string;
+  originalPrice?: number;
+  discountPrice?: number;
+  startDate?: Date;
+  endDate?: Date | null;
+  isActive?: boolean;
+  title?: string;
+}
 
 export const getAll = async (): Promise<OfferResponse[]> => {
-  const offers = await offerRepository.findAll();
+  const offers = await offerRepository.findAllActive(new Date());
 
   const results = await Promise.all(
     offers.map(async (offer) => {
@@ -33,4 +55,127 @@ export const getAll = async (): Promise<OfferResponse[]> => {
   );
 
   return results.filter(Boolean) as OfferResponse[];
+};
+
+const parseDate = (value: Date | string | undefined): Date | null => {
+  if (value === undefined || value === null || value === "") return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date;
+};
+
+const validateDateRange = (startDate: Date, endDate: Date): void => {
+  if (startDate.getTime() > endDate.getTime()) {
+    throw new InvalidDataError("startDate must be before or equal to endDate");
+  }
+};
+
+export const create = async (data: CreateOfferInput): Promise<OfferData> => {
+  const product = await productRepository.findById(data.productId);
+  if (!product) {
+    throw new NotFoundError("Product not found");
+  }
+
+  if (data.originalPrice === undefined || !Number.isFinite(data.originalPrice) || data.originalPrice < 0) {
+    throw new InvalidDataError("originalPrice must be a non-negative number");
+  }
+  if (data.discountPrice === undefined || !Number.isFinite(data.discountPrice) || data.discountPrice < 0) {
+    throw new InvalidDataError("discountPrice must be a non-negative number");
+  }
+  if (data.discountPrice >= data.originalPrice) {
+    throw new InvalidDataError("discountPrice must be less than originalPrice");
+  }
+
+  const startDate = parseDate(data.startDate) ?? new Date();
+  const endDate = parseDate(data.endDate);
+  if (endDate) {
+    validateDateRange(startDate, endDate);
+  }
+
+  return offerRepository.create({
+    productId: data.productId,
+    originalPrice: data.originalPrice,
+    discountPrice: data.discountPrice,
+    startDate,
+    endDate: endDate ?? undefined,
+    isActive: data.isActive ?? true,
+    title: data.title,
+  });
+};
+
+export const updateById = async (id: string, data: UpdateOfferInput): Promise<OfferData> => {
+  const existing = await offerRepository.findById(id);
+  if (!existing) {
+    throw new NotFoundError("Offer not found");
+  }
+
+  const updates: Record<string, unknown> & { updatedAt: Date } = { updatedAt: new Date() };
+
+  if (data.productId !== undefined) {
+    const product = await productRepository.findById(data.productId);
+    if (!product) {
+      throw new NotFoundError("Product not found");
+    }
+    updates.productId = data.productId;
+  }
+  if (data.originalPrice !== undefined) {
+    if (!Number.isFinite(data.originalPrice) || data.originalPrice < 0) {
+      throw new InvalidDataError("originalPrice must be a non-negative number");
+    }
+    updates.originalPrice = data.originalPrice;
+  }
+  if (data.discountPrice !== undefined) {
+    if (!Number.isFinite(data.discountPrice) || data.discountPrice < 0) {
+      throw new InvalidDataError("discountPrice must be a non-negative number");
+    }
+    updates.discountPrice = data.discountPrice;
+  }
+
+  const originalPrice = (updates.originalPrice as number | undefined) ?? existing.originalPrice;
+  const discountPrice = (updates.discountPrice as number | undefined) ?? existing.discountPrice;
+  if (discountPrice >= originalPrice) {
+    throw new InvalidDataError("discountPrice must be less than originalPrice");
+  }
+
+  if (data.startDate !== undefined) {
+    const startDate = parseDate(data.startDate);
+    if (!startDate) {
+      throw new InvalidDataError("startDate must be a valid date");
+    }
+    updates.startDate = startDate;
+  }
+  if (data.endDate !== undefined) {
+    if (data.endDate === null) {
+      updates.endDate = null;
+    } else {
+      const endDate = parseDate(data.endDate);
+      if (!endDate) {
+        throw new InvalidDataError("endDate must be a valid date");
+      }
+      updates.endDate = endDate;
+    }
+  }
+
+  const startDate = (updates.startDate as Date | undefined) ?? existing.startDate;
+  const endDate = (updates.endDate as Date | null | undefined) ?? existing.endDate;
+  if (endDate) {
+    validateDateRange(startDate, endDate);
+  }
+
+  if (data.isActive !== undefined) updates.isActive = data.isActive;
+  if (data.title !== undefined) updates.title = data.title;
+
+  const updated = await offerRepository.updateById(id, updates);
+  if (!updated) {
+    throw new NotFoundError("Offer not found");
+  }
+  return updated;
+};
+
+export const remove = async (id: string): Promise<void> => {
+  const existing = await offerRepository.findById(id);
+  if (!existing) {
+    throw new NotFoundError("Offer not found");
+  }
+  await offerRepository.deleteById(id);
 };

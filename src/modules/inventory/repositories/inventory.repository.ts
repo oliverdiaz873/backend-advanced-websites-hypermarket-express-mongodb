@@ -37,6 +37,24 @@ export const restoreStock = async (productId: string, quantity: number): Promise
   return doc ? (doc.toJSON() as unknown as Inventory) : null;
 };
 
+export const create = async (data: {
+  productId: string;
+  stock?: number;
+  minStock?: number;
+}): Promise<Inventory> => {
+  const doc = await InventoryModel.create({
+    productId: data.productId,
+    stock: data.stock ?? 0,
+    ...(data.minStock !== undefined && { minStock: data.minStock }),
+  });
+  return doc.toJSON() as unknown as Inventory;
+};
+
+export const deleteByProductId = async (productId: string): Promise<boolean> => {
+  const result = await InventoryModel.deleteOne({ productId });
+  return result.deletedCount > 0;
+};
+
 export const updateById = async (id: string, updates: Partial<Pick<Inventory, "stock" | "minStock">>): Promise<Inventory | null> => {
   if (!isValidObjectId(id)) return null;
   const doc = await InventoryModel.findByIdAndUpdate(id, updates, { returnDocument: "after" });

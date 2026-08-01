@@ -5,3 +5,35 @@ export const findAll = async (): Promise<OfferData[]> => {
   const docs = await OfferModel.find();
   return docs.map((doc) => doc.toJSON() as unknown as OfferData);
 };
+
+export const findAllActive = async (now: Date): Promise<OfferData[]> => {
+  const docs = await OfferModel.find({
+    isActive: true,
+    startDate: { $lte: now },
+    $or: [{ endDate: null }, { endDate: { $gte: now } }],
+  });
+  return docs.map((doc) => doc.toJSON() as unknown as OfferData);
+};
+
+export const findById = async (id: string): Promise<OfferData | null> => {
+  const doc = await OfferModel.findById(id);
+  return doc ? (doc.toJSON() as unknown as OfferData) : null;
+};
+
+export const create = async (data: Omit<OfferData, "id">): Promise<OfferData> => {
+  const doc = await OfferModel.create(data);
+  return doc.toJSON() as unknown as OfferData;
+};
+
+export const updateById = async (
+  id: string,
+  updates: Record<string, unknown> & { updatedAt: Date }
+): Promise<OfferData | null> => {
+  const doc = await OfferModel.findByIdAndUpdate(id, updates, { returnDocument: "after" });
+  return doc ? (doc.toJSON() as unknown as OfferData) : null;
+};
+
+export const deleteById = async (id: string): Promise<boolean> => {
+  const result = await OfferModel.deleteOne({ _id: id });
+  return result.deletedCount > 0;
+};

@@ -11,7 +11,44 @@ export const mockProductRepository = {
   findAll: jest.fn(),
   findById: jest.fn(),
   findByIds: jest.fn(),
+  findBySku: jest.fn(),
+  existsByCategoryId: jest.fn(),
+  existsByBrandId: jest.fn(),
+  updateCategoryEmbeds: jest.fn(),
+  updateBrandEmbeds: jest.fn(),
   search: jest.fn(),
+  create: jest.fn(),
+  updateById: jest.fn(),
+  deleteById: jest.fn(),
+};
+
+export const mockCategoryRepository = {
+  findAll: jest.fn(),
+  findById: jest.fn(),
+  findByName: jest.fn(),
+  findBySlug: jest.fn(),
+  create: jest.fn(),
+  updateById: jest.fn(),
+  deleteById: jest.fn(),
+};
+
+export const mockBrandRepository = {
+  findAll: jest.fn(),
+  findById: jest.fn(),
+  findByName: jest.fn(),
+  findBySlug: jest.fn(),
+  create: jest.fn(),
+  updateById: jest.fn(),
+  deleteById: jest.fn(),
+};
+
+export const mockOfferRepository = {
+  findAll: jest.fn(),
+  findAllActive: jest.fn(),
+  findById: jest.fn(),
+  create: jest.fn(),
+  updateById: jest.fn(),
+  deleteById: jest.fn(),
 };
 
 export const mockCartRepository = {
@@ -30,6 +67,8 @@ export const mockInventoryRepository = {
   findLowStock: jest.fn(),
   decreaseStock: jest.fn(),
   restoreStock: jest.fn(),
+  create: jest.fn(),
+  deleteByProductId: jest.fn(),
   updateById: jest.fn(),
 };
 
@@ -72,6 +111,32 @@ export const mockAuthService = {
 export const mockProductService = {
   getAll: jest.fn(),
   getById: jest.fn(),
+  create: jest.fn(),
+  updateById: jest.fn(),
+  remove: jest.fn(),
+};
+
+export const mockCategoryService = {
+  getAll: jest.fn(),
+  getById: jest.fn(),
+  create: jest.fn(),
+  updateById: jest.fn(),
+  remove: jest.fn(),
+};
+
+export const mockBrandService = {
+  getAll: jest.fn(),
+  getById: jest.fn(),
+  create: jest.fn(),
+  updateById: jest.fn(),
+  remove: jest.fn(),
+};
+
+export const mockOfferService = {
+  getAll: jest.fn(),
+  create: jest.fn(),
+  updateById: jest.fn(),
+  remove: jest.fn(),
 };
 
 export const mockCartService = {

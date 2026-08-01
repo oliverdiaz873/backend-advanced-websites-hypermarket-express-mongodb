@@ -91,6 +91,7 @@ export interface Address {
 }
 
 export interface OfferData {
+  id: string;
   productId: string;
   originalPrice: number;
   discountPrice: number;
