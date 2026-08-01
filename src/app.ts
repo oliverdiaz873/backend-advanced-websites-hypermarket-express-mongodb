@@ -11,10 +11,12 @@ import userRoutes from "./modules/users/routes/user.routes";
 import authRoutes from "./modules/auth/routes/auth.routes";
 import cartRoutes from "./modules/cart/routes/cart.routes";
 import orderRoutes from "./modules/orders/routes/order.routes";
+import adminOrderRoutes from "./modules/orders/routes/admin-order.routes";
 import brandRoutes from "./modules/brands/routes/brand.routes";
 import addressRoutes from "./modules/addresses/routes/address.routes";
 import inventoryRoutes from "./modules/inventory/routes/inventory.routes";
 import contactRoutes from "./modules/contact/routes/contact.routes";
+import adminContactRoutes from "./modules/contact/routes/admin-contact.routes";
 import errorHandler from "./shared/middleware/error-handler";
 import logger from "./shared/middleware/logger.middleware";
 
@@ -50,10 +52,12 @@ app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/admin/orders", adminOrderRoutes);
 app.use("/api/brands", brandRoutes);
 app.use("/api/addresses", addressRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/contact", contactRoutes);
+app.use("/api/admin/contact", adminContactRoutes);
 
 app.use((req: Request, res: Response) => {
   res.status(404).json({

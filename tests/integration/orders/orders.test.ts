@@ -4,7 +4,7 @@ import { createAuthToken, createAuthHeaders } from "../helpers/auth.helper";
 import { createTestAddress } from "../helpers/address.helper";
 import { createTestInventory } from "../helpers/inventory.helper";
 import { createTestProduct } from "../helpers/product.helper";
-import { createTestUser } from "../helpers/user.helper";
+import { createTestAdmin, createTestUser } from "../helpers/user.helper";
 import { createTestOrder } from "../helpers/order.helper";
 import type { User } from "../../../src/types";
 
@@ -24,6 +24,8 @@ const addToCart = async (headers: { Authorization: string }, productId: string, 
 describe("E2E: /api/orders", () => {
   it("POST / crea la orden completa: decrementa stock y vacía el carrito", async () => {
     const { user, headers, product, address } = await setupCheckout();
+    const admin = await createTestAdmin();
+    const adminHeaders = createAuthHeaders(createAuthToken(admin));
     await addToCart(headers, product.id, 2);
 
     const res = await request(app).post("/api/orders").set(headers).send({ addressId: address.id });
@@ -37,7 +39,7 @@ describe("E2E: /api/orders", () => {
     expect(res.body.data.items[0]).toMatchObject({ productId: product.id, name: product.name, quantity: 2 });
     expect(res.body.data.shippingAddress).toMatchObject({ city: "Lima", country: "Peru" });
 
-    const inventory = await request(app).get(`/api/inventory/product/${product.id}`);
+    const inventory = await request(app).get(`/api/inventory/product/${product.id}`).set(adminHeaders);
     expect(inventory.body.data.availableStock).toBe(3);
 
     const cart = await request(app).get("/api/cart").set(headers);
@@ -129,7 +131,7 @@ describe("E2E: /api/orders", () => {
     expect(missing.status).toBe(404);
   });
 
-  it("PATCH /:id/status transiciona pending → processing", async () => {
+  it("PATCH /:id/status rechaza al customer transicionar pending → processing", async () => {
     const { headers, user } = await setupCheckout();
     const order = await createTestOrder(user.id, []);
 
@@ -138,8 +140,8 @@ describe("E2E: /api/orders", () => {
       .set(headers)
       .send({ status: "processing" });
 
-    expect(res.status).toBe(200);
-    expect(res.body.data.status).toBe("processing");
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe("Cannot transition from pending to processing");
   });
 
   it("PATCH /:id/status responde 400 con transición inválida", async () => {
@@ -157,6 +159,8 @@ describe("E2E: /api/orders", () => {
 
   it("PATCH /:id/status cancelar restaura el stock", async () => {
     const { headers, product, user } = await setupCheckout();
+    const admin = await createTestAdmin();
+    const adminHeaders = createAuthHeaders(createAuthToken(admin));
     await addToCart(headers, product.id, 2);
     const created = await request(app).post("/api/orders").set(headers).send({ addressId: (await createTestAddress(user.id)).id });
 
@@ -168,7 +172,7 @@ describe("E2E: /api/orders", () => {
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe("cancelled");
 
-    const inventory = await request(app).get(`/api/inventory/product/${product.id}`);
+    const inventory = await request(app).get(`/api/inventory/product/${product.id}`).set(adminHeaders);
     expect(inventory.body.data.availableStock).toBe(5);
   });
 

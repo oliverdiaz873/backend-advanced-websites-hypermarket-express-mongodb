@@ -20,11 +20,23 @@ describe("inventory.controller", () => {
   });
 
   describe("GET /api/inventory", () => {
-    it("responde 200 con todo el inventario", async () => {
+    it("responde 401 sin token", async () => {
+      const res = await request(app).get("/api/inventory");
+
+      expect(res.status).toBe(401);
+    });
+
+    it("responde 403 si no es admin", async () => {
+      const res = await request(app).get("/api/inventory").set("Authorization", `Bearer ${customerToken}`);
+
+      expect(res.status).toBe(403);
+    });
+
+    it("responde 200 con todo el inventario (admin)", async () => {
       const records = [makeInventory()];
       mockInventoryService.getAll.mockResolvedValue(records);
 
-      const res = await request(app).get("/api/inventory");
+      const res = await request(app).get("/api/inventory").set("Authorization", `Bearer ${adminToken}`);
 
       expect(mockInventoryService.getAll).toHaveBeenCalledTimes(1);
       expect(res.status).toBe(200);
@@ -33,11 +45,27 @@ describe("inventory.controller", () => {
   });
 
   describe("GET /api/inventory/product/:productId", () => {
-    it("responde 200 con el inventario del producto", async () => {
+    it("responde 401 sin token", async () => {
+      const res = await request(app).get(`/api/inventory/product/${PRODUCT_ID}`);
+
+      expect(res.status).toBe(401);
+    });
+
+    it("responde 403 si no es admin", async () => {
+      const res = await request(app)
+        .get(`/api/inventory/product/${PRODUCT_ID}`)
+        .set("Authorization", `Bearer ${customerToken}`);
+
+      expect(res.status).toBe(403);
+    });
+
+    it("responde 200 con el inventario del producto (admin)", async () => {
       const record = makeInventory();
       mockInventoryService.getByProductId.mockResolvedValue(record);
 
-      const res = await request(app).get(`/api/inventory/product/${PRODUCT_ID}`);
+      const res = await request(app)
+        .get(`/api/inventory/product/${PRODUCT_ID}`)
+        .set("Authorization", `Bearer ${adminToken}`);
 
       expect(mockInventoryService.getByProductId).toHaveBeenCalledWith(PRODUCT_ID);
       expect(res.status).toBe(200);
@@ -46,11 +74,27 @@ describe("inventory.controller", () => {
   });
 
   describe("GET /api/inventory/:id", () => {
-    it("responde 200 con el registro", async () => {
+    it("responde 401 sin token", async () => {
+      const res = await request(app).get(`/api/inventory/${INVENTORY_ID}`);
+
+      expect(res.status).toBe(401);
+    });
+
+    it("responde 403 si no es admin", async () => {
+      const res = await request(app)
+        .get(`/api/inventory/${INVENTORY_ID}`)
+        .set("Authorization", `Bearer ${customerToken}`);
+
+      expect(res.status).toBe(403);
+    });
+
+    it("responde 200 con el registro (admin)", async () => {
       const record = makeInventory();
       mockInventoryService.getById.mockResolvedValue(record);
 
-      const res = await request(app).get(`/api/inventory/${INVENTORY_ID}`);
+      const res = await request(app)
+        .get(`/api/inventory/${INVENTORY_ID}`)
+        .set("Authorization", `Bearer ${adminToken}`);
 
       expect(mockInventoryService.getById).toHaveBeenCalledWith(INVENTORY_ID);
       expect(res.status).toBe(200);

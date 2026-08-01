@@ -1,6 +1,13 @@
 import * as contactRepository from "../repositories/contact.repository";
+import { NotFoundError } from "../../../shared/errors/not-found.error";
 import { InvalidDataError } from "../../../shared/errors/invalid-data.error";
-import type { ContactMessage } from "../../../types";
+import type { ContactMessage, ContactMessageStatus } from "../../../types";
+
+const ALLOWED_CONTACT_TRANSITIONS: Record<ContactMessageStatus, readonly ContactMessageStatus[]> = {
+  pending: ["read", "answered"],
+  read: ["answered"],
+  answered: [],
+};
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -39,4 +46,42 @@ export const create = async (data: { name?: unknown; email?: unknown; phone?: un
     phone: phone || undefined,
     message,
   });
+};
+
+export const findAllAdmin = async (): Promise<ContactMessage[]> => {
+  return contactRepository.findAll();
+};
+
+export const findByIdAdmin = async (id: string): Promise<ContactMessage> => {
+  const message = await contactRepository.findById(id);
+  if (!message) {
+    throw new NotFoundError("Contact message not found");
+  }
+  return message;
+};
+
+export const updateStatusAdmin = async (id: string, status: ContactMessageStatus): Promise<ContactMessage> => {
+  const existing = await contactRepository.findById(id);
+  if (!existing) {
+    throw new NotFoundError("Contact message not found");
+  }
+
+  const allowed = ALLOWED_CONTACT_TRANSITIONS[existing.status] as readonly ContactMessageStatus[] | undefined;
+  if (!allowed || !allowed.includes(status)) {
+    throw new InvalidDataError(`Cannot transition from ${existing.status} to ${status}`);
+  }
+
+  const updated = await contactRepository.updateById(id, { status, updatedAt: new Date() });
+  if (!updated) {
+    throw new NotFoundError("Contact message not found");
+  }
+  return updated;
+};
+
+export const remove = async (id: string): Promise<void> => {
+  const existing = await contactRepository.findById(id);
+  if (!existing) {
+    throw new NotFoundError("Contact message not found");
+  }
+  await contactRepository.deleteById(id);
 };

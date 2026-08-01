@@ -206,19 +206,17 @@ describe("order.service", () => {
       );
     });
 
-    it("actualiza el estado y retorna la orden", async () => {
-      const updated = makeOrder({ status: "processing" });
+    it("rechaza al customer transicionar pending → processing", async () => {
       mockOrderRepository.findById.mockResolvedValue(makeOrder());
-      mockOrderRepository.updateStatus.mockResolvedValue(updated);
 
-      const result = await orderService.updateStatus(USER_ID, ORDER_ID, "processing");
-
-      expect(mockOrderRepository.updateStatus).toHaveBeenCalledWith(ORDER_ID, "pending", "processing");
-      expect(mockInventoryService.restoreStock).not.toHaveBeenCalled();
-      expect(result).toMatchObject({ status: "processing" });
+      await expect(orderService.updateStatus(USER_ID, ORDER_ID, "processing")).rejects.toThrow(InvalidDataError);
+      await expect(orderService.updateStatus(USER_ID, ORDER_ID, "processing")).rejects.toThrow(
+        "Cannot transition from pending to processing"
+      );
+      expect(mockOrderRepository.updateStatus).not.toHaveBeenCalled();
     });
 
-    it("restaura el stock de los items al cancelar", async () => {
+    it("restaura el stock de los items al cancelar (customer)", async () => {
       const cancelled = makeOrder({ status: "cancelled" });
       mockOrderRepository.findById.mockResolvedValue(makeOrder());
       mockOrderRepository.updateStatus.mockResolvedValue(cancelled);
@@ -226,6 +224,101 @@ describe("order.service", () => {
 
       const result = await orderService.updateStatus(USER_ID, ORDER_ID, "cancelled");
 
+      expect(mockOrderRepository.updateStatus).toHaveBeenCalledWith(ORDER_ID, "pending", "cancelled");
+      expect(mockInventoryService.restoreStock).toHaveBeenCalledWith(PRODUCT_ID, 2);
+      expect(result).toMatchObject({ status: "cancelled" });
+    });
+
+    it("retorna la orden actual si la actualización concurrente devuelve null", async () => {
+      const original = makeOrder();
+      const current = makeOrder({ status: "cancelled" });
+      mockOrderRepository.findById.mockResolvedValueOnce(original).mockResolvedValueOnce(current);
+      mockOrderRepository.updateStatus.mockResolvedValue(null);
+
+      const result = await orderService.updateStatus(USER_ID, ORDER_ID, "cancelled");
+
+      expect(result).toMatchObject({ status: "cancelled" });
+    });
+
+    it("lanza NotFoundError si la actualización concurrente devuelve null y la orden ya no existe", async () => {
+      mockOrderRepository.findById.mockResolvedValueOnce(makeOrder()).mockResolvedValueOnce(null);
+      mockOrderRepository.updateStatus.mockResolvedValue(null);
+
+      await expect(orderService.updateStatus(USER_ID, ORDER_ID, "cancelled")).rejects.toThrow(NotFoundError);
+    });
+  });
+
+  describe("findAllAdmin", () => {
+    it("retorna todas las órdenes", async () => {
+      const orders = [makeOrder(), makeOrder({ id: "64b00000000000000000001002" })];
+      mockOrderRepository.findAll.mockResolvedValue(orders);
+
+      const result = await orderService.findAllAdmin();
+
+      expect(mockOrderRepository.findAll).toHaveBeenCalledTimes(1);
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({ id: ORDER_ID, status: "pending" });
+    });
+  });
+
+  describe("findByIdAdmin", () => {
+    it("retorna la orden por id", async () => {
+      const order = makeOrder();
+      mockOrderRepository.findById.mockResolvedValue(order);
+
+      const result = await orderService.findByIdAdmin(ORDER_ID);
+
+      expect(mockOrderRepository.findById).toHaveBeenCalledWith(ORDER_ID);
+      expect(result).toMatchObject({ id: ORDER_ID });
+      expect(result).not.toHaveProperty("userId");
+    });
+
+    it("lanza NotFoundError si no existe", async () => {
+      mockOrderRepository.findById.mockResolvedValue(null);
+
+      await expect(orderService.findByIdAdmin(ORDER_ID)).rejects.toThrow(NotFoundError);
+      await expect(orderService.findByIdAdmin(ORDER_ID)).rejects.toThrow("Order not found");
+    });
+  });
+
+  describe("updateStatusAdmin", () => {
+    it("lanza NotFoundError si la orden no existe", async () => {
+      mockOrderRepository.findById.mockResolvedValue(null);
+
+      await expect(orderService.updateStatusAdmin(ORDER_ID, "processing")).rejects.toThrow(NotFoundError);
+    });
+
+    it("lanza InvalidDataError si la transición no está permitida para admin", async () => {
+      mockOrderRepository.findById.mockResolvedValue(makeOrder());
+
+      await expect(orderService.updateStatusAdmin(ORDER_ID, "completed")).rejects.toThrow(InvalidDataError);
+      await expect(orderService.updateStatusAdmin(ORDER_ID, "completed")).rejects.toThrow(
+        "Cannot transition from pending to completed"
+      );
+      expect(mockOrderRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it("permite a admin pending → processing", async () => {
+      const updated = makeOrder({ status: "processing" });
+      mockOrderRepository.findById.mockResolvedValue(makeOrder());
+      mockOrderRepository.updateStatus.mockResolvedValue(updated);
+
+      const result = await orderService.updateStatusAdmin(ORDER_ID, "processing");
+
+      expect(mockOrderRepository.updateStatus).toHaveBeenCalledWith(ORDER_ID, "pending", "processing");
+      expect(mockInventoryService.restoreStock).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ status: "processing" });
+    });
+
+    it("permite a admin cancelar processing y restaura el stock", async () => {
+      const cancelled = makeOrder({ status: "cancelled" });
+      mockOrderRepository.findById.mockResolvedValue(makeOrder({ status: "processing" }));
+      mockOrderRepository.updateStatus.mockResolvedValue(cancelled);
+      mockInventoryService.restoreStock.mockResolvedValue(undefined);
+
+      const result = await orderService.updateStatusAdmin(ORDER_ID, "cancelled");
+
+      expect(mockOrderRepository.updateStatus).toHaveBeenCalledWith(ORDER_ID, "processing", "cancelled");
       expect(mockInventoryService.restoreStock).toHaveBeenCalledWith(PRODUCT_ID, 2);
       expect(result).toMatchObject({ status: "cancelled" });
     });
@@ -236,16 +329,9 @@ describe("order.service", () => {
       mockOrderRepository.findById.mockResolvedValueOnce(original).mockResolvedValueOnce(current);
       mockOrderRepository.updateStatus.mockResolvedValue(null);
 
-      const result = await orderService.updateStatus(USER_ID, ORDER_ID, "processing");
+      const result = await orderService.updateStatusAdmin(ORDER_ID, "processing");
 
       expect(result).toMatchObject({ status: "processing" });
-    });
-
-    it("lanza NotFoundError si la actualización concurrente devuelve null y la orden ya no existe", async () => {
-      mockOrderRepository.findById.mockResolvedValueOnce(makeOrder()).mockResolvedValueOnce(null);
-      mockOrderRepository.updateStatus.mockResolvedValue(null);
-
-      await expect(orderService.updateStatus(USER_ID, ORDER_ID, "processing")).rejects.toThrow(NotFoundError);
     });
   });
 });

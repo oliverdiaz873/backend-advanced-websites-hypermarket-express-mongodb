@@ -4,10 +4,12 @@ import authMiddleware, { authorizeRole } from "../../../shared/middleware/auth.m
 
 const router = Router();
 
+router.use(authMiddleware, authorizeRole("admin"));
+
 router.get("/", inventoryController.getAll);
 router.get("/product/:productId", inventoryController.getByProductId);
-router.get("/low-stock", authMiddleware, authorizeRole("admin"), inventoryController.getLowStock);
+router.get("/low-stock", inventoryController.getLowStock);
 router.get("/:id", inventoryController.getById);
-router.patch("/:id", authMiddleware, authorizeRole("admin"), inventoryController.adjustStock);
+router.patch("/:id", inventoryController.adjustStock);
 
 export default router;

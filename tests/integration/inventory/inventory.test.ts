@@ -19,43 +19,56 @@ describe("E2E: /api/inventory", () => {
     customerHeaders = createAuthHeaders(createAuthToken(customer));
   });
 
-  it("GET / responde 200 con el inventario", async () => {
+  it("GET / responde 200 con el inventario (admin)", async () => {
     const product = await createTestProduct();
     const inventory = await createTestInventory(product.id, { stock: 5 });
 
-    const res = await request(app).get("/api/inventory");
+    const res = await request(app).get("/api/inventory").set(adminHeaders);
 
     expect(res.status).toBe(200);
     expect(res.body.data.map((r: { id: string }) => r.id)).toContain(inventory.id);
   });
 
-  it("GET /product/:productId responde 200", async () => {
+  it("GET /product/:productId responde 200 (admin)", async () => {
     const product = await createTestProduct();
     await createTestInventory(product.id, { stock: 8 });
 
-    const res = await request(app).get(`/api/inventory/product/${product.id}`);
+    const res = await request(app).get(`/api/inventory/product/${product.id}`).set(adminHeaders);
 
     expect(res.status).toBe(200);
     expect(res.body.data.availableStock).toBe(8);
   });
 
-  it("GET /product/:productId responde 404 si no existe", async () => {
-    const res = await request(app).get("/api/inventory/product/prod_inexistente");
+  it("GET /product/:productId responde 404 si no existe (admin)", async () => {
+    const res = await request(app).get("/api/inventory/product/prod_inexistente").set(adminHeaders);
 
     expect(res.status).toBe(404);
     expect(res.body.message).toBe("Inventory not found");
   });
 
-  it("GET /:id responde 200 y 404 si no existe", async () => {
+  it("GET /:id responde 200 y 404 si no existe (admin)", async () => {
     const product = await createTestProduct();
     const inventory = await createTestInventory(product.id);
 
-    const ok = await request(app).get(`/api/inventory/${inventory.id}`);
+    const ok = await request(app).get(`/api/inventory/${inventory.id}`).set(adminHeaders);
     expect(ok.status).toBe(200);
     expect(ok.body.data.id).toBe(inventory.id);
 
-    const missing = await request(app).get("/api/inventory/64b00000000000000000000a");
+    const missing = await request(app).get("/api/inventory/64b00000000000000000000a").set(adminHeaders);
     expect(missing.status).toBe(404);
+  });
+
+  it("GETs del inventario responde 401 sin token y 403 para customer", async () => {
+    const product = await createTestProduct();
+    await createTestInventory(product.id);
+
+    for (const path of ["/api/inventory", `/api/inventory/product/${product.id}`, "/api/inventory/64b00000000000000000000a"]) {
+      const unauth = await request(app).get(path);
+      expect(unauth.status).toBe(401);
+
+      const forbidden = await request(app).get(path).set(customerHeaders);
+      expect(forbidden.status).toBe(403);
+    }
   });
 
   it("GET /low-stock responde 200 para admin con solo los registros en mínimo", async () => {

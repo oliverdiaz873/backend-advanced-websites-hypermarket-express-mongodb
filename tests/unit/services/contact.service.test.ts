@@ -1,6 +1,7 @@
 import * as contactService from "../../../src/modules/contact/services/contact.service";
 import { InvalidDataError } from "../../../src/shared/errors/invalid-data.error";
-import { makeContactMessage } from "../factories/contact.factory";
+import { NotFoundError } from "../../../src/shared/errors/not-found.error";
+import { makeContactMessage, CONTACT_ID } from "../factories/contact.factory";
 
 jest.mock("../../../src/modules/contact/repositories/contact.repository", () =>
   require("../mocks/repositories").mockContactRepository
@@ -124,5 +125,106 @@ describe("contact.service", () => {
     expect(mockContactRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({ phone: undefined })
     );
+  });
+
+  describe("findAllAdmin", () => {
+    it("retorna todos los mensajes", async () => {
+      const messages = [makeContactMessage(), makeContactMessage({ id: "64b00000000000000000002002" })];
+      mockContactRepository.findAll.mockResolvedValue(messages);
+
+      const result = await contactService.findAllAdmin();
+
+      expect(mockContactRepository.findAll).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(messages);
+    });
+  });
+
+  describe("findByIdAdmin", () => {
+    it("retorna el mensaje si existe", async () => {
+      const message = makeContactMessage();
+      mockContactRepository.findById.mockResolvedValue(message);
+
+      const result = await contactService.findByIdAdmin(CONTACT_ID);
+
+      expect(mockContactRepository.findById).toHaveBeenCalledWith(CONTACT_ID);
+      expect(result).toEqual(message);
+    });
+
+    it("lanza NotFoundError si no existe", async () => {
+      mockContactRepository.findById.mockResolvedValue(null);
+
+      await expect(contactService.findByIdAdmin(CONTACT_ID)).rejects.toThrow(NotFoundError);
+      await expect(contactService.findByIdAdmin(CONTACT_ID)).rejects.toThrow("Contact message not found");
+    });
+  });
+
+  describe("updateStatusAdmin", () => {
+    it("lanza NotFoundError si el mensaje no existe", async () => {
+      mockContactRepository.findById.mockResolvedValue(null);
+
+      await expect(contactService.updateStatusAdmin(CONTACT_ID, "read")).rejects.toThrow(NotFoundError);
+    });
+
+    it("lanza InvalidDataError en transiciones inválidas", async () => {
+      mockContactRepository.findById.mockResolvedValue(makeContactMessage({ status: "answered" }));
+
+      await expect(contactService.updateStatusAdmin(CONTACT_ID, "pending")).rejects.toThrow(InvalidDataError);
+      await expect(contactService.updateStatusAdmin(CONTACT_ID, "pending")).rejects.toThrow(
+        "Cannot transition from answered to pending"
+      );
+      expect(mockContactRepository.updateById).not.toHaveBeenCalled();
+    });
+
+    it("actualiza pending → read", async () => {
+      const updated = makeContactMessage({ status: "read" });
+      mockContactRepository.findById.mockResolvedValue(makeContactMessage());
+      mockContactRepository.updateById.mockResolvedValue(updated);
+
+      const result = await contactService.updateStatusAdmin(CONTACT_ID, "read");
+
+      expect(mockContactRepository.updateById).toHaveBeenCalledWith(
+        CONTACT_ID,
+        expect.objectContaining({ status: "read", updatedAt: expect.any(Date) })
+      );
+      expect(result).toEqual(updated);
+    });
+
+    it("actualiza pending → answered y read → answered", async () => {
+      mockContactRepository.findById.mockResolvedValue(makeContactMessage());
+      mockContactRepository.updateById.mockResolvedValue(makeContactMessage({ status: "answered" }));
+
+      await contactService.updateStatusAdmin(CONTACT_ID, "answered");
+      expect(mockContactRepository.updateById).toHaveBeenCalledWith(
+        CONTACT_ID,
+        expect.objectContaining({ status: "answered" })
+      );
+
+      jest.clearAllMocks();
+      mockContactRepository.findById.mockResolvedValue(makeContactMessage({ status: "read" }));
+      mockContactRepository.updateById.mockResolvedValue(makeContactMessage({ status: "answered" }));
+
+      await contactService.updateStatusAdmin(CONTACT_ID, "answered");
+      expect(mockContactRepository.updateById).toHaveBeenCalledWith(
+        CONTACT_ID,
+        expect.objectContaining({ status: "answered" })
+      );
+    });
+  });
+
+  describe("remove", () => {
+    it("borra el mensaje si existe", async () => {
+      mockContactRepository.findById.mockResolvedValue(makeContactMessage());
+      mockContactRepository.deleteById.mockResolvedValue(true);
+
+      await expect(contactService.remove(CONTACT_ID)).resolves.toBeUndefined();
+      expect(mockContactRepository.deleteById).toHaveBeenCalledWith(CONTACT_ID);
+    });
+
+    it("lanza NotFoundError si no existe", async () => {
+      mockContactRepository.findById.mockResolvedValue(null);
+
+      await expect(contactService.remove(CONTACT_ID)).rejects.toThrow(NotFoundError);
+      expect(mockContactRepository.deleteById).not.toHaveBeenCalled();
+    });
   });
 });

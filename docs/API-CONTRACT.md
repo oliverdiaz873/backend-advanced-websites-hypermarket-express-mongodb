@@ -369,11 +369,28 @@ Crea una orden a partir del carrito actual. La dirección se guarda como **snaps
 
 ### PATCH /orders/:id/status
 
-Actualiza el estado de la orden. Transiciones válidas:
-- `pending` → `processing` | `cancelled`
-- `processing` → `completed`
+Actualiza el estado de la orden **del propio usuario** (customer). Transición válida para el customer:
+- `pending` → `cancelled` (cualquier otra transición responde `400`)
 
 Al transicionar a `cancelled` se restaura el stock de todos los ítems (`restoreStock`).
+
+### Admin Orders API (`/admin/orders`)
+
+Requiere rol `admin` (Bearer token).
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | `/admin/orders` | Todas las órdenes, ordenadas por `createdAt` desc |
+| GET | `/admin/orders/:id` | Detalle de una orden (404 si no existe) |
+| PATCH | `/admin/orders/:id/status` | Cambia el estado de una orden |
+
+**Transiciones válidas para admin:**
+- `pending` → `processing` | `cancelled`
+- `processing` → `completed` | `cancelled`
+
+Al transicionar a `cancelled` se restaura el stock de todos los ítems (`restoreStock`).
+
+**PATCH request body:** `{ "status": "processing" }`
 
 ---
 
@@ -396,13 +413,13 @@ Regla: **una sola `isDefault` por usuario**. La primera dirección de un usuario
 
 ## 12. Inventory API
 
-Lectura pública; gestión admin.
+API **privada** (solo admin). La disponibilidad pública del producto se resuelve mediante la **Product API**; el inventario interno no se expone a clientes.
 
 | Método | Endpoint | Rol | Descripción |
 |--------|----------|-----|-------------|
-| GET | `/inventory` | público | Todos los registros |
-| GET | `/inventory/:id` | público | Registro por ID |
-| GET | `/inventory/product/:productId` | público | Registro por producto |
+| GET | `/inventory` | admin | Todos los registros |
+| GET | `/inventory/:id` | admin | Registro por ID |
+| GET | `/inventory/product/:productId` | admin | Registro por producto |
 | GET | `/inventory/low-stock` | admin | Stock bajo (`stock <= minStock`) |
 | PATCH | `/inventory/:id` | admin | Ajusta `stock` y/o `minStock` |
 
@@ -420,7 +437,22 @@ Todos los registros incluyen **`availableStock = stock - reservedStock`** (campo
 
 **Request body:** `{ name, email, message }` + `phone?`
 
-El mensaje se guarda con `status: "pending" | "read" | "answered"` (default `pending`), preparado para el futuro panel admin.
+El mensaje se guarda con `status: "pending" | "read" | "answered"` (default `pending`).
+
+### Admin Contact API (`/admin/contact`)
+
+Requiere rol `admin` (Bearer token).
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | `/admin/contact` | Todos los mensajes, ordenados por `createdAt` desc |
+| GET | `/admin/contact/:id` | Detalle de un mensaje (404 si no existe) |
+| PATCH | `/admin/contact/:id` | Cambia el `status` del mensaje |
+| DELETE | `/admin/contact/:id` | Elimina el mensaje (204) |
+
+**Transiciones de status válidas:** `pending` → `read` | `answered`, `read` → `answered` (cualquier otra responde `400`).
+
+**PATCH request body:** `{ "status": "read" }`
 
 **Rate limit:** el endpoint público está limitado a **10 peticiones por minuto por IP**. Al exceder el límite responde `429`.
 

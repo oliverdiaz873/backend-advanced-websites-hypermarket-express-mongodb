@@ -6,7 +6,7 @@ import * as inventoryService from "../../inventory/services/inventory.service";
 import { NotFoundError } from "../../../shared/errors/not-found.error";
 import { InvalidDataError } from "../../../shared/errors/invalid-data.error";
 import { InsufficientStockError } from "../../../shared/errors/insufficient-stock.error";
-import { ALLOWED_TRANSITIONS } from "../../../shared/constants/order-status";
+import { canTransitionOrderStatus } from "../../../shared/constants/order-status";
 import type { Order, OrderItem, OrderStatus } from "../../../types";
 
 const toResponse = (order: Order) => ({
@@ -20,6 +20,25 @@ const toResponse = (order: Order) => ({
   createdAt: order.createdAt,
   updatedAt: order.updatedAt,
 });
+
+const applyStatusTransition = async (order: Order, newStatus: OrderStatus): Promise<ReturnType<typeof toResponse>> => {
+  const updated = await orderRepository.updateStatus(order.id, order.status, newStatus);
+  if (!updated) {
+    const current = await orderRepository.findById(order.id);
+    if (!current) {
+      throw new NotFoundError("Order not found");
+    }
+    return toResponse(current);
+  }
+
+  if (newStatus === "cancelled") {
+    for (const item of updated.items) {
+      await inventoryService.restoreStock(item.productId, item.quantity);
+    }
+  }
+
+  return toResponse(updated);
+};
 
 export const create = async (userId: string, addressId: string) => {
   const cart = await cartRepository.findByUserId(userId);
@@ -113,26 +132,32 @@ export const updateStatus = async (userId: string, orderId: string, newStatus: O
   if (order.userId !== userId) {
     throw new NotFoundError("Order not found");
   }
-
-  const allowed = ALLOWED_TRANSITIONS[order.status] as readonly OrderStatus[] | undefined;
-  if (!allowed || !allowed.includes(newStatus)) {
+  if (!canTransitionOrderStatus(order.status, newStatus, "customer")) {
     throw new InvalidDataError(`Cannot transition from ${order.status} to ${newStatus}`);
   }
+  return applyStatusTransition(order, newStatus);
+};
 
-  const updated = await orderRepository.updateStatus(orderId, order.status, newStatus);
-  if (!updated) {
-    const current = await orderRepository.findById(orderId);
-    if (!current) {
-      throw new NotFoundError("Order not found");
-    }
-    return toResponse(current);
+export const findAllAdmin = async () => {
+  const orders = await orderRepository.findAll();
+  return orders.map(toResponse);
+};
+
+export const findByIdAdmin = async (orderId: string) => {
+  const order = await orderRepository.findById(orderId);
+  if (!order) {
+    throw new NotFoundError("Order not found");
   }
+  return toResponse(order);
+};
 
-  if (newStatus === "cancelled") {
-    for (const item of updated.items) {
-      await inventoryService.restoreStock(item.productId, item.quantity);
-    }
+export const updateStatusAdmin = async (orderId: string, newStatus: OrderStatus) => {
+  const order = await orderRepository.findById(orderId);
+  if (!order) {
+    throw new NotFoundError("Order not found");
   }
-
-  return toResponse(updated);
+  if (!canTransitionOrderStatus(order.status, newStatus, "admin")) {
+    throw new InvalidDataError(`Cannot transition from ${order.status} to ${newStatus}`);
+  }
+  return applyStatusTransition(order, newStatus);
 };

@@ -3,6 +3,11 @@ import { isValidObjectId, toObjectId } from "../../../shared/utils/mongo";
 import { ORDER_STATUS, PAYMENT_STATUS } from "../../../shared/constants/order-status";
 import type { Order, OrderItem, OrderStatus } from "../../../types";
 
+export const findAll = async (): Promise<Order[]> => {
+  const docs = await OrderModel.find().sort({ createdAt: -1 });
+  return docs.map((doc) => doc.toJSON() as unknown as Order);
+};
+
 export const findByUserId = async (userId: string): Promise<Order[]> => {
   if (!isValidObjectId(userId)) return [];
   const docs = await OrderModel.find({ userId: toObjectId(userId) }).sort({ createdAt: -1 });

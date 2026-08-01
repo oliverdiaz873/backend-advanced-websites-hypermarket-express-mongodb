@@ -36,3 +36,30 @@ export const updateStatus = async (req: Request, res: Response, next: NextFuncti
     next(error);
   }
 };
+
+export const findAllAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const orders = await orderService.findAllAdmin();
+    res.json({ success: true, data: orders });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const findByIdAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const order = await orderService.findByIdAdmin(req.params.id as string);
+    res.json({ success: true, data: order });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateStatusAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const order = await orderService.updateStatusAdmin(req.params.id as string, req.body.status);
+    res.json({ success: true, data: order });
+  } catch (error) {
+    next(error);
+  }
+};
