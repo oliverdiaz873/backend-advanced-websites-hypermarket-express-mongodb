@@ -12,7 +12,7 @@ export const getCart = async (req: Request, res: Response, next: NextFunction): 
 
 export const addItem = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const cart = await cartService.addItem(req.user!.id, req.body.productId, req.body.quantity || 1);
+    const cart = await cartService.addItem(req.user!.id, req.body.productId, req.body.quantity ?? 1);
     res.json({ success: true, data: cart });
   } catch (error) {
     next(error);

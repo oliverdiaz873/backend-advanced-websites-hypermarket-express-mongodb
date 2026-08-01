@@ -74,6 +74,18 @@ describe("cart.controller", () => {
       expect(res.status).toBe(200);
     });
 
+    it("no normaliza quantity 0 (lo pasa tal cual al service)", async () => {
+      mockCartService.addItem.mockResolvedValue(makeCartResponse());
+
+      const res = await request(app)
+        .post("/api/cart/items")
+        .set("Authorization", `Bearer ${authToken}`)
+        .send({ productId: PRODUCT_ID, quantity: 0 });
+
+      expect(mockCartService.addItem).toHaveBeenCalledWith(USER_ID, PRODUCT_ID, 0);
+      expect(res.status).toBe(200);
+    });
+
     it("propaga los errores del service", async () => {
       mockCartService.addItem.mockRejectedValue(new NotFoundError("Product not found"));
 

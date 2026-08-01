@@ -57,10 +57,10 @@ describe("E2E: /api/cart", () => {
     expect(res.body.message).toBe("Missing required fields: productId");
   });
 
-  it("POST /items responde 400 con quantity negativa", async () => {
+  it("POST /items responde 400 con quantity 0", async () => {
     const product = await createTestProduct();
 
-    const res = await request(app).post("/api/cart/items").set(headers).send({ productId: product.id, quantity: -1 });
+    const res = await request(app).post("/api/cart/items").set(headers).send({ productId: product.id, quantity: 0 });
 
     expect(res.status).toBe(400);
     expect(res.body.message).toBe("Quantity must be a positive integer");
