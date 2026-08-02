@@ -4,6 +4,58 @@ Backend del hypermarket con Node.js + Express + TypeScript utilizando **Feature-
 
 > Migración de JavaScript a TypeScript completada ✅
 
+## System Architecture
+
+Este repositorio es la **Backend API (API central)** del ecosistema **Hipermercado
+Superior**. Es consumida por los tres clientes del sistema: los dos storefronts de
+clientes y el panel administrativo.
+
+```
+                    Hipermercado Superior Ecosystem
+
+        backend-advanced-websites-hypermarket-express-mongodb
+                         Express REST API
+                                      |
+        -----------------------------------------------------------------
+        |                           |                            |
+        |                           |                            |
+pre-advanced-websites-    pre-advanced-websites-      dashboard-websites-
+hypermarket-next          hypermarket-angular         hypermarket
+
+   Next.js Storefront         Angular Storefront      Angular Admin Dashboard
+     (Customer App)            (Customer App)              (Admin App)
+                                      |
+                                      ▼
+                                 MongoDB
+```
+
+| Repository | Type | Technology | Purpose |
+|------------|------|------------|---------|
+| backend-advanced-websites-hypermarket-express-mongodb | Backend API | Express + MongoDB + JWT | API central del sistema |
+| pre-advanced-websites-hypermarket-next | Customer Frontend | Next.js + React | Tienda pública |
+| pre-advanced-websites-hypermarket-angular | Customer Frontend | Angular | Tienda pública alternativa |
+| dashboard-websites-hypermarket | Admin Frontend | Angular + Material + NgRx Signals | Panel administrativo |
+
+### Consumed by
+
+Esta API es consumida por:
+
+- **Next.js storefront** — `pre-advanced-websites-hypermarket-next`
+- **Angular storefront** — `pre-advanced-websites-hypermarket-angular`
+- **Angular admin dashboard** — `dashboard-websites-hypermarket`
+
+### Flujo de comunicación
+
+```
+Storefronts (Next · Angular) · Admin Dashboard
+        │
+        ▼
+backend-advanced-websites-hypermarket-express-mongodb (Express REST API)
+        │
+        ▼
+MongoDB
+```
+
 ## Arquitectura
 
 ```
@@ -144,13 +196,17 @@ El módulo `auth/` maneja registro, inicio de sesión y verificación de tokens 
 Esta API está diseñada para ser consumida por múltiples frontends sin depender de ninguna tecnología específica.
 
 ```
-Angular (http://localhost:4200)
-  \
-   \
-    Express API (http://localhost:3000)
-   /
-  /
-Next.js (http://localhost:3000)
+        backend-advanced-websites-hypermarket-express-mongodb
+
+                                  |
+        --------------------------------------------------------
+        |                         |                            |
+        ▼                         ▼                            ▼
+
+pre-advanced-websites-   pre-advanced-websites-      dashboard-websites-
+hypermarket-next         hypermarket-angular         hypermarket
+
+Customer Storefront      Customer Storefront        Admin Dashboard
 ```
 
 ### CORS
