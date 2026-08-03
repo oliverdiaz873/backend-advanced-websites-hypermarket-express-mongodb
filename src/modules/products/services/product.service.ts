@@ -8,7 +8,8 @@ import { NotFoundError } from "../../../shared/errors/not-found.error";
 import { InvalidDataError } from "../../../shared/errors/invalid-data.error";
 import { ConflictError } from "../../../shared/errors/conflict.error";
 import { slugify } from "../../../shared/utils/slug";
-import type { Product, ProductStatus } from "../../../types";
+import { PRODUCT_SORT_FIELDS, ProductSortField } from "../constants/product-sort-fields";
+import type { PaginationMeta, Product, ProductStatus } from "../../../types";
 
 export interface CreateProductInput {
   name: string;
@@ -206,4 +207,41 @@ export const remove = async (id: string, actorId?: string): Promise<void> => {
       await inventoryRepository.deleteByProductId(id);
     }
   );
+};
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 50;
+const MAX_LIMIT = 100;
+
+const toInt = (value: unknown, fallback: number): number => {
+  const n = Number.parseInt(value as string, 10);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const refineSortBy = (value: unknown): ProductSortField | undefined => {
+  if (typeof value === "string" && (PRODUCT_SORT_FIELDS as readonly string[]).includes(value)) {
+    return value as ProductSortField;
+  }
+  return undefined;
+};
+
+export const getPage = async (
+  query: Record<string, unknown>
+): Promise<{ data: Product[]; pagination: PaginationMeta }> => {
+  const page = Math.max(DEFAULT_PAGE, toInt(query.page, DEFAULT_PAGE));
+  const limit = Math.min(MAX_LIMIT, Math.max(1, toInt(query.limit, DEFAULT_LIMIT)));
+  const sortOrder = query.sortOrder === "asc" ? "asc" : "desc";
+  const sortBy = refineSortBy(query.sortBy);
+
+  const result = await productRepository.findPage({
+    page,
+    limit,
+    q: typeof query.q === "string" ? query.q : undefined,
+    category: typeof query.category === "string" ? query.category : undefined,
+    brand: typeof query.brand === "string" ? query.brand : undefined,
+    status: query.status === "active" || query.status === "inactive" ? query.status : undefined,
+    sortBy,
+    sortOrder,
+  });
+
+  return { data: result.items, pagination: result.pagination };
 };

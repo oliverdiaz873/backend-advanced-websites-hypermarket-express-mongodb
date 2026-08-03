@@ -9,6 +9,7 @@ export const mockUserRepository = {
 
 export const mockProductRepository = {
   findAll: jest.fn(),
+  findPage: jest.fn(),
   findById: jest.fn(),
   findByIds: jest.fn(),
   findBySku: jest.fn(),
@@ -115,6 +116,7 @@ export const mockAuthService = {
 
 export const mockProductService = {
   getAll: jest.fn(),
+  getPage: jest.fn(),
   getById: jest.fn(),
   create: jest.fn(),
   updateById: jest.fn(),

@@ -20,15 +20,22 @@ describe("product.controller", () => {
   });
 
   describe("GET /api/products", () => {
-    it("responde 200 con la lista de productos", async () => {
+    it("responde 200 con la lista paginada de productos", async () => {
       const products = [makeProduct()];
-      mockProductService.getAll.mockResolvedValue(products);
+      mockProductService.getPage.mockResolvedValue({
+        data: products,
+        pagination: { page: 1, limit: 50, total: 1, pages: 1 },
+      });
 
-      const res = await request(app).get("/api/products");
+      const res = await request(app).get("/api/products?page=1&limit=50");
 
-      expect(mockProductService.getAll).toHaveBeenCalledTimes(1);
+      expect(mockProductService.getPage).toHaveBeenCalledTimes(1);
       expect(res.status).toBe(200);
-      expect(res.body).toEqual({ success: true, data: toJson(products) });
+      expect(res.body).toEqual({
+        success: true,
+        data: toJson(products),
+        pagination: { page: 1, limit: 50, total: 1, pages: 1 },
+      });
     });
   });
 

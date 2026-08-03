@@ -1,3 +1,31 @@
+import type { ProductSortField } from "../modules/products/constants/product-sort-fields";
+
+export type SortDirection = "asc" | "desc";
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+}
+
+export interface ProductPageResult {
+  items: Product[];
+  total: number;
+  pagination: PaginationMeta;
+}
+
+export interface ProductQuery {
+  page: number;
+  limit: number;
+  q?: string;
+  category?: string;
+  brand?: string;
+  status?: ProductStatus;
+  sortBy?: ProductSortField;
+  sortOrder?: SortDirection;
+}
+
 export type UserRole = "customer" | "admin";
 export type ProductStatus = "active" | "inactive";
 export type OrderStatus = "pending" | "processing" | "completed" | "cancelled";

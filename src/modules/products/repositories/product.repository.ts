@@ -1,11 +1,45 @@
 import { ProductModel } from "../models/product.model";
-import type { Product } from "../../../types";
+import { PRODUCT_SORT_FIELDS, ProductSortField } from "../constants/product-sort-fields";
+import type { Product, ProductPageResult, ProductQuery, SortDirection } from "../../../types";
 
+const ESCAPE_RE = /[.*+?^${}()|[\]\\]/g;
+const escapeRegExp = (value: string) => value.replace(ESCAPE_RE, "\\$&");
+
+const buildSort = (
+  sortBy: ProductSortField | undefined,
+  sortOrder: SortDirection
+): Record<string, 1 | -1> => {
+  if (!sortBy || !PRODUCT_SORT_FIELDS.includes(sortBy)) {
+    return { createdAt: -1 };
+  }
+  const direction: 1 | -1 = sortOrder === "asc" ? 1 : -1;
+  return { [sortBy]: direction };
+};
 export const findAll = async (): Promise<Product[]> => {
   const docs = await ProductModel.find();
   return docs.map((doc) => doc.toJSON() as unknown as Product);
 };
 
+export const findPage = async (query: ProductQuery): Promise<ProductPageResult> => {
+  const { page, limit, q, category, brand, status, sortBy, sortOrder } = query;
+
+  const filter: Record<string, unknown> = {};
+  if (category) filter["category.slug"] = category.trim().toLowerCase();
+  if (brand) filter["brand.slug"] = brand.trim().toLowerCase();
+  if (status) filter.status = status;
+  if (q && q.trim()) filter.name = { $regex: escapeRegExp(q.trim()), $options: "i" };
+  const skip = (page - 1) * limit;
+  const sort = buildSort(sortBy, sortOrder ?? "desc");
+
+  const [docs, total] = await Promise.all([
+    ProductModel.find(filter).sort(sort).skip(skip).limit(limit),
+    ProductModel.countDocuments(filter),
+  ]);
+
+  const items = docs.map((doc) => doc.toJSON() as unknown as Product);
+  const pages = Math.max(1, Math.ceil(total / limit));
+  return { items, total, pagination: { page, limit, total, pages } };
+};
 export const findById = async (id: string): Promise<Product | null> => {
   const doc = await ProductModel.findById(id);
   return doc ? (doc.toJSON() as unknown as Product) : null;
@@ -16,7 +50,6 @@ export const findByIds = async (ids: string[]): Promise<Product[]> => {
   const byId = new Map(docs.map((doc) => [doc._id as string, doc.toJSON() as unknown as Product]));
   return ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));
 };
-
 export const findBySku = async (sku: string): Promise<Product | null> => {
   const doc = await ProductModel.findOne({ sku });
   return doc ? (doc.toJSON() as unknown as Product) : null;
@@ -39,10 +72,12 @@ export const updateCategoryEmbeds = async (
   await ProductModel.updateMany({ categoryId }, { $set: { category: data } });
 };
 
-export const updateBrandEmbeds = async (brandId: string, data: { name: string; slug: string }): Promise<void> => {
+export const updateBrandEmbeds = async (
+  brandId: string,
+  data: { name: string; slug: string }
+): Promise<void> => {
   await ProductModel.updateMany({ brandId }, { $set: { brand: data } });
 };
-
 export const create = async (
   data: Omit<Product, "id" | "createdAt" | "updatedAt"> & { _id: string }
 ): Promise<Product> => {
@@ -67,8 +102,6 @@ export const deleteById = async (id: string): Promise<boolean> => {
   const result = await ProductModel.deleteOne({ _id: id });
   return result.deletedCount > 0;
 };
-
-const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 export const search = async (query: string, category?: string): Promise<Product[]> => {
   const term = query.trim();

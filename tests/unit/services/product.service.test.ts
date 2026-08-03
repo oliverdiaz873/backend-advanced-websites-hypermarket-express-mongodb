@@ -43,6 +43,87 @@ describe("product.service", () => {
     });
   });
 
+  describe("getPage", () => {
+    it("normaliza la consulta y delega en findPage", async () => {
+      const products = [makeProduct()];
+      mockProductRepository.findPage.mockResolvedValue({
+        items: products,
+        total: 1,
+        pagination: { page: 2, limit: 10, total: 1, pages: 1 },
+      });
+
+      const result = await productService.getPage({
+        page: "2",
+        limit: "10",
+        q: "arroz",
+        category: "Granos",
+        status: "active",
+        sortBy: "name",
+        sortOrder: "asc",
+      });
+
+      expect(mockProductRepository.findPage).toHaveBeenCalledWith({
+        page: 2,
+        limit: 10,
+        q: "arroz",
+        category: "Granos",
+        brand: undefined,
+        status: "active",
+        sortBy: "name",
+        sortOrder: "asc",
+      });
+      expect(result).toEqual({ data: products, pagination: { page: 2, limit: 10, total: 1, pages: 1 } });
+    });
+
+    it("aplica defaults cuando faltan page, limit y sort", async () => {
+      mockProductRepository.findPage.mockResolvedValue({
+        items: [],
+        total: 0,
+        pagination: { page: 1, limit: 50, total: 0, pages: 1 },
+      });
+
+      await productService.getPage({});
+
+      expect(mockProductRepository.findPage).toHaveBeenCalledWith({
+        page: 1,
+        limit: 50,
+        q: undefined,
+        category: undefined,
+        brand: undefined,
+        status: undefined,
+        sortBy: undefined,
+        sortOrder: "desc",
+      });
+    });
+
+    it("descarta valores inválidos de page, limit, status y sortBy", async () => {
+      mockProductRepository.findPage.mockResolvedValue({
+        items: [],
+        total: 0,
+        pagination: { page: 1, limit: 50, total: 0, pages: 1 },
+      });
+
+      await productService.getPage({
+        page: "abc",
+        limit: "100000",
+        status: "hacked",
+        sortBy: "evil",
+        sortOrder: "sideways",
+      });
+
+      expect(mockProductRepository.findPage).toHaveBeenCalledWith({
+        page: 1,
+        limit: 100,
+        q: undefined,
+        category: undefined,
+        brand: undefined,
+        status: undefined,
+        sortBy: undefined,
+        sortOrder: "desc",
+      });
+    });
+  });
+
   describe("getById", () => {
     it("retorna el producto si existe", async () => {
       const product = makeProduct();

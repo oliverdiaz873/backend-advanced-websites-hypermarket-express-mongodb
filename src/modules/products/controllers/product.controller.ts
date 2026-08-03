@@ -3,8 +3,8 @@ import * as productService from "../services/product.service";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const products = await productService.getAll();
-    res.json({ success: true, data: products });
+    const { data, pagination } = await productService.getPage(req.query as Record<string, unknown>);
+    res.json({ success: true, data, pagination });
   } catch (error) {
     next(error);
   }
