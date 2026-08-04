@@ -1,4 +1,14 @@
 import type { ProductSortField } from "../modules/products/constants/product-sort-fields";
+import type { AdjustmentReason } from "../modules/inventory/constants/inventory-adjustment-reasons";
+import type { InventoryMovementType } from "../modules/inventory/constants/inventory-movement-types";
+import type { InventorySortField } from "../modules/inventory/constants/inventory-sort-fields";
+import type { InventoryStatus } from "../modules/inventory/constants/inventory-status";
+
+export type { AdjustmentReason } from "../modules/inventory/constants/inventory-adjustment-reasons";
+export type { InventoryMovementType } from "../modules/inventory/constants/inventory-movement-types";
+export type { InventorySortField } from "../modules/inventory/constants/inventory-sort-fields";
+export type { InventoryStatus } from "../modules/inventory/constants/inventory-status";
+
 
 export type SortDirection = "asc" | "desc";
 
@@ -127,11 +137,67 @@ export interface Product {
 export interface Inventory {
   id: string;
   productId: string;
+  product?: InventoryProductSnapshot;
   stock: number;
   reservedStock: number;
   availableStock: number;
   minStock?: number;
+  status?: InventoryStatus;
   updatedAt: Date;
+}
+
+export interface InventoryProductSnapshot {
+  name: string;
+  sku: string;
+  image?: string;
+  unit?: string;
+}
+
+export type InventoryStatusFilter = "all" | InventoryStatus;
+
+export interface InventoryQuery {
+  page: number;
+  limit: number;
+  q?: string;
+  status?: InventoryStatusFilter;
+  productIds?: string[];
+  sortBy?: InventorySortField;
+  sortOrder?: SortDirection;
+}
+
+export interface InventoryPageResult {
+  items: Inventory[];
+  total: number;
+  pagination: PaginationMeta;
+}
+
+export type InventoryAdjustOperation = "increase" | "decrease" | "set";
+
+export interface InventoryAdjustInput {
+  operation: InventoryAdjustOperation;
+  quantity: number;
+  reason: AdjustmentReason;
+  reference?: string;
+}
+
+export interface InventoryMovement {
+  id: string;
+  inventoryId: string;
+  productId: string;
+  type: InventoryMovementType;
+  quantity: number;
+  previousStock: number;
+  newStock: number;
+  reason: AdjustmentReason;
+  createdBy?: string;
+  createdAt: Date;
+}
+
+export interface InventoryMovementQuery {
+  page: number;
+  limit: number;
+  productId?: string;
+  type?: InventoryMovementType;
 }
 
 export interface Address {

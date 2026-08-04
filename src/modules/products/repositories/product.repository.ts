@@ -50,6 +50,20 @@ export const findByIds = async (ids: string[]): Promise<Product[]> => {
   const byId = new Map(docs.map((doc) => [doc._id as string, doc.toJSON() as unknown as Product]));
   return ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));
 };
+export const findIdsByNameOrSku = async (term: string): Promise<string[]> => {
+  const trimmed = term.trim();
+  if (!trimmed) return [];
+  const docs = await ProductModel.find({
+    $or: [
+      { name: { $regex: escapeRegExp(trimmed), $options: "i" } },
+      { sku: { $regex: escapeRegExp(trimmed), $options: "i" } },
+    ],
+  })
+    .select("_id")
+    .limit(500);
+  return docs.map((doc) => doc._id as string);
+};
+
 export const findBySku = async (sku: string): Promise<Product | null> => {
   const doc = await ProductModel.findOne({ sku });
   return doc ? (doc.toJSON() as unknown as Product) : null;

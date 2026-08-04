@@ -15,15 +15,15 @@ jest.mock("../../../src/modules/categories/repositories/category.repository", ()
 jest.mock("../../../src/modules/brands/repositories/brand.repository", () =>
   require("../mocks/repositories").mockBrandRepository
 );
-jest.mock("../../../src/modules/inventory/repositories/inventory.repository", () =>
-  require("../mocks/repositories").mockInventoryRepository
+jest.mock("../../../src/modules/inventory/services/inventory.service", () =>
+  require("../mocks/repositories").mockInventoryService
 );
 
 import {
   mockProductRepository,
   mockCategoryRepository,
   mockBrandRepository,
-  mockInventoryRepository,
+  mockInventoryService,
 } from "../mocks/repositories";
 
 describe("product.service", () => {
@@ -149,7 +149,7 @@ describe("product.service", () => {
     it("crea el producto con sku generado y crea inventario en cascada", async () => {
       mockCategoryRepository.findById.mockResolvedValue(makeCategory());
       mockProductRepository.create.mockResolvedValue(makeProduct());
-      mockInventoryRepository.create.mockResolvedValue({ productId: PRODUCT_ID, stock: 0 });
+      mockInventoryService.createForProduct.mockResolvedValue({ productId: PRODUCT_ID, stock: 0 });
 
       const result = await productService.create({ ...base, stock: 15, minStock: 5 });
 
@@ -164,7 +164,7 @@ describe("product.service", () => {
           isAvailable: true,
         })
       );
-      expect(mockInventoryRepository.create).toHaveBeenCalledWith({
+      expect(mockInventoryService.createForProduct).toHaveBeenCalledWith({
         productId: PRODUCT_ID,
         stock: 15,
         minStock: 5,
@@ -297,18 +297,18 @@ describe("product.service", () => {
     it("borra el producto y su inventario", async () => {
       mockProductRepository.findById.mockResolvedValue(makeProduct());
       mockProductRepository.deleteById.mockResolvedValue(true);
-      mockInventoryRepository.deleteByProductId.mockResolvedValue(true);
+      mockInventoryService.removeByProductId.mockResolvedValue(undefined);
 
       await expect(productService.remove(PRODUCT_ID)).resolves.toBeUndefined();
 
       expect(mockProductRepository.deleteById).toHaveBeenCalledWith(PRODUCT_ID);
-      expect(mockInventoryRepository.deleteByProductId).toHaveBeenCalledWith(PRODUCT_ID);
+      expect(mockInventoryService.removeByProductId).toHaveBeenCalledWith(PRODUCT_ID);
     });
 
     it("continúa aunque el inventario no exista (idempotente)", async () => {
       mockProductRepository.findById.mockResolvedValue(makeProduct());
       mockProductRepository.deleteById.mockResolvedValue(true);
-      mockInventoryRepository.deleteByProductId.mockResolvedValue(false);
+      mockInventoryService.removeByProductId.mockResolvedValue(undefined);
 
       await expect(productService.remove(PRODUCT_ID)).resolves.toBeUndefined();
     });

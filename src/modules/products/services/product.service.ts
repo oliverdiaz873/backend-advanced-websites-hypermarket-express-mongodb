@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import * as productRepository from "../repositories/product.repository";
 import * as categoryRepository from "../../categories/repositories/category.repository";
 import * as brandRepository from "../../brands/repositories/brand.repository";
-import * as inventoryRepository from "../../inventory/repositories/inventory.repository";
+import * as inventoryService from "../../inventory/services/inventory.service";
 import * as auditService from "../../../modules/audit/services/audit.service";
 import { NotFoundError } from "../../../shared/errors/not-found.error";
 import { InvalidDataError } from "../../../shared/errors/invalid-data.error";
@@ -112,7 +112,7 @@ export const create = async (data: CreateProductInput, actorId?: string): Promis
         isAvailable: data.isAvailable ?? true,
       });
 
-      await inventoryRepository.create({
+      await inventoryService.createForProduct({
         productId: product.id,
         stock: data.stock,
         minStock: data.minStock,
@@ -204,7 +204,7 @@ export const remove = async (id: string, actorId?: string): Promise<void> => {
       }
 
       await productRepository.deleteById(id);
-      await inventoryRepository.deleteByProductId(id);
+      await inventoryService.removeByProductId(id);
     }
   );
 };

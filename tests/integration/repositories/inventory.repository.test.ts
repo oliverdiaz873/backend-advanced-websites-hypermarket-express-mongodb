@@ -80,13 +80,80 @@ describe("inventory.repository (Mongo real)", () => {
     expect(restored?.stock).toBe(3);
   });
 
-  it("updateById ajusta stock y minStock", async () => {
+  it("increaseById incrementa el stock", async () => {
+    const product = await createTestProduct();
+    const created = await createTestInventory(product.id, { stock: 10 });
+
+    const updated = await inventoryRepository.increaseById(created.id, 5);
+
+    expect(updated?.stock).toBe(15);
+  });
+
+  it("decreaseById decrementa el stock y respeta el guard de disponibilidad", async () => {
+    const product = await createTestProduct();
+    const created = await createTestInventory(product.id, { stock: 10 });
+
+    const ok = await inventoryRepository.decreaseById(created.id, 4);
+    expect(ok?.stock).toBe(6);
+
+    const blocked = await inventoryRepository.decreaseById(created.id, 10);
+    expect(blocked).toBeNull();
+  });
+
+  it("setStockById fija el stock absoluto", async () => {
+    const product = await createTestProduct();
+    const created = await createTestInventory(product.id, { stock: 10 });
+
+    const updated = await inventoryRepository.setStockById(created.id, 30);
+
+    expect(updated?.stock).toBe(30);
+  });
+
+  it("setMinStockById fija el mínimo", async () => {
     const product = await createTestProduct();
     const created = await createTestInventory(product.id);
 
-    const updated = await inventoryRepository.updateById(created.id, { stock: 20, minStock: 4 });
+    const updated = await inventoryRepository.setMinStockById(created.id, 4);
 
-    expect(updated?.stock).toBe(20);
     expect(updated?.minStock).toBe(4);
+  });
+
+  it("findOutOfStock devuelve solo los registros sin stock disponible", async () => {
+    const out = await createTestProduct();
+    const ok = await createTestProduct();
+    await createTestInventory(out.id, { stock: 0 });
+    await createTestInventory(ok.id, { stock: 10, reservedStock: 2 });
+
+    const result = await inventoryRepository.findOutOfStock();
+
+    expect(result.map((r) => r.productId)).toContain(out.id);
+    expect(result.map((r) => r.productId)).not.toContain(ok.id);
+  });
+
+  it("findPage pagina y filtra por estado", async () => {
+    const low = await createTestProduct();
+    const out = await createTestProduct();
+    const ok = await createTestProduct();
+    await createTestInventory(low.id, { stock: 2, minStock: 5 });
+    await createTestInventory(out.id, { stock: 0 });
+    await createTestInventory(ok.id, { stock: 50, minStock: 5 });
+
+    const all = await inventoryRepository.findPage({ page: 1, limit: 10, status: "all" });
+    expect(all.total).toBe(3);
+
+    const lowPage = await inventoryRepository.findPage({ page: 1, limit: 10, status: "low-stock" });
+    expect(lowPage.items.map((r) => r.productId)).toContain(low.id);
+    expect(lowPage.items.map((r) => r.productId)).not.toContain(out.id);
+    expect(lowPage.items.map((r) => r.productId)).not.toContain(ok.id);
+
+    const outPage = await inventoryRepository.findPage({ page: 1, limit: 10, status: "out-of-stock" });
+    expect(outPage.items.map((r) => r.productId)).toContain(out.id);
+    expect(outPage.items.map((r) => r.productId)).not.toContain(low.id);
+  });
+
+  it("deriveStatus calcula out-of-stock, low-stock y ok", () => {
+    expect(inventoryRepository.deriveStatus({ stock: 0, reservedStock: 0 })).toBe("out-of-stock");
+    expect(inventoryRepository.deriveStatus({ stock: 3, reservedStock: 0, minStock: 5 })).toBe("low-stock");
+    expect(inventoryRepository.deriveStatus({ stock: 10, reservedStock: 0, minStock: 5 })).toBe("ok");
   });
 });

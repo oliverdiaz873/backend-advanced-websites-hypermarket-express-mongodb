@@ -18,6 +18,7 @@ export const mockProductRepository = {
   updateCategoryEmbeds: jest.fn(),
   updateBrandEmbeds: jest.fn(),
   search: jest.fn(),
+  findIdsByNameOrSku: jest.fn(),
   create: jest.fn(),
   updateById: jest.fn(),
   deleteById: jest.fn(),
@@ -63,14 +64,45 @@ export const mockCartRepository = {
 
 export const mockInventoryRepository = {
   findAll: jest.fn(),
+  findPage: jest.fn(),
   findById: jest.fn(),
   findByProductId: jest.fn(),
   findLowStock: jest.fn(),
+  findOutOfStock: jest.fn(),
   decreaseStock: jest.fn(),
   restoreStock: jest.fn(),
+  increaseById: jest.fn(),
+  decreaseById: jest.fn(),
+  setStockById: jest.fn(),
+  setMinStockById: jest.fn(),
   create: jest.fn(),
   deleteByProductId: jest.fn(),
-  updateById: jest.fn(),
+  deleteById: jest.fn(),
+  deriveStatus: jest.fn((record: { stock: number; reservedStock: number; minStock?: number | null }) => {
+    const available = record.stock - record.reservedStock;
+    if (available <= 0) return "out-of-stock";
+    if (record.minStock !== undefined && record.minStock !== null && record.stock <= record.minStock) {
+      return "low-stock";
+    }
+    return "ok";
+  }),
+};
+
+export const mockInventoryMovementRepository = {
+  create: jest.fn(),
+  findByInventoryId: jest.fn(),
+  findPage: jest.fn(),
+  deleteByInventoryId: jest.fn(),
+  deleteByProductId: jest.fn(),
+  isValidMovementType: jest.fn(),
+};
+
+export const mockInventoryMovementService = {
+  record: jest.fn(),
+  getByInventoryId: jest.fn(),
+  getPage: jest.fn(),
+  removeByProductId: jest.fn(),
+  removeByInventoryId: jest.fn(),
 };
 
 export const mockAddressRepository = {
@@ -186,12 +218,18 @@ export const mockSearchService = {
 
 export const mockInventoryService = {
   getAll: jest.fn(),
+  getPage: jest.fn(),
   getById: jest.fn(),
   getByProductId: jest.fn(),
   getLowStock: jest.fn(),
+  getOutOfStock: jest.fn(),
   decreaseStock: jest.fn(),
   restoreStock: jest.fn(),
-  adjustStock: jest.fn(),
+  adjustInventory: jest.fn(),
+  changeMinStock: jest.fn(),
+  getMovements: jest.fn(),
+  createForProduct: jest.fn(),
+  removeByProductId: jest.fn(),
 };
 
 export const mockStatsRepository = {

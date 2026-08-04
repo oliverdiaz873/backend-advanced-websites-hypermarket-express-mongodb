@@ -6,10 +6,13 @@ const router = Router();
 
 router.use(authMiddleware, authorizeRole("admin"));
 
-router.get("/", inventoryController.getAll);
-router.get("/product/:productId", inventoryController.getByProductId);
+router.get("/", inventoryController.getPage);
 router.get("/low-stock", inventoryController.getLowStock);
+router.get("/out-of-stock", inventoryController.getOutOfStock);
+router.get("/product/:productId", inventoryController.getByProductId);
+router.get("/:id/movements", inventoryController.getMovements);
 router.get("/:id", inventoryController.getById);
-router.patch("/:id", inventoryController.adjustStock);
+router.post("/:id/adjust", inventoryController.adjust);
+router.patch("/:id/min-stock", inventoryController.changeMinStock);
 
 export default router;
