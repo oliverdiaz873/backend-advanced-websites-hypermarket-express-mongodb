@@ -12,6 +12,8 @@ export const makeMovement = (overrides: Partial<InventoryMovement> = {}): Invent
   quantity: 10,
   previousStock: 10,
   newStock: 20,
+  previousReservedStock: 0,
+  newReservedStock: 0,
   reason: "supplier_adjustment",
   createdBy: "64b0000000000000000000f1",
   createdAt: new Date("2026-01-01T00:00:00.000Z"),

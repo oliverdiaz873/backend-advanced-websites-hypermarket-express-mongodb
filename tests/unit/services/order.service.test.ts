@@ -95,13 +95,13 @@ describe("order.service", () => {
       await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow("Insufficient stock for product Arroz 1kg");
     });
 
-    it("crea la orden, decrementa stock y limpia el carrito", async () => {
+    it("crea la orden, reserva stock y limpia el carrito", async () => {
       const order = makeOrder();
       mockCartRepository.findByUserId.mockResolvedValue(makeCart());
       mockAddressRepository.findById.mockResolvedValue(makeAddress());
       mockProductRepository.findByIds.mockResolvedValue([makeProduct()]);
       mockInventoryService.getByProductId.mockResolvedValue(makeInventory());
-      mockInventoryService.decreaseStock.mockResolvedValue(undefined);
+      mockInventoryService.reserveStock.mockResolvedValue(undefined);
       mockOrderRepository.create.mockResolvedValue(order);
       mockCartRepository.clearCart.mockResolvedValue(true);
 
@@ -109,7 +109,7 @@ describe("order.service", () => {
 
       const expectedItems = [{ productId: PRODUCT_ID, name: "Arroz 1kg", price: 89.5, image: "https://example.com/arroz.png", quantity: 2 }];
       expect(mockOrderRepository.create).toHaveBeenCalledWith(USER_ID, expectedItems, 2, 179, shippingAddress, USER_ID);
-      expect(mockInventoryService.decreaseStock).toHaveBeenCalledWith(PRODUCT_ID, 2);
+      expect(mockInventoryService.reserveStock).toHaveBeenCalledWith(PRODUCT_ID, 2, order.id, USER_ID);
       expect(mockCartRepository.clearCart).toHaveBeenCalledWith(USER_ID);
       expect(result).toEqual({
         id: order.id,
@@ -126,7 +126,7 @@ describe("order.service", () => {
       });
     });
 
-    it("hace rollback restaurando stock y eliminando la orden si falla el decremento", async () => {
+    it("hace rollback liberando reservas y eliminando la orden si falla la reserva", async () => {
       const order = makeOrder({
         items: [
           { productId: PRODUCT_ID, name: "Arroz 1kg", price: 89.5, image: "https://example.com/arroz.png", quantity: 2 },
@@ -144,15 +144,15 @@ describe("order.service", () => {
       ]);
       mockInventoryService.getByProductId.mockResolvedValue(makeInventory());
       mockOrderRepository.create.mockResolvedValue(order);
-      mockInventoryService.decreaseStock
+      mockInventoryService.reserveStock
         .mockResolvedValueOnce(undefined)
         .mockRejectedValueOnce(new InsufficientStockError("stock"));
-      mockInventoryService.restoreStock.mockResolvedValue(undefined);
+      mockInventoryService.releaseReservation.mockResolvedValue(undefined);
       mockOrderRepository.deleteById.mockResolvedValue(true);
 
       await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow(InsufficientStockError);
 
-      expect(mockInventoryService.restoreStock).toHaveBeenCalledWith(PRODUCT_ID, 2);
+      expect(mockInventoryService.releaseReservation).toHaveBeenCalledWith(PRODUCT_ID, 2, order.id, USER_ID);
       expect(mockOrderRepository.deleteById).toHaveBeenCalledWith(ORDER_ID);
       expect(mockCartRepository.clearCart).not.toHaveBeenCalled();
     });
@@ -229,11 +229,11 @@ describe("order.service", () => {
       expect(mockOrderRepository.updateStatus).not.toHaveBeenCalled();
     });
 
-    it("restaura el stock de los items al cancelar (customer)", async () => {
+    it("libera la reserva de los items al cancelar (customer)", async () => {
       const cancelled = makeOrder({ status: "cancelled" });
       mockOrderRepository.findById.mockResolvedValue(makeOrder());
       mockOrderRepository.updateStatus.mockResolvedValue(cancelled);
-      mockInventoryService.restoreStock.mockResolvedValue(undefined);
+      mockInventoryService.releaseReservation.mockResolvedValue(undefined);
 
       const result = await orderService.updateStatus(USER_ID, ORDER_ID, "cancelled");
 
@@ -243,7 +243,7 @@ describe("order.service", () => {
         "cancelled",
         expect.objectContaining({ status: "cancelled", by: USER_ID })
       );
-      expect(mockInventoryService.restoreStock).toHaveBeenCalledWith(PRODUCT_ID, 2);
+      expect(mockInventoryService.releaseReservation).toHaveBeenCalledWith(PRODUCT_ID, 2, ORDER_ID, USER_ID);
       expect(result).toMatchObject({ status: "cancelled" });
     });
 
@@ -368,30 +368,69 @@ describe("order.service", () => {
       expect(mockOrderRepository.updateStatus).not.toHaveBeenCalled();
     });
 
-    it("permite a admin pending → processing y registra actor y nota", async () => {
-      const updated = makeOrder({ status: "processing" });
+    it("permite a admin pending → confirmed y registra actor y nota", async () => {
+      const updated = makeOrder({ status: "confirmed" });
       mockOrderRepository.findById.mockResolvedValue(makeOrder());
       mockOrderRepository.updateStatus.mockResolvedValue(updated);
       mockUserRepository.findByIds.mockResolvedValue([makeUser()]);
 
-      const result = await orderService.updateStatusAdmin(ORDER_ID, "processing", "64b000000000000000000002", "Aprobado");
+      const result = await orderService.updateStatusAdmin(ORDER_ID, "confirmed", "64b000000000000000000002", "Aprobado");
 
       expect(mockOrderRepository.updateStatus).toHaveBeenCalledWith(
         ORDER_ID,
         "pending",
-        "processing",
-        expect.objectContaining({ status: "processing", by: "64b000000000000000000002", note: "Aprobado" })
+        "confirmed",
+        expect.objectContaining({ status: "confirmed", by: "64b000000000000000000002", note: "Aprobado" })
       );
-      expect(mockInventoryService.restoreStock).not.toHaveBeenCalled();
-      expect(result).toMatchObject({ status: "processing" });
+      expect(mockInventoryService.releaseReservation).not.toHaveBeenCalled();
+      expect(mockInventoryService.completeReservation).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ status: "confirmed" });
       expect(result).toHaveProperty("customer");
     });
 
-    it("permite a admin cancelar processing y restaura el stock", async () => {
+    it("permite a admin processing → shipped sin tocar inventario", async () => {
+      const updated = makeOrder({ status: "shipped" });
+      mockOrderRepository.findById.mockResolvedValue(makeOrder({ status: "processing" }));
+      mockOrderRepository.updateStatus.mockResolvedValue(updated);
+      mockUserRepository.findByIds.mockResolvedValue([makeUser()]);
+
+      const result = await orderService.updateStatusAdmin(ORDER_ID, "shipped");
+
+      expect(mockOrderRepository.updateStatus).toHaveBeenCalledWith(
+        ORDER_ID,
+        "processing",
+        "shipped",
+        expect.objectContaining({ status: "shipped" })
+      );
+      expect(mockInventoryService.releaseReservation).not.toHaveBeenCalled();
+      expect(mockInventoryService.completeReservation).not.toHaveBeenCalled();
+      expect(result).toMatchObject({ status: "shipped" });
+    });
+
+    it("permite a admin shipped → completed y consume la reserva", async () => {
+      const completed = makeOrder({ status: "completed" });
+      mockOrderRepository.findById.mockResolvedValue(makeOrder({ status: "shipped" }));
+      mockOrderRepository.updateStatus.mockResolvedValue(completed);
+      mockInventoryService.completeReservation.mockResolvedValue(undefined);
+      mockUserRepository.findByIds.mockResolvedValue([makeUser()]);
+
+      const result = await orderService.updateStatusAdmin(ORDER_ID, "completed");
+
+      expect(mockOrderRepository.updateStatus).toHaveBeenCalledWith(
+        ORDER_ID,
+        "shipped",
+        "completed",
+        expect.objectContaining({ status: "completed" })
+      );
+      expect(mockInventoryService.completeReservation).toHaveBeenCalledWith(PRODUCT_ID, 2, ORDER_ID, undefined);
+      expect(result).toMatchObject({ status: "completed" });
+    });
+
+    it("permite a admin cancelar processing y libera la reserva", async () => {
       const cancelled = makeOrder({ status: "cancelled" });
       mockOrderRepository.findById.mockResolvedValue(makeOrder({ status: "processing" }));
       mockOrderRepository.updateStatus.mockResolvedValue(cancelled);
-      mockInventoryService.restoreStock.mockResolvedValue(undefined);
+      mockInventoryService.releaseReservation.mockResolvedValue(undefined);
 
       const result = await orderService.updateStatusAdmin(ORDER_ID, "cancelled");
 
@@ -401,19 +440,19 @@ describe("order.service", () => {
         "cancelled",
         expect.objectContaining({ status: "cancelled" })
       );
-      expect(mockInventoryService.restoreStock).toHaveBeenCalledWith(PRODUCT_ID, 2);
+      expect(mockInventoryService.releaseReservation).toHaveBeenCalledWith(PRODUCT_ID, 2, ORDER_ID, undefined);
       expect(result).toMatchObject({ status: "cancelled" });
     });
 
     it("retorna la orden actual si la actualización concurrente devuelve null", async () => {
       const original = makeOrder();
-      const current = makeOrder({ status: "processing" });
+      const current = makeOrder({ status: "confirmed" });
       mockOrderRepository.findById.mockResolvedValueOnce(original).mockResolvedValueOnce(current);
       mockOrderRepository.updateStatus.mockResolvedValue(null);
 
-      const result = await orderService.updateStatusAdmin(ORDER_ID, "processing");
+      const result = await orderService.updateStatusAdmin(ORDER_ID, "confirmed");
 
-      expect(result).toMatchObject({ status: "processing" });
+      expect(result).toMatchObject({ status: "confirmed" });
     });
   });
 });

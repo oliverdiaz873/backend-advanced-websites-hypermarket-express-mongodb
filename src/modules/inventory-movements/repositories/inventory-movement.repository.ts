@@ -63,5 +63,10 @@ export const deleteByProductId = async (productId: string): Promise<void> => {
 };
 
 export const isValidMovementType = (value: unknown): value is InventoryMovementType => {
-  return typeof value === "string" && ["increase", "decrease", "set", "min_stock_change"].includes(value);
+  return (
+    typeof value === "string" &&
+    ["increase", "decrease", "set", "min_stock_change", "reserve", "release_reservation", "complete_sale"].includes(
+      value
+    )
+  );
 };

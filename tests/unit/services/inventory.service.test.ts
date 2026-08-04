@@ -133,6 +133,111 @@ describe("inventory.service", () => {
     });
   });
 
+  describe("reserveStock", () => {
+    it("reserva stock y registra el movimiento", async () => {
+      mockInventoryRepository.reserveStock.mockResolvedValue(
+        makeInventory({ stock: 50, reservedStock: 2, availableStock: 48 })
+      );
+
+      await expect(inventoryService.reserveStock(PRODUCT_ID, 2, "order-1", "actor-1")).resolves.toBeUndefined();
+      expect(mockInventoryRepository.reserveStock).toHaveBeenCalledWith(PRODUCT_ID, 2);
+      expect(mockInventoryMovementService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "reserve",
+          productId: PRODUCT_ID,
+          orderId: "order-1",
+          quantity: 2,
+          previousStock: 50,
+          newStock: 50,
+          previousReservedStock: 0,
+          newReservedStock: 2,
+          reason: "order_reserved",
+          createdBy: "actor-1",
+        })
+      );
+    });
+
+    it("lanza InsufficientStockError si no hay stock disponible", async () => {
+      mockInventoryRepository.reserveStock.mockResolvedValue(null);
+
+      await expect(inventoryService.reserveStock(PRODUCT_ID, 999)).rejects.toThrow(InsufficientStockError);
+    });
+
+    it("lanza InvalidDataError si quantity no es un entero positivo", async () => {
+      await expect(inventoryService.reserveStock(PRODUCT_ID, 0)).rejects.toThrow(InvalidDataError);
+    });
+  });
+
+  describe("releaseReservation", () => {
+    it("libera la reserva y registra el movimiento", async () => {
+      mockInventoryRepository.releaseReservation.mockResolvedValue(
+        makeInventory({ stock: 50, reservedStock: 0, availableStock: 50 })
+      );
+
+      await expect(inventoryService.releaseReservation(PRODUCT_ID, 2, "order-1", "actor-1")).resolves.toBeUndefined();
+      expect(mockInventoryRepository.releaseReservation).toHaveBeenCalledWith(PRODUCT_ID, 2);
+      expect(mockInventoryMovementService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "release_reservation",
+          productId: PRODUCT_ID,
+          orderId: "order-1",
+          quantity: 2,
+          previousStock: 50,
+          newStock: 50,
+          previousReservedStock: 2,
+          newReservedStock: 0,
+          reason: "order_release",
+          createdBy: "actor-1",
+        })
+      );
+    });
+
+    it("lanza InsufficientStockError si no hay reserva que liberar", async () => {
+      mockInventoryRepository.releaseReservation.mockResolvedValue(null);
+
+      await expect(inventoryService.releaseReservation(PRODUCT_ID, 2)).rejects.toThrow(InsufficientStockError);
+    });
+
+    it("lanza InvalidDataError si quantity no es un entero positivo", async () => {
+      await expect(inventoryService.releaseReservation(PRODUCT_ID, 0)).rejects.toThrow(InvalidDataError);
+    });
+  });
+
+  describe("completeReservation", () => {
+    it("consume la reserva (stock y reservedStock) y registra el movimiento", async () => {
+      mockInventoryRepository.completeReservation.mockResolvedValue(
+        makeInventory({ stock: 48, reservedStock: 0, availableStock: 48 })
+      );
+
+      await expect(inventoryService.completeReservation(PRODUCT_ID, 2, "order-1", "actor-1")).resolves.toBeUndefined();
+      expect(mockInventoryRepository.completeReservation).toHaveBeenCalledWith(PRODUCT_ID, 2);
+      expect(mockInventoryMovementService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "complete_sale",
+          productId: PRODUCT_ID,
+          orderId: "order-1",
+          quantity: 2,
+          previousStock: 50,
+          newStock: 48,
+          previousReservedStock: 2,
+          newReservedStock: 0,
+          reason: "order_completed",
+          createdBy: "actor-1",
+        })
+      );
+    });
+
+    it("lanza InsufficientStockError si no hay reserva que completar", async () => {
+      mockInventoryRepository.completeReservation.mockResolvedValue(null);
+
+      await expect(inventoryService.completeReservation(PRODUCT_ID, 2)).rejects.toThrow(InsufficientStockError);
+    });
+
+    it("lanza InvalidDataError si quantity no es un entero positivo", async () => {
+      await expect(inventoryService.completeReservation(PRODUCT_ID, 0)).rejects.toThrow(InvalidDataError);
+    });
+  });
+
   describe("getPage", () => {
     it("delega en findPage y enriquece con el snapshot del producto", async () => {
       const item = makeInventory();
@@ -237,6 +342,8 @@ describe("inventory.service", () => {
         quantity: 10,
         previousStock: 10,
         newStock: 20,
+        previousReservedStock: 0,
+        newReservedStock: 0,
         reason: "supplier_adjustment",
         createdBy: "64b0000000000000000000f1",
         reference: undefined,
@@ -342,6 +449,8 @@ describe("inventory.service", () => {
         quantity: 0,
         previousStock: 10,
         newStock: 10,
+        previousReservedStock: 0,
+        newReservedStock: 0,
         reason: "manual_correction",
         createdBy: "64b0000000000000000000f1",
       });

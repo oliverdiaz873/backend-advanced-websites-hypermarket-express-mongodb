@@ -84,6 +84,84 @@ export const restoreStock = async (productId: string, quantity: number): Promise
   }
 };
 
+export const reserveStock = async (
+  productId: string,
+  quantity: number,
+  orderId?: string,
+  actorId?: string
+): Promise<void> => {
+  assertQuantity(quantity, 1);
+  const record = await inventoryRepository.reserveStock(productId, quantity);
+  if (!record) {
+    throw new InsufficientStockError(`Insufficient stock for product ${productId}`);
+  }
+  await inventoryMovementService.record({
+    inventoryId: record.id,
+    productId,
+    orderId,
+    type: "reserve",
+    quantity,
+    previousStock: record.stock,
+    newStock: record.stock,
+    previousReservedStock: record.reservedStock - quantity,
+    newReservedStock: record.reservedStock,
+    reason: "order_reserved",
+    createdBy: actorId,
+  });
+};
+
+export const releaseReservation = async (
+  productId: string,
+  quantity: number,
+  orderId?: string,
+  actorId?: string
+): Promise<void> => {
+  assertQuantity(quantity, 1);
+  const record = await inventoryRepository.releaseReservation(productId, quantity);
+  if (!record) {
+    throw new InsufficientStockError(`No reservation found for product ${productId}`);
+  }
+  await inventoryMovementService.record({
+    inventoryId: record.id,
+    productId,
+    orderId,
+    type: "release_reservation",
+    quantity,
+    previousStock: record.stock,
+    newStock: record.stock,
+    previousReservedStock: record.reservedStock + quantity,
+    newReservedStock: record.reservedStock,
+    reason: "order_release",
+    createdBy: actorId,
+  });
+};
+
+export const completeReservation = async (
+  productId: string,
+  quantity: number,
+  orderId?: string,
+  actorId?: string
+): Promise<void> => {
+  assertQuantity(quantity, 1);
+  const record = await inventoryRepository.completeReservation(productId, quantity);
+  if (!record) {
+    throw new InsufficientStockError(`No reservation found for product ${productId}`);
+  }
+  await inventoryMovementService.record({
+    inventoryId: record.id,
+    productId,
+    orderId,
+    type: "complete_sale",
+    quantity,
+    previousStock: record.stock + quantity,
+    newStock: record.stock,
+    previousReservedStock: record.reservedStock + quantity,
+    newReservedStock: record.reservedStock,
+    reason: "order_completed",
+    createdBy: actorId,
+  });
+};
+
 export const getPage = async (query: Record<string, unknown>): Promise<InventoryPageResult> => {
   const page = Math.max(DEFAULT_PAGE, toInt(query.page, DEFAULT_PAGE));
   const limit = Math.min(MAX_LIMIT, Math.max(1, toInt(query.limit, DEFAULT_LIMIT)));
@@ -178,6 +256,8 @@ export const adjustInventory = async (
     quantity: input.quantity,
     previousStock: existing.stock,
     newStock: updated.stock,
+    previousReservedStock: existing.reservedStock,
+    newReservedStock: updated.reservedStock,
     reason,
     createdBy: actorId,
     reference: input.reference,
@@ -216,6 +296,8 @@ export const changeMinStock = async (
     quantity: 0,
     previousStock: updated.stock,
     newStock: updated.stock,
+    previousReservedStock: updated.reservedStock,
+    newReservedStock: updated.reservedStock,
     reason,
     createdBy: actorId,
   });

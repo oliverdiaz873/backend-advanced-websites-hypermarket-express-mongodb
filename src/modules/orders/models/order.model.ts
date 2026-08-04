@@ -1,5 +1,6 @@
 import { Schema, model, Types } from "mongoose";
 import { toJSONOptions } from "../../../shared/utils/mongo";
+import { ORDER_STATUS } from "../../../shared/constants/order-status";
 
 export interface IOrderItem {
   productId: string;
@@ -20,7 +21,7 @@ export interface IShippingAddress {
 }
 
 export interface IOrderStatusHistoryEntry {
-  status: "pending" | "processing" | "completed" | "cancelled";
+  status: "pending" | "confirmed" | "processing" | "shipped" | "completed" | "cancelled";
   changedAt: Date;
   by?: string;
   note?: string;
@@ -33,7 +34,7 @@ export interface IOrder {
   shippingAddress?: IShippingAddress;
   totalItems: number;
   subtotal: number;
-  status: "pending" | "processing" | "completed" | "cancelled";
+  status: "pending" | "confirmed" | "processing" | "shipped" | "completed" | "cancelled";
   paymentStatus: "pending" | "paid" | "failed" | "refunded";
   statusHistory?: IOrderStatusHistoryEntry[];
   createdAt: Date;
@@ -69,7 +70,14 @@ const orderStatusHistoryEntrySchema = new Schema<IOrderStatusHistoryEntry>(
     status: {
       type: String,
       required: true,
-      enum: ["pending", "processing", "completed", "cancelled"],
+      enum: [
+        ORDER_STATUS.PENDING,
+        ORDER_STATUS.CONFIRMED,
+        ORDER_STATUS.PROCESSING,
+        ORDER_STATUS.SHIPPED,
+        ORDER_STATUS.COMPLETED,
+        ORDER_STATUS.CANCELLED,
+      ],
     },
     changedAt: { type: Date, required: true },
     by: { type: String, trim: true },
@@ -87,7 +95,14 @@ const orderSchema = new Schema<IOrder>(
     subtotal: { type: Number, required: true, min: 0 },
     status: {
       type: String,
-      enum: ["pending", "processing", "completed", "cancelled"],
+      enum: [
+        ORDER_STATUS.PENDING,
+        ORDER_STATUS.CONFIRMED,
+        ORDER_STATUS.PROCESSING,
+        ORDER_STATUS.SHIPPED,
+        ORDER_STATUS.COMPLETED,
+        ORDER_STATUS.CANCELLED,
+      ],
       default: "pending",
     },
     paymentStatus: {

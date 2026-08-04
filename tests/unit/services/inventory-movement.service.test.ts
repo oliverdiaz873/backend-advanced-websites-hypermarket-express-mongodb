@@ -26,6 +26,8 @@ describe("inventory-movement.service", () => {
         quantity: 10,
         previousStock: 10,
         newStock: 20,
+        previousReservedStock: 0,
+        newReservedStock: 0,
         reason: "supplier_adjustment",
         createdBy: "64b0000000000000000000f1",
       });
@@ -37,6 +39,8 @@ describe("inventory-movement.service", () => {
         quantity: 10,
         previousStock: 10,
         newStock: 20,
+        previousReservedStock: 0,
+        newReservedStock: 0,
         reason: "supplier_adjustment",
         createdBy: "64b0000000000000000000f1",
       });

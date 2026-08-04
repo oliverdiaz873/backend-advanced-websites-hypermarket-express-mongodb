@@ -1,7 +1,14 @@
 import * as statsRepository from "../repositories/stats.repository";
 import type { OrderStatus, StatsOverview } from "../../../types";
 
-const ORDER_STATUSES: OrderStatus[] = ["pending", "processing", "completed", "cancelled"];
+const ORDER_STATUSES: OrderStatus[] = [
+  "pending",
+  "confirmed",
+  "processing",
+  "shipped",
+  "completed",
+  "cancelled",
+];
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -48,7 +55,9 @@ export const getOverview = async (): Promise<StatsOverview> => {
     },
     ordersByStatus: {
       pending: normalizedByStatus.pending,
+      confirmed: normalizedByStatus.confirmed,
       processing: normalizedByStatus.processing,
+      shipped: normalizedByStatus.shipped,
       completed: normalizedByStatus.completed,
       cancelled: normalizedByStatus.cancelled,
     },

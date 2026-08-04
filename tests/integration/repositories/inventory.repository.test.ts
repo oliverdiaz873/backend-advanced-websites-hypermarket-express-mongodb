@@ -80,6 +80,77 @@ describe("inventory.repository (Mongo real)", () => {
     expect(restored?.stock).toBe(3);
   });
 
+  it("reserveStock reserva stock disponible y registra en reservedStock", async () => {
+    const product = await createTestProduct();
+    await createTestInventory(product.id, { stock: 100 });
+
+    const reserved = await inventoryRepository.reserveStock(product.id, 5);
+
+    expect(reserved?.stock).toBe(100);
+    expect(reserved?.reservedStock).toBe(5);
+  });
+
+  it("reserveStock es atómico: dos reservas compiten por el mismo stock disponible", async () => {
+    const product = await createTestProduct();
+    await createTestInventory(product.id, { stock: 5 });
+
+    const [buyerA, buyerB] = await Promise.all([
+      inventoryRepository.reserveStock(product.id, 5),
+      inventoryRepository.reserveStock(product.id, 5),
+    ]);
+
+    expect([buyerA, buyerB].filter(Boolean)).toHaveLength(1);
+    const after = await inventoryRepository.findByProductId(product.id);
+    expect(after?.reservedStock).toBe(5);
+  });
+
+  it("reserveStock devuelve null si no hay stock disponible (considerando reservado)", async () => {
+    const product = await createTestProduct();
+    await createTestInventory(product.id, { stock: 5, reservedStock: 3 });
+
+    const result = await inventoryRepository.reserveStock(product.id, 5);
+
+    expect(result).toBeNull();
+  });
+
+  it("releaseReservation devuelve la reserva a disponible", async () => {
+    const product = await createTestProduct();
+    await createTestInventory(product.id, { stock: 100, reservedStock: 5 });
+
+    const released = await inventoryRepository.releaseReservation(product.id, 5);
+
+    expect(released?.stock).toBe(100);
+    expect(released?.reservedStock).toBe(0);
+  });
+
+  it("releaseReservation devuelve null si no hay reserva suficiente", async () => {
+    const product = await createTestProduct();
+    await createTestInventory(product.id, { stock: 100, reservedStock: 2 });
+
+    const result = await inventoryRepository.releaseReservation(product.id, 5);
+
+    expect(result).toBeNull();
+  });
+
+  it("completeReservation consume la venta: stock y reservedStock decrementan", async () => {
+    const product = await createTestProduct();
+    await createTestInventory(product.id, { stock: 100, reservedStock: 5 });
+
+    const completed = await inventoryRepository.completeReservation(product.id, 5);
+
+    expect(completed?.stock).toBe(95);
+    expect(completed?.reservedStock).toBe(0);
+  });
+
+  it("completeReservation devuelve null si no hay reserva suficiente", async () => {
+    const product = await createTestProduct();
+    await createTestInventory(product.id, { stock: 100, reservedStock: 2 });
+
+    const result = await inventoryRepository.completeReservation(product.id, 5);
+
+    expect(result).toBeNull();
+  });
+
   it("increaseById incrementa el stock", async () => {
     const product = await createTestProduct();
     const created = await createTestInventory(product.id, { stock: 10 });

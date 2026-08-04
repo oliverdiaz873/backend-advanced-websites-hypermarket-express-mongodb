@@ -97,6 +97,33 @@ export const restoreStock = async (productId: string, quantity: number): Promise
   return doc ? toInventory(doc) : null;
 };
 
+export const reserveStock = async (productId: string, quantity: number): Promise<Inventory | null> => {
+  const doc = await InventoryModel.findOneAndUpdate(
+    { productId, $expr: { $gte: [{ $subtract: ["$stock", "$reservedStock"] }, quantity] } },
+    { $inc: { reservedStock: quantity } },
+    { new: true }
+  );
+  return doc ? toInventory(doc) : null;
+};
+
+export const releaseReservation = async (productId: string, quantity: number): Promise<Inventory | null> => {
+  const doc = await InventoryModel.findOneAndUpdate(
+    { productId, reservedStock: { $gte: quantity } },
+    { $inc: { reservedStock: -quantity } },
+    { new: true }
+  );
+  return doc ? toInventory(doc) : null;
+};
+
+export const completeReservation = async (productId: string, quantity: number): Promise<Inventory | null> => {
+  const doc = await InventoryModel.findOneAndUpdate(
+    { productId, reservedStock: { $gte: quantity } },
+    { $inc: { stock: -quantity, reservedStock: -quantity } },
+    { new: true }
+  );
+  return doc ? toInventory(doc) : null;
+};
+
 export const increaseById = async (id: string, quantity: number): Promise<Inventory | null> => {
   if (!isValidObjectId(id)) return null;
   const doc = await InventoryModel.findByIdAndUpdate(id, { $inc: { stock: quantity } }, { new: true });

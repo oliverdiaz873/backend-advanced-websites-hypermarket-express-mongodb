@@ -13,10 +13,13 @@ export interface IInventoryMovement {
   id: string;
   inventoryId: string;
   productId: string;
+  orderId?: string;
   type: InventoryMovementType;
   quantity: number;
   previousStock: number;
   newStock: number;
+  previousReservedStock: number;
+  newReservedStock: number;
   reason: AdjustmentReason;
   createdBy?: string;
   createdAt: Date;
@@ -26,10 +29,13 @@ const inventoryMovementSchema = new Schema<IInventoryMovement>(
   {
     inventoryId: { type: String, ref: "Inventory", required: true },
     productId: { type: String, ref: "Product", required: true },
+    orderId: { type: String, ref: "Order" },
     type: { type: String, required: true, enum: INVENTORY_MOVEMENT_TYPES },
     quantity: { type: Number, required: true, min: 0 },
     previousStock: { type: Number, required: true, min: 0 },
     newStock: { type: Number, required: true, min: 0 },
+    previousReservedStock: { type: Number, required: true, min: 0, default: 0 },
+    newReservedStock: { type: Number, required: true, min: 0, default: 0 },
     reason: { type: String, required: true, enum: INVENTORY_ADJUSTMENT_REASONS },
     createdBy: { type: String, trim: true },
   },
@@ -39,6 +45,7 @@ const inventoryMovementSchema = new Schema<IInventoryMovement>(
 inventoryMovementSchema.index({ inventoryId: 1, createdAt: -1 });
 inventoryMovementSchema.index({ productId: 1, createdAt: -1 });
 inventoryMovementSchema.index({ type: 1 });
+inventoryMovementSchema.index({ orderId: 1, createdAt: -1 });
 
 export const InventoryMovementModel = model<IInventoryMovement>(
   "InventoryMovement",

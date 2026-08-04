@@ -110,21 +110,27 @@ describe("E2E: /api/admin/orders", () => {
       expect(res.status).toBe(404);
     });
 
-    it("permite a admin pending → processing", async () => {
+    it("permite a admin pending → confirmed", async () => {
       const order = await createTestOrder(customer.id, []);
 
       const res = await request(app)
         .patch(`/api/admin/orders/${order.id}/status`)
         .set(adminHeaders)
-        .send({ status: "processing" });
+        .send({ status: "confirmed" });
 
       expect(res.status).toBe(200);
-      expect(res.body.data.status).toBe("processing");
+      expect(res.body.data.status).toBe("confirmed");
     });
 
-    it("permite a admin cancelar una orden en processing y restaura el stock", async () => {
+    it("permite a admin cancelar una orden en processing y libera la reserva", async () => {
       const { created, product } = await setupOrderWithStock(2);
       const orderId = created.body.data.id;
+
+      const toConfirmed = await request(app)
+        .patch(`/api/admin/orders/${orderId}/status`)
+        .set(adminHeaders)
+        .send({ status: "confirmed" });
+      expect(toConfirmed.status).toBe(200);
 
       const toProcessing = await request(app)
         .patch(`/api/admin/orders/${orderId}/status`)

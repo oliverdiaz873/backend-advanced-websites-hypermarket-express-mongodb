@@ -41,7 +41,7 @@ describe("stats.service", () => {
         lowStockCount: 3,
         pendingContactMessages: 7,
       },
-      ordersByStatus: { pending: 4, processing: 3, completed: 2, cancelled: 1 },
+      ordersByStatus: { pending: 4, confirmed: 0, processing: 3, shipped: 0, completed: 2, cancelled: 1 },
       revenue: { gross: { today: 1000, week: 1000, month: 1000 } },
     });
     expect(mockStatsRepository.sumRevenueSince).toHaveBeenCalledTimes(4);
@@ -52,7 +52,14 @@ describe("stats.service", () => {
 
     const result = await statsService.getOverview();
 
-    expect(result.ordersByStatus).toEqual({ pending: 0, processing: 0, completed: 0, cancelled: 0 });
+    expect(result.ordersByStatus).toEqual({
+      pending: 0,
+      confirmed: 0,
+      processing: 0,
+      shipped: 0,
+      completed: 0,
+      cancelled: 0,
+    });
     expect(result.summary.completedOrders).toBe(0);
     expect(result.summary.averageOrderValue).toBe(0);
   });
@@ -81,7 +88,14 @@ describe("stats.service", () => {
         lowStockCount: 3,
         pendingContactMessages: 7,
       },
-      ordersByStatus: { pending: 0, processing: 0, completed: 0, cancelled: 0 },
+      ordersByStatus: {
+        pending: 0,
+        confirmed: 0,
+        processing: 0,
+        shipped: 0,
+        completed: 0,
+        cancelled: 0,
+      },
       revenue: { gross: { today: 0, week: 0, month: 0 } },
     });
   });

@@ -22,7 +22,7 @@ const addToCart = async (headers: { Authorization: string }, productId: string, 
 };
 
 describe("E2E: /api/orders", () => {
-  it("POST / crea la orden completa: decrementa stock y vacía el carrito", async () => {
+  it("POST / crea la orden completa: reserva stock y vacía el carrito", async () => {
     const { user, headers, product, address } = await setupCheckout();
     const admin = await createTestAdmin();
     const adminHeaders = createAuthHeaders(createAuthToken(admin));
@@ -157,7 +157,7 @@ describe("E2E: /api/orders", () => {
     expect(res.body.message).toBe("Cannot transition from pending to completed");
   });
 
-  it("PATCH /:id/status cancelar restaura el stock", async () => {
+  it("PATCH /:id/status cancelar libera la reserva", async () => {
     const { headers, product, user } = await setupCheckout();
     const admin = await createTestAdmin();
     const adminHeaders = createAuthHeaders(createAuthToken(admin));
@@ -188,6 +188,72 @@ describe("E2E: /api/orders", () => {
       .send({ status: "processing" });
 
     expect(res.status).toBe(404);
+  });
+
+  it("POST / reserva stock: stock 100, qty 5 → reservedStock 5, availableStock 95", async () => {
+    const admin = await createTestAdmin();
+    const adminHeaders = createAuthHeaders(createAuthToken(admin));
+    const user = await createTestUser();
+    const headers = createAuthHeaders(createAuthToken(user));
+    const product = await createTestProduct();
+    await createTestInventory(product.id, { stock: 100 });
+    const address = await createTestAddress(user.id);
+    await addToCart(headers, product.id, 5);
+
+    await request(app).post("/api/orders").set(headers).send({ addressId: address.id });
+
+    const inventory = await request(app).get(`/api/inventory/product/${product.id}`).set(adminHeaders);
+    expect(inventory.body.data.stock).toBe(100);
+    expect(inventory.body.data.reservedStock).toBe(5);
+    expect(inventory.body.data.availableStock).toBe(95);
+  });
+
+  it("workflow completo consume la reserva al completar la venta", async () => {
+    const admin = await createTestAdmin();
+    const adminHeaders = createAuthHeaders(createAuthToken(admin));
+    const user = await createTestUser();
+    const headers = createAuthHeaders(createAuthToken(user));
+    const product = await createTestProduct();
+    await createTestInventory(product.id, { stock: 100 });
+    const address = await createTestAddress(user.id);
+    await addToCart(headers, product.id, 5);
+    const created = await request(app).post("/api/orders").set(headers).send({ addressId: address.id });
+    const orderId = created.body.data.id;
+
+    for (const status of ["confirmed", "processing", "shipped", "completed"]) {
+      const res = await request(app)
+        .patch(`/api/admin/orders/${orderId}/status`)
+        .set(adminHeaders)
+        .send({ status });
+      expect(res.status).toBe(200);
+      expect(res.body.data.status).toBe(status);
+    }
+
+    const inventory = await request(app).get(`/api/inventory/product/${product.id}`).set(adminHeaders);
+    expect(inventory.body.data.stock).toBe(95);
+    expect(inventory.body.data.reservedStock).toBe(0);
+    expect(inventory.body.data.availableStock).toBe(95);
+  });
+
+  it("concurrencia: dos órdenes no pueden reservar el mismo stock disponible", async () => {
+    const userA = await createTestUser();
+    const userB = await createTestUser();
+    const headersA = createAuthHeaders(createAuthToken(userA));
+    const headersB = createAuthHeaders(createAuthToken(userB));
+    const product = await createTestProduct();
+    await createTestInventory(product.id, { stock: 5 });
+    const addressA = await createTestAddress(userA.id);
+    const addressB = await createTestAddress(userB.id);
+    await addToCart(headersA, product.id, 5);
+    await addToCart(headersB, product.id, 5);
+
+    const [resA, resB] = await Promise.all([
+      request(app).post("/api/orders").set(headersA).send({ addressId: addressA.id }),
+      request(app).post("/api/orders").set(headersB).send({ addressId: addressB.id }),
+    ]);
+
+    const statuses = [resA.status, resB.status].sort();
+    expect(statuses).toEqual([201, 409]);
   });
 
   it("responde 401 sin token", async () => {

@@ -40,7 +40,13 @@ export interface ProductQuery {
 
 export type UserRole = "customer" | "admin";
 export type ProductStatus = "active" | "inactive";
-export type OrderStatus = "pending" | "processing" | "completed" | "cancelled";
+export type OrderStatus =
+  | "pending"
+  | "confirmed"
+  | "processing"
+  | "shipped"
+  | "completed"
+  | "cancelled";
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 export type BrandStatus = "active" | "inactive";
 export type ContactMessageStatus = "pending" | "read" | "answered";
@@ -186,10 +192,13 @@ export interface InventoryMovement {
   id: string;
   inventoryId: string;
   productId: string;
+  orderId?: string;
   type: InventoryMovementType;
   quantity: number;
   previousStock: number;
   newStock: number;
+  previousReservedStock: number;
+  newReservedStock: number;
   reason: AdjustmentReason;
   createdBy?: string;
   createdAt: Date;
@@ -361,7 +370,9 @@ export interface StatsSummary {
 
 export interface StatsOrdersByStatus {
   pending: number;
+  confirmed: number;
   processing: number;
+  shipped: number;
   completed: number;
   cancelled: number;
 }

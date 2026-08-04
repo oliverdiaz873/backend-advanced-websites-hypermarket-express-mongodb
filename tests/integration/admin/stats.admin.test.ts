@@ -66,7 +66,7 @@ describe("E2E: /api/admin/stats", () => {
         lowStockCount: 1,
         pendingContactMessages: 1,
       },
-      ordersByStatus: { pending: 1, processing: 0, completed: 2, cancelled: 1 },
+      ordersByStatus: { pending: 1, confirmed: 0, processing: 0, shipped: 0, completed: 2, cancelled: 1 },
       revenue: { gross: { today: 900, week: 900, month: 900 } },
     });
   });
@@ -96,7 +96,7 @@ describe("E2E: /api/admin/stats", () => {
         lowStockCount: 0,
         pendingContactMessages: 0,
       },
-      ordersByStatus: { pending: 0, processing: 0, completed: 0, cancelled: 0 },
+      ordersByStatus: { pending: 0, confirmed: 0, processing: 0, shipped: 0, completed: 0, cancelled: 0 },
       revenue: { gross: { today: 0, week: 0, month: 0 } },
     });
   });

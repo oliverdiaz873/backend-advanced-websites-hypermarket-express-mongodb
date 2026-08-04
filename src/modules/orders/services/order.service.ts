@@ -24,7 +24,14 @@ const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 
-const ORDER_STATUSES: OrderStatus[] = ["pending", "processing", "completed", "cancelled"];
+const ORDER_STATUSES: OrderStatus[] = [
+  "pending",
+  "confirmed",
+  "processing",
+  "shipped",
+  "completed",
+  "cancelled",
+];
 
 const toInt = (value: unknown, fallback: number): number => {
   const n = Number.parseInt(value as string, 10);
@@ -77,7 +84,13 @@ const applyStatusTransition = async (
 
   if (newStatus === "cancelled") {
     for (const item of updated.items) {
-      await inventoryService.restoreStock(item.productId, item.quantity);
+      await inventoryService.releaseReservation(item.productId, item.quantity, order.id, actorId);
+    }
+  }
+
+  if (newStatus === "completed") {
+    for (const item of updated.items) {
+      await inventoryService.completeReservation(item.productId, item.quantity, order.id, actorId);
     }
   }
 
@@ -136,16 +149,16 @@ export const create = async (userId: string, addressId: string) => {
     userId
   );
 
-  let decreasedCount = 0;
+  let reservedCount = 0;
   try {
     for (const item of items) {
-      await inventoryService.decreaseStock(item.productId, item.quantity);
-      decreasedCount++;
+      await inventoryService.reserveStock(item.productId, item.quantity, order.id, userId);
+      reservedCount++;
     }
   } catch (error) {
     try {
-      for (let i = 0; i < decreasedCount; i++) {
-        await inventoryService.restoreStock(items[i].productId, items[i].quantity);
+      for (let i = 0; i < reservedCount; i++) {
+        await inventoryService.releaseReservation(items[i].productId, items[i].quantity, order.id, userId);
       }
       await orderRepository.deleteById(order.id);
     } catch (rollbackError) {
