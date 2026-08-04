@@ -7,7 +7,7 @@ const router = Router();
 
 router.use(authMiddleware, authorizeRole("admin"));
 
-router.get("/", orderController.findAllAdmin);
+router.get("/", orderController.getPageAdmin);
 router.get("/:id", orderController.findByIdAdmin);
 router.patch("/:id/status", validateRequiredFields(["status"]), orderController.updateStatusAdmin);
 

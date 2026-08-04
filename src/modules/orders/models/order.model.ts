@@ -19,6 +19,13 @@ export interface IShippingAddress {
   reference?: string;
 }
 
+export interface IOrderStatusHistoryEntry {
+  status: "pending" | "processing" | "completed" | "cancelled";
+  changedAt: Date;
+  by?: string;
+  note?: string;
+}
+
 export interface IOrder {
   id: string;
   userId: Types.ObjectId;
@@ -28,6 +35,7 @@ export interface IOrder {
   subtotal: number;
   status: "pending" | "processing" | "completed" | "cancelled";
   paymentStatus: "pending" | "paid" | "failed" | "refunded";
+  statusHistory?: IOrderStatusHistoryEntry[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -56,6 +64,20 @@ const shippingAddressSchema = new Schema<IShippingAddress>(
   { _id: false }
 );
 
+const orderStatusHistoryEntrySchema = new Schema<IOrderStatusHistoryEntry>(
+  {
+    status: {
+      type: String,
+      required: true,
+      enum: ["pending", "processing", "completed", "cancelled"],
+    },
+    changedAt: { type: Date, required: true },
+    by: { type: String, trim: true },
+    note: { type: String, trim: true },
+  },
+  { _id: false }
+);
+
 const orderSchema = new Schema<IOrder>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
@@ -73,6 +95,7 @@ const orderSchema = new Schema<IOrder>(
       enum: ["pending", "paid", "failed", "refunded"],
       default: "pending",
     },
+    statusHistory: { type: [orderStatusHistoryEntrySchema], default: [] },
   },
   { timestamps: true, toJSON: toJSONOptions }
 );

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import * as orderService from "../services/order.service";
+import type { OrderQuery, OrderSortField, OrderStatus } from "../../../types";
 
 export const create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -37,10 +38,19 @@ export const updateStatus = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
-export const findAllAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getPageAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const orders = await orderService.findAllAdmin();
-    res.json({ success: true, data: orders });
+    const query: Partial<OrderQuery> = {
+      page: Number(req.query.page),
+      limit: Number(req.query.limit),
+      q: typeof req.query.q === "string" ? req.query.q : undefined,
+      status: typeof req.query.status === "string" ? (req.query.status as OrderStatus) : undefined,
+      customerId: typeof req.query.customerId === "string" ? req.query.customerId : undefined,
+      sortBy: typeof req.query.sortBy === "string" ? (req.query.sortBy as OrderSortField) : undefined,
+      sortOrder: req.query.sortOrder === "asc" || req.query.sortOrder === "desc" ? req.query.sortOrder : undefined,
+    };
+    const result = await orderService.getPageAdmin(query);
+    res.json({ success: true, data: result.items, pagination: result.pagination });
   } catch (error) {
     next(error);
   }
@@ -48,7 +58,7 @@ export const findAllAdmin = async (req: Request, res: Response, next: NextFuncti
 
 export const findByIdAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const order = await orderService.findByIdAdmin(req.params.id as string);
+    const order = await orderService.getByIdAdmin(req.params.id as string);
     res.json({ success: true, data: order });
   } catch (error) {
     next(error);
@@ -57,7 +67,12 @@ export const findByIdAdmin = async (req: Request, res: Response, next: NextFunct
 
 export const updateStatusAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const order = await orderService.updateStatusAdmin(req.params.id as string, req.body.status);
+    const order = await orderService.updateStatusAdmin(
+      req.params.id as string,
+      req.body.status,
+      req.user?.id,
+      typeof req.body.note === "string" ? req.body.note : undefined
+    );
     res.json({ success: true, data: order });
   } catch (error) {
     next(error);

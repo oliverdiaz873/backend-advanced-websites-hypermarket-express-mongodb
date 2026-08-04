@@ -4,7 +4,7 @@ import { createTestOrder } from "../helpers/order.helper";
 import { createTestUser } from "../helpers/user.helper";
 
 describe("order.repository (Mongo real)", () => {
-  it("create persiste la orden con snapshot de items y dirección", async () => {
+  it("create persiste la orden con snapshot de items, dirección y statusHistory inicial", async () => {
     const user = await createTestUser();
 
     const order = await orderRepository.create(
@@ -22,7 +22,8 @@ describe("order.repository (Mongo real)", () => {
         state: "Lima",
         zipCode: "15001",
         country: "Peru",
-      }
+      },
+      user.id
     );
 
     expect(order.id).toBeTruthy();
@@ -31,6 +32,8 @@ describe("order.repository (Mongo real)", () => {
     expect(order.shippingAddress).toMatchObject({ city: "Lima", country: "Peru" });
     expect(order.status).toBe("pending");
     expect(order.paymentStatus).toBe("pending");
+    expect(order.statusHistory).toHaveLength(1);
+    expect(order.statusHistory?.[0]).toMatchObject({ status: "pending", by: user.id });
   });
 
   it("findByUserId devuelve las órdenes del usuario ordenadas por createdAt desc", async () => {
@@ -63,14 +66,24 @@ describe("order.repository (Mongo real)", () => {
     expect(await orderRepository.findById("invalid-id")).toBeNull();
   });
 
-  it("updateStatus con CAS: transición válida actualiza, expectedStatus desactualizado devuelve null", async () => {
+  it("updateStatus con CAS: transición válida actualiza y registra statusHistory, expectedStatus desactualizado devuelve null", async () => {
     const user = await createTestUser();
-    const order = await createTestOrder(user.id, []);
+    const order = await orderRepository.create(user.id, [], 0, 0, undefined, user.id);
 
-    const updated = await orderRepository.updateStatus(order.id, "pending", "processing");
+    const updated = await orderRepository.updateStatus(order.id, "pending", "processing", {
+      status: "processing",
+      changedAt: new Date(),
+      by: user.id,
+    });
     expect(updated?.status).toBe("processing");
+    expect(updated?.statusHistory).toHaveLength(2);
+    expect(updated?.statusHistory?.[0]).toMatchObject({ status: "pending", by: user.id });
+    expect(updated?.statusHistory?.[1]).toMatchObject({ status: "processing", by: user.id });
 
-    const stale = await orderRepository.updateStatus(order.id, "pending", "completed");
+    const stale = await orderRepository.updateStatus(order.id, "pending", "completed", {
+      status: "completed",
+      changedAt: new Date(),
+    });
     expect(stale).toBeNull();
     expect((await orderRepository.findById(order.id))?.status).toBe("processing");
   });
@@ -79,7 +92,10 @@ describe("order.repository (Mongo real)", () => {
     const user = await createTestUser();
     const cancelled = await createTestOrder(user.id, [], { status: "cancelled" });
 
-    const reverted = await orderRepository.updateStatus(cancelled.id, "cancelled", "pending");
+    const reverted = await orderRepository.updateStatus(cancelled.id, "cancelled", "pending", {
+      status: "pending",
+      changedAt: new Date(),
+    });
 
     expect(reverted?.status).toBe("pending");
   });

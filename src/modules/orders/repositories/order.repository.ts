@@ -1,11 +1,75 @@
 import { OrderModel } from "../models/order.model";
 import { isValidObjectId, toObjectId } from "../../../shared/utils/mongo";
 import { ORDER_STATUS, PAYMENT_STATUS } from "../../../shared/constants/order-status";
-import type { Order, OrderItem, OrderStatus } from "../../../types";
+import { ORDER_SORT_FIELDS, type OrderSortField } from "../constants/order-sort-fields";
+import type {
+  Order,
+  OrderItem,
+  OrderPageResult,
+  OrderStatus,
+  SortDirection,
+} from "../../../types";
+
+export interface OrderFindPageInput {
+  page: number;
+  limit: number;
+  status?: OrderStatus;
+  userIds?: string[];
+  orderId?: string;
+  sortBy?: OrderSortField;
+  sortOrder?: SortDirection;
+}
+
+export interface OrderStatusHistoryInput {
+  status: OrderStatus;
+  changedAt: Date;
+  by?: string;
+  note?: string;
+}
+
+const buildSort = (
+  sortBy: OrderSortField | undefined,
+  sortOrder: SortDirection
+): Record<string, 1 | -1> => {
+  if (!sortBy || !ORDER_SORT_FIELDS.includes(sortBy)) {
+    return { createdAt: -1 };
+  }
+  const direction: 1 | -1 = sortOrder === "asc" ? 1 : -1;
+  return { [sortBy]: direction };
+};
 
 export const findAll = async (): Promise<Order[]> => {
   const docs = await OrderModel.find().sort({ createdAt: -1 });
   return docs.map((doc) => doc.toJSON() as unknown as Order);
+};
+
+export const findPage = async (query: OrderFindPageInput): Promise<OrderPageResult> => {
+  const { page, limit, status, userIds, orderId, sortBy, sortOrder } = query;
+
+  const filter: Record<string, unknown> = {};
+  if (status) filter.status = status;
+
+  const orConditions: Record<string, unknown>[] = [];
+  if (userIds && userIds.length > 0) {
+    const validIds = userIds.filter(isValidObjectId);
+    if (validIds.length > 0) orConditions.push({ userId: { $in: validIds } });
+  }
+  if (orderId && isValidObjectId(orderId)) {
+    orConditions.push({ _id: orderId });
+  }
+  if (orConditions.length > 0) filter.$or = orConditions;
+
+  const skip = (page - 1) * limit;
+  const sort = buildSort(sortBy, sortOrder ?? "desc");
+
+  const [docs, total] = await Promise.all([
+    OrderModel.find(filter).sort(sort).skip(skip).limit(limit),
+    OrderModel.countDocuments(filter),
+  ]);
+
+  const items = docs.map((doc) => doc.toJSON() as unknown as Order);
+  const pages = Math.max(1, Math.ceil(total / limit));
+  return { items, total, pagination: { page, limit, total, pages } };
 };
 
 export const findByUserId = async (userId: string): Promise<Order[]> => {
@@ -25,7 +89,8 @@ export const create = async (
   items: OrderItem[],
   totalItems: number,
   subtotal: number,
-  shippingAddress?: Order["shippingAddress"]
+  shippingAddress?: Order["shippingAddress"],
+  createdBy?: string
 ): Promise<Order> => {
   const doc = await OrderModel.create({
     userId: toObjectId(userId),
@@ -35,15 +100,21 @@ export const create = async (
     subtotal,
     status: ORDER_STATUS.PENDING,
     paymentStatus: PAYMENT_STATUS.PENDING,
+    statusHistory: [{ status: ORDER_STATUS.PENDING, changedAt: new Date(), by: createdBy }],
   });
   return doc.toJSON() as unknown as Order;
 };
 
-export const updateStatus = async (orderId: string, expectedStatus: OrderStatus, status: OrderStatus): Promise<Order | null> => {
+export const updateStatus = async (
+  orderId: string,
+  expectedStatus: OrderStatus,
+  status: OrderStatus,
+  historyEntry: OrderStatusHistoryInput
+): Promise<Order | null> => {
   if (!isValidObjectId(orderId)) return null;
   const doc = await OrderModel.findOneAndUpdate(
     { _id: orderId, status: expectedStatus },
-    { status },
+    { status, $push: { statusHistory: historyEntry } },
     { returnDocument: "after" }
   );
   return doc ? (doc.toJSON() as unknown as Order) : null;

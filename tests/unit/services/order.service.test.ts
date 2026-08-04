@@ -7,7 +7,7 @@ import { makeCart } from "../factories/cart.factory";
 import { makeProduct, PRODUCT_ID } from "../factories/product.factory";
 import { makeAddress } from "../factories/address.factory";
 import { makeInventory } from "../factories/inventory.factory";
-import { USER_ID } from "../factories/user.factory";
+import { USER_ID, makeUser } from "../factories/user.factory";
 
 const SECOND_PRODUCT_ID = "64b0000000000000000000a2";
 
@@ -26,8 +26,18 @@ jest.mock("../../../src/modules/addresses/repositories/address.repository", () =
 jest.mock("../../../src/modules/inventory/services/inventory.service", () =>
   require("../mocks/repositories").mockInventoryService
 );
+jest.mock("../../../src/modules/users/repositories/user.repository", () =>
+  require("../mocks/repositories").mockUserRepository
+);
 
-import { mockOrderRepository, mockCartRepository, mockProductRepository, mockAddressRepository, mockInventoryService } from "../mocks/repositories";
+import {
+  mockOrderRepository,
+  mockCartRepository,
+  mockProductRepository,
+  mockAddressRepository,
+  mockInventoryService,
+  mockUserRepository,
+} from "../mocks/repositories";
 
 const { id: _id, userId: _userId, isDefault: _isDefault, ...shippingAddress } = makeAddress();
 
@@ -98,17 +108,19 @@ describe("order.service", () => {
       const result = await orderService.create(USER_ID, "address-id");
 
       const expectedItems = [{ productId: PRODUCT_ID, name: "Arroz 1kg", price: 89.5, image: "https://example.com/arroz.png", quantity: 2 }];
-      expect(mockOrderRepository.create).toHaveBeenCalledWith(USER_ID, expectedItems, 2, 179, shippingAddress);
+      expect(mockOrderRepository.create).toHaveBeenCalledWith(USER_ID, expectedItems, 2, 179, shippingAddress, USER_ID);
       expect(mockInventoryService.decreaseStock).toHaveBeenCalledWith(PRODUCT_ID, 2);
       expect(mockCartRepository.clearCart).toHaveBeenCalledWith(USER_ID);
       expect(result).toEqual({
         id: order.id,
+        userId: order.userId,
         items: order.items,
         shippingAddress: order.shippingAddress,
         totalItems: order.totalItems,
         subtotal: order.subtotal,
         status: order.status,
         paymentStatus: order.paymentStatus,
+        statusHistory: order.statusHistory,
         createdAt: order.createdAt,
         updatedAt: order.updatedAt,
       });
@@ -180,7 +192,8 @@ describe("order.service", () => {
 
       expect(mockOrderRepository.findById).toHaveBeenCalledWith(ORDER_ID);
       expect(result).toMatchObject({ id: ORDER_ID, status: "pending" });
-      expect(result).not.toHaveProperty("userId");
+      expect(result).toHaveProperty("userId", USER_ID);
+      expect(result).toHaveProperty("statusHistory");
     });
   });
 
@@ -224,7 +237,12 @@ describe("order.service", () => {
 
       const result = await orderService.updateStatus(USER_ID, ORDER_ID, "cancelled");
 
-      expect(mockOrderRepository.updateStatus).toHaveBeenCalledWith(ORDER_ID, "pending", "cancelled");
+      expect(mockOrderRepository.updateStatus).toHaveBeenCalledWith(
+        ORDER_ID,
+        "pending",
+        "cancelled",
+        expect.objectContaining({ status: "cancelled", by: USER_ID })
+      );
       expect(mockInventoryService.restoreStock).toHaveBeenCalledWith(PRODUCT_ID, 2);
       expect(result).toMatchObject({ status: "cancelled" });
     });
@@ -248,36 +266,88 @@ describe("order.service", () => {
     });
   });
 
-  describe("findAllAdmin", () => {
-    it("retorna todas las órdenes", async () => {
+  describe("getPageAdmin", () => {
+    it("retorna una página de órdenes con paginación", async () => {
       const orders = [makeOrder(), makeOrder({ id: "64b00000000000000000001002" })];
-      mockOrderRepository.findAll.mockResolvedValue(orders);
+      const pagination = { page: 1, limit: 50, total: 2, pages: 1 };
+      mockOrderRepository.findPage.mockResolvedValue({ items: orders, total: 2, pagination });
+      mockUserRepository.findByIds.mockResolvedValue([makeUser()]);
 
-      const result = await orderService.findAllAdmin();
+      const result = await orderService.getPageAdmin({});
 
-      expect(mockOrderRepository.findAll).toHaveBeenCalledTimes(1);
-      expect(result).toHaveLength(2);
-      expect(result[0]).toMatchObject({ id: ORDER_ID, status: "pending" });
+      expect(mockOrderRepository.findPage).toHaveBeenCalledWith({
+        page: 1,
+        limit: 50,
+        userIds: undefined,
+        orderId: undefined,
+        status: undefined,
+        sortBy: undefined,
+        sortOrder: "desc",
+      });
+      expect(result.total).toBe(2);
+      expect(result.pagination).toEqual(pagination);
+      expect(result.items[0]).toMatchObject({ id: ORDER_ID, status: "pending" });
+      expect(result.items[0]).toHaveProperty("userId");
+      expect(result.items[0]).toHaveProperty("customer", {
+        id: USER_ID,
+        name: "Oliver Diaz",
+        email: "oliver@example.com",
+      });
+    });
+
+    it("filtra por q resolviendo ids de clientes y por orderId", async () => {
+      mockOrderRepository.findPage.mockResolvedValue({ items: [], total: 0, pagination: { page: 1, limit: 50, total: 0, pages: 1 } });
+      mockUserRepository.findIdsByNameOrEmail.mockResolvedValue([USER_ID]);
+
+      await orderService.getPageAdmin({ q: "oliver" });
+
+      expect(mockUserRepository.findIdsByNameOrEmail).toHaveBeenCalledWith("oliver");
+      expect(mockOrderRepository.findPage).toHaveBeenCalledWith(
+        expect.objectContaining({ userIds: [USER_ID], orderId: "oliver", status: undefined })
+      );
+    });
+
+    it("retorna vacío si q no coincide con clientes ni es un orderId válido", async () => {
+      mockUserRepository.findIdsByNameOrEmail.mockResolvedValue([]);
+
+      const result = await orderService.getPageAdmin({ q: "sin-resultados" });
+
+      expect(result).toEqual({ items: [], total: 0, pagination: { page: 1, limit: 50, total: 0, pages: 1 } });
+      expect(mockOrderRepository.findPage).not.toHaveBeenCalled();
+    });
+
+    it("combina customerId con los ids resueltos por q", async () => {
+      mockOrderRepository.findPage.mockResolvedValue({ items: [], total: 0, pagination: { page: 1, limit: 50, total: 0, pages: 1 } });
+      mockUserRepository.findIdsByNameOrEmail.mockResolvedValue([USER_ID]);
+      mockUserRepository.findByIds.mockResolvedValue([]);
+
+      await orderService.getPageAdmin({ q: "oliver", customerId: "64b00000000000000000000099" });
+
+      expect(mockOrderRepository.findPage).toHaveBeenCalledWith(
+        expect.objectContaining({ userIds: [USER_ID, "64b00000000000000000000099"] })
+      );
     });
   });
 
-  describe("findByIdAdmin", () => {
-    it("retorna la orden por id", async () => {
+  describe("getByIdAdmin", () => {
+    it("retorna la orden por id con snapshot del cliente", async () => {
       const order = makeOrder();
       mockOrderRepository.findById.mockResolvedValue(order);
+      mockUserRepository.findByIds.mockResolvedValue([makeUser()]);
 
-      const result = await orderService.findByIdAdmin(ORDER_ID);
+      const result = await orderService.getByIdAdmin(ORDER_ID);
 
       expect(mockOrderRepository.findById).toHaveBeenCalledWith(ORDER_ID);
-      expect(result).toMatchObject({ id: ORDER_ID });
-      expect(result).not.toHaveProperty("userId");
+      expect(mockUserRepository.findByIds).toHaveBeenCalledWith([USER_ID]);
+      expect(result).toMatchObject({ id: ORDER_ID, userId: USER_ID });
+      expect(result).toHaveProperty("customer", { id: USER_ID, name: "Oliver Diaz", email: "oliver@example.com" });
     });
 
     it("lanza NotFoundError si no existe", async () => {
       mockOrderRepository.findById.mockResolvedValue(null);
 
-      await expect(orderService.findByIdAdmin(ORDER_ID)).rejects.toThrow(NotFoundError);
-      await expect(orderService.findByIdAdmin(ORDER_ID)).rejects.toThrow("Order not found");
+      await expect(orderService.getByIdAdmin(ORDER_ID)).rejects.toThrow(NotFoundError);
+      await expect(orderService.getByIdAdmin(ORDER_ID)).rejects.toThrow("Order not found");
     });
   });
 
@@ -298,16 +368,23 @@ describe("order.service", () => {
       expect(mockOrderRepository.updateStatus).not.toHaveBeenCalled();
     });
 
-    it("permite a admin pending → processing", async () => {
+    it("permite a admin pending → processing y registra actor y nota", async () => {
       const updated = makeOrder({ status: "processing" });
       mockOrderRepository.findById.mockResolvedValue(makeOrder());
       mockOrderRepository.updateStatus.mockResolvedValue(updated);
+      mockUserRepository.findByIds.mockResolvedValue([makeUser()]);
 
-      const result = await orderService.updateStatusAdmin(ORDER_ID, "processing");
+      const result = await orderService.updateStatusAdmin(ORDER_ID, "processing", "64b000000000000000000002", "Aprobado");
 
-      expect(mockOrderRepository.updateStatus).toHaveBeenCalledWith(ORDER_ID, "pending", "processing");
+      expect(mockOrderRepository.updateStatus).toHaveBeenCalledWith(
+        ORDER_ID,
+        "pending",
+        "processing",
+        expect.objectContaining({ status: "processing", by: "64b000000000000000000002", note: "Aprobado" })
+      );
       expect(mockInventoryService.restoreStock).not.toHaveBeenCalled();
       expect(result).toMatchObject({ status: "processing" });
+      expect(result).toHaveProperty("customer");
     });
 
     it("permite a admin cancelar processing y restaura el stock", async () => {
@@ -318,7 +395,12 @@ describe("order.service", () => {
 
       const result = await orderService.updateStatusAdmin(ORDER_ID, "cancelled");
 
-      expect(mockOrderRepository.updateStatus).toHaveBeenCalledWith(ORDER_ID, "processing", "cancelled");
+      expect(mockOrderRepository.updateStatus).toHaveBeenCalledWith(
+        ORDER_ID,
+        "processing",
+        "cancelled",
+        expect.objectContaining({ status: "cancelled" })
+      );
       expect(mockInventoryService.restoreStock).toHaveBeenCalledWith(PRODUCT_ID, 2);
       expect(result).toMatchObject({ status: "cancelled" });
     });

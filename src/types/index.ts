@@ -3,11 +3,13 @@ import type { AdjustmentReason } from "../modules/inventory/constants/inventory-
 import type { InventoryMovementType } from "../modules/inventory/constants/inventory-movement-types";
 import type { InventorySortField } from "../modules/inventory/constants/inventory-sort-fields";
 import type { InventoryStatus } from "../modules/inventory/constants/inventory-status";
+import type { OrderSortField } from "../modules/orders/constants/order-sort-fields";
 
 export type { AdjustmentReason } from "../modules/inventory/constants/inventory-adjustment-reasons";
 export type { InventoryMovementType } from "../modules/inventory/constants/inventory-movement-types";
 export type { InventorySortField } from "../modules/inventory/constants/inventory-sort-fields";
 export type { InventoryStatus } from "../modules/inventory/constants/inventory-status";
+export type { OrderSortField } from "../modules/orders/constants/order-sort-fields";
 
 
 export type SortDirection = "asc" | "desc";
@@ -289,6 +291,19 @@ export interface OrderItem {
   quantity: number;
 }
 
+export interface OrderStatusHistoryEntry {
+  status: OrderStatus;
+  changedAt: Date;
+  by?: string;
+  note?: string;
+}
+
+export interface OrderCustomerSnapshot {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export interface Order {
   id: string;
   userId: string;
@@ -298,9 +313,29 @@ export interface Order {
   subtotal: number;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
+  statusHistory?: OrderStatusHistoryEntry[];
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface OrderQuery {
+  page: number;
+  limit: number;
+  q?: string;
+  status?: OrderStatus;
+  customerId?: string;
+  sortBy?: OrderSortField;
+  sortOrder?: SortDirection;
+}
+
+export interface OrderPageResult {
+  items: Order[];
+  total: number;
+  pagination: PaginationMeta;
+}
+
+/** Orden administrada (dashboard): incluye snapshot del cliente. */
+export type AdminOrder = Order & { customer?: OrderCustomerSnapshot };
 
 export interface ContactMessage {
   id: string;

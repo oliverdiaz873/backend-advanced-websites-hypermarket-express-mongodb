@@ -33,6 +33,27 @@ export const updateById = async (id: string, data: Partial<User>): Promise<User 
   return user.toJSON() as unknown as User;
 };
 
+export const findByIds = async (ids: string[]): Promise<User[]> => {
+  const validIds = ids.filter(isValidObjectId);
+  if (validIds.length === 0) return [];
+  const docs = await UserModel.find({ _id: { $in: validIds } });
+  const byId = new Map(docs.map((doc) => [String(doc._id), doc.toJSON() as unknown as User]));
+  return ids.map((id) => byId.get(id)).filter((u): u is User => Boolean(u));
+};
+
+export const findIdsByNameOrEmail = async (term: string): Promise<string[]> => {
+  const trimmed = term.trim();
+  if (!trimmed) return [];
+  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const docs = await UserModel.find({
+    $or: [
+      { name: { $regex: escaped, $options: "i" } },
+      { email: { $regex: escaped, $options: "i" } },
+    ],
+  }).select("_id");
+  return docs.map((doc) => String(doc._id));
+};
+
 export const deleteById = async (id: string): Promise<boolean> => {
   if (!isValidObjectId(id)) return false;
   const result = await UserModel.findByIdAndDelete(id);

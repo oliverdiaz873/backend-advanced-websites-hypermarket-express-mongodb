@@ -1,7 +1,9 @@
 export const mockUserRepository = {
   findAll: jest.fn(),
   findById: jest.fn(),
+  findByIds: jest.fn(),
   findByEmail: jest.fn(),
+  findIdsByNameOrEmail: jest.fn(),
   create: jest.fn(),
   updateById: jest.fn(),
   deleteById: jest.fn(),
@@ -117,6 +119,7 @@ export const mockAddressRepository = {
 
 export const mockOrderRepository = {
   findAll: jest.fn(),
+  findPage: jest.fn(),
   findByUserId: jest.fn(),
   findById: jest.fn(),
   create: jest.fn(),
@@ -191,8 +194,8 @@ export const mockOrderService = {
   findByUser: jest.fn(),
   findById: jest.fn(),
   updateStatus: jest.fn(),
-  findAllAdmin: jest.fn(),
-  findByIdAdmin: jest.fn(),
+  getPageAdmin: jest.fn(),
+  getByIdAdmin: jest.fn(),
   updateStatusAdmin: jest.fn(),
 };
 

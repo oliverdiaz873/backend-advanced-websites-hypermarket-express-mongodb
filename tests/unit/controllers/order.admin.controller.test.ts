@@ -14,6 +14,7 @@ import { mockOrderService } from "../mocks/repositories";
 const app = createTestApp("/api/admin/orders", adminOrderRoutes);
 const customerToken = createAuthToken({ id: "64b000000000000000000001", email: "oliver@example.com", role: "customer" });
 const adminToken = createAuthToken({ id: "64b000000000000000000002", email: "admin@example.com", role: "admin" });
+const ADMIN_ID = "64b000000000000000000002";
 
 describe("order.admin.controller", () => {
   beforeEach(() => {
@@ -31,18 +32,46 @@ describe("order.admin.controller", () => {
       const res = await request(app).get("/api/admin/orders").set("Authorization", `Bearer ${customerToken}`);
 
       expect(res.status).toBe(403);
-      expect(mockOrderService.findAllAdmin).not.toHaveBeenCalled();
+      expect(mockOrderService.getPageAdmin).not.toHaveBeenCalled();
     });
 
-    it("responde 200 con todas las órdenes (admin)", async () => {
+    it("responde 200 con la página de órdenes y paginación (admin)", async () => {
       const orders = [makeOrder()];
-      mockOrderService.findAllAdmin.mockResolvedValue(orders);
+      const pagination = { page: 1, limit: 50, total: 1, pages: 1 };
+      mockOrderService.getPageAdmin.mockResolvedValue({ items: orders, total: 1, pagination });
 
       const res = await request(app).get("/api/admin/orders").set("Authorization", `Bearer ${adminToken}`);
 
-      expect(mockOrderService.findAllAdmin).toHaveBeenCalledTimes(1);
+      expect(mockOrderService.getPageAdmin).toHaveBeenCalledTimes(1);
+      expect(mockOrderService.getPageAdmin).toHaveBeenCalledWith({
+        page: NaN,
+        limit: NaN,
+        q: undefined,
+        status: undefined,
+        customerId: undefined,
+        sortBy: undefined,
+        sortOrder: undefined,
+      });
       expect(res.status).toBe(200);
-      expect(res.body).toEqual({ success: true, data: toJson(orders) });
+      expect(res.body).toEqual({ success: true, data: toJson(orders), pagination });
+    });
+
+    it("pasa page, limit, status, sortBy, sortOrder y q al servicio", async () => {
+      mockOrderService.getPageAdmin.mockResolvedValue({ items: [], total: 0, pagination: { page: 2, limit: 10, total: 0, pages: 1 } });
+
+      const res = await request(app)
+        .get("/api/admin/orders?page=2&limit=10&status=processing&sortBy=subtotal&sortOrder=asc&q=oliver")
+        .set("Authorization", `Bearer ${adminToken}`);
+
+      expect(mockOrderService.getPageAdmin).toHaveBeenCalledWith({
+        page: 2,
+        limit: 10,
+        q: "oliver",
+        status: "processing",
+        sortBy: "subtotal",
+        sortOrder: "asc",
+      });
+      expect(res.status).toBe(200);
     });
   });
 
@@ -63,19 +92,19 @@ describe("order.admin.controller", () => {
 
     it("responde 200 con la orden (admin)", async () => {
       const order = makeOrder();
-      mockOrderService.findByIdAdmin.mockResolvedValue(order);
+      mockOrderService.getByIdAdmin.mockResolvedValue(order);
 
       const res = await request(app)
         .get(`/api/admin/orders/${ORDER_ID}`)
         .set("Authorization", `Bearer ${adminToken}`);
 
-      expect(mockOrderService.findByIdAdmin).toHaveBeenCalledWith(ORDER_ID);
+      expect(mockOrderService.getByIdAdmin).toHaveBeenCalledWith(ORDER_ID);
       expect(res.status).toBe(200);
       expect(res.body.data).toEqual(toJson(order));
     });
 
     it("responde 404 si la orden no existe", async () => {
-      mockOrderService.findByIdAdmin.mockRejectedValue(new NotFoundError("Order not found"));
+      mockOrderService.getByIdAdmin.mockRejectedValue(new NotFoundError("Order not found"));
 
       const res = await request(app)
         .get(`/api/admin/orders/${ORDER_ID}`)
@@ -123,9 +152,22 @@ describe("order.admin.controller", () => {
         .set("Authorization", `Bearer ${adminToken}`)
         .send({ status: "processing" });
 
-      expect(mockOrderService.updateStatusAdmin).toHaveBeenCalledWith(ORDER_ID, "processing");
+      expect(mockOrderService.updateStatusAdmin).toHaveBeenCalledWith(ORDER_ID, "processing", ADMIN_ID, undefined);
       expect(res.status).toBe(200);
       expect(res.body.data).toEqual(toJson(updated));
+    });
+
+    it("envía el actor y la nota opcional al servicio", async () => {
+      const updated = makeOrder({ status: "processing" });
+      mockOrderService.updateStatusAdmin.mockResolvedValue(updated);
+
+      const res = await request(app)
+        .patch(`/api/admin/orders/${ORDER_ID}/status`)
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send({ status: "processing", note: "En proceso de preparación" });
+
+      expect(mockOrderService.updateStatusAdmin).toHaveBeenCalledWith(ORDER_ID, "processing", ADMIN_ID, "En proceso de preparación");
+      expect(res.status).toBe(200);
     });
 
     it("responde 400 si la transición es inválida para admin", async () => {
