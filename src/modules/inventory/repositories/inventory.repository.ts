@@ -83,20 +83,6 @@ export const findOutOfStock = async (): Promise<Inventory[]> => {
   return docs.map(toInventory);
 };
 
-export const decreaseStock = async (productId: string, quantity: number): Promise<Inventory | null> => {
-  const doc = await InventoryModel.findOneAndUpdate(
-    { productId, $expr: { $gte: [{ $subtract: ["$stock", "$reservedStock"] }, quantity] } },
-    { $inc: { stock: -quantity } },
-    { new: true }
-  );
-  return doc ? toInventory(doc) : null;
-};
-
-export const restoreStock = async (productId: string, quantity: number): Promise<Inventory | null> => {
-  const doc = await InventoryModel.findOneAndUpdate({ productId }, { $inc: { stock: quantity } }, { new: true });
-  return doc ? toInventory(doc) : null;
-};
-
 export const reserveStock = async (productId: string, quantity: number): Promise<Inventory | null> => {
   const doc = await InventoryModel.findOneAndUpdate(
     { productId, $expr: { $gte: [{ $subtract: ["$stock", "$reservedStock"] }, quantity] } },

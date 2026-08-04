@@ -100,39 +100,6 @@ describe("inventory.service", () => {
     });
   });
 
-  describe("decreaseStock", () => {
-    it("decrementa el stock sin errores si hay disponibilidad", async () => {
-      mockInventoryRepository.decreaseStock.mockResolvedValue(makeInventory({ stock: 48 }));
-
-      await expect(inventoryService.decreaseStock(PRODUCT_ID, 2)).resolves.toBeUndefined();
-      expect(mockInventoryRepository.decreaseStock).toHaveBeenCalledWith(PRODUCT_ID, 2);
-    });
-
-    it("lanza InsufficientStockError si no hay stock suficiente", async () => {
-      mockInventoryRepository.decreaseStock.mockResolvedValue(null);
-
-      await expect(inventoryService.decreaseStock(PRODUCT_ID, 999)).rejects.toThrow(InsufficientStockError);
-      await expect(inventoryService.decreaseStock(PRODUCT_ID, 999)).rejects.toThrow(
-        `Insufficient stock for product ${PRODUCT_ID}`
-      );
-    });
-  });
-
-  describe("restoreStock", () => {
-    it("restaura stock sin errores si el registro existe", async () => {
-      mockInventoryRepository.restoreStock.mockResolvedValue(makeInventory({ stock: 52 }));
-
-      await expect(inventoryService.restoreStock(PRODUCT_ID, 2)).resolves.toBeUndefined();
-      expect(mockInventoryRepository.restoreStock).toHaveBeenCalledWith(PRODUCT_ID, 2);
-    });
-
-    it("lanza NotFoundError si el registro no existe", async () => {
-      mockInventoryRepository.restoreStock.mockResolvedValue(null);
-
-      await expect(inventoryService.restoreStock(PRODUCT_ID, 2)).rejects.toThrow(NotFoundError);
-    });
-  });
-
   describe("reserveStock", () => {
     it("reserva stock y registra el movimiento", async () => {
       mockInventoryRepository.reserveStock.mockResolvedValue(
@@ -346,7 +313,6 @@ describe("inventory.service", () => {
         newReservedStock: 0,
         reason: "supplier_adjustment",
         createdBy: "64b0000000000000000000f1",
-        reference: undefined,
       });
       expect(result).toEqual({ ...updated, status: "ok" });
     });

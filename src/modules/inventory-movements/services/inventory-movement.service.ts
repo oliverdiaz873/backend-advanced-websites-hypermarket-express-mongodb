@@ -18,7 +18,6 @@ export interface RecordMovementInput {
   newReservedStock: number;
   reason: AdjustmentReason;
   createdBy?: string;
-  reference?: string;
 }
 
 export const record = async (input: RecordMovementInput): Promise<InventoryMovement> => {

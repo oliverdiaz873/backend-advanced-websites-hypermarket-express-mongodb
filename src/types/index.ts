@@ -185,7 +185,6 @@ export interface InventoryAdjustInput {
   operation: InventoryAdjustOperation;
   quantity: number;
   reason: AdjustmentReason;
-  reference?: string;
 }
 
 export interface InventoryMovement {

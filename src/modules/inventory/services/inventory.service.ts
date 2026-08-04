@@ -70,20 +70,6 @@ export const getOutOfStock = async (): Promise<Inventory[]> => {
   return records.map(withStatus);
 };
 
-export const decreaseStock = async (productId: string, quantity: number): Promise<void> => {
-  const record = await inventoryRepository.decreaseStock(productId, quantity);
-  if (!record) {
-    throw new InsufficientStockError(`Insufficient stock for product ${productId}`);
-  }
-};
-
-export const restoreStock = async (productId: string, quantity: number): Promise<void> => {
-  const record = await inventoryRepository.restoreStock(productId, quantity);
-  if (!record) {
-    throw new NotFoundError("Inventory record not found");
-  }
-};
-
 export const reserveStock = async (
   productId: string,
   quantity: number,
@@ -260,7 +246,6 @@ export const adjustInventory = async (
     newReservedStock: updated.reservedStock,
     reason,
     createdBy: actorId,
-    reference: input.reference,
   });
 
   return withStatus(updated);

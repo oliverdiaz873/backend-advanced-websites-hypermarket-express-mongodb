@@ -48,38 +48,6 @@ describe("inventory.repository (Mongo real)", () => {
     expect(lowStock.map((r) => r.productId)).not.toContain(noMin.id);
   });
 
-  it("decreaseStock es atómico: dos compradores compiten por el mismo stock", async () => {
-    const product = await createTestProduct();
-    await createTestInventory(product.id, { stock: 5 });
-
-    const [buyerA, buyerB] = await Promise.all([
-      inventoryRepository.decreaseStock(product.id, 5),
-      inventoryRepository.decreaseStock(product.id, 5),
-    ]);
-
-    expect([buyerA, buyerB].filter(Boolean)).toHaveLength(1);
-    const after = await inventoryRepository.findByProductId(product.id);
-    expect(after?.stock).toBe(0);
-  });
-
-  it("decreaseStock devuelve null si no hay stock disponible (considerando reservado)", async () => {
-    const product = await createTestProduct();
-    await createTestInventory(product.id, { stock: 5, reservedStock: 3 });
-
-    const result = await inventoryRepository.decreaseStock(product.id, 5);
-
-    expect(result).toBeNull();
-  });
-
-  it("restoreStock incrementa el stock", async () => {
-    const product = await createTestProduct();
-    await createTestInventory(product.id, { stock: 0 });
-
-    const restored = await inventoryRepository.restoreStock(product.id, 3);
-
-    expect(restored?.stock).toBe(3);
-  });
-
   it("reserveStock reserva stock disponible y registra en reservedStock", async () => {
     const product = await createTestProduct();
     await createTestInventory(product.id, { stock: 100 });
