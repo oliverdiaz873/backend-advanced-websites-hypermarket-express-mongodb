@@ -19,6 +19,7 @@ import inventoryMovementRoutes from "./modules/inventory-movements/routes/invent
 import contactRoutes from "./modules/contact/routes/contact.routes";
 import adminContactRoutes from "./modules/contact/routes/admin-contact.routes";
 import statsRoutes from "./modules/stats/routes/stats.routes";
+import auditRoutes from "./modules/audit/routes/audit.routes";
 import errorHandler from "./shared/middleware/error-handler";
 import logger from "./shared/middleware/logger.middleware";
 
@@ -62,6 +63,7 @@ app.use("/api/inventory-movements", inventoryMovementRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/admin/contact", adminContactRoutes);
 app.use("/api/admin/stats", statsRoutes);
+app.use("/api/admin/audit-logs", auditRoutes);
 
 app.use((req: Request, res: Response) => {
   res.status(404).json({

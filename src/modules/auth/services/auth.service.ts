@@ -6,6 +6,7 @@ import * as userService from "../../users/services/user.service";
 import { InvalidDataError } from "../../../shared/errors/invalid-data.error";
 import { UnauthorizedError } from "../../../shared/errors/unauthorized.error";
 import { EmailAlreadyExistsError } from "../../../shared/errors/email-already-exists.error";
+import * as auditService from "../../audit/services/audit.service";
 import type { PublicUser } from "../../../types";
 
 export const register = async (data: { name: string; email: string; password: string }): Promise<PublicUser> => {
@@ -21,6 +22,15 @@ export const register = async (data: { name: string; email: string; password: st
     name: data.name,
     email,
     password: data.password,
+  });
+
+  void auditService.log({
+    userId: user.id,
+    userName: user.name,
+    action: "REGISTER",
+    resource: "auth",
+    success: true,
+    details: { email },
   });
 
   return user;
@@ -52,6 +62,14 @@ export const login = async (email: string, password: string): Promise<{ token: s
   );
 
   const { password: _, ...publicUser } = user;
+
+  void auditService.log({
+    userId: user.id,
+    userName: user.name,
+    action: "LOGIN",
+    resource: "auth",
+    success: true,
+  });
 
   return { token, user: publicUser };
 };

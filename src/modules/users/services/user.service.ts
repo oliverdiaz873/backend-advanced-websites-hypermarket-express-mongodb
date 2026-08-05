@@ -55,13 +55,14 @@ export const create = async (data: { name: string; email: string; password: stri
 };
 
 export const updateById = async (id: string, data: Record<string, unknown>, actorId?: string): Promise<PublicUser> => {
+  let updates: Record<string, unknown> = {};
   return auditService.runAudited(
     { userId: actorId, action: "UPDATE_USER", resource: "user", resourceId: id },
     async () => {
       const user = await userRepository.findById(id);
       if (!user) throw new NotFoundError("User not found");
 
-      const updates: Record<string, unknown> = {};
+      updates = {};
       for (const key of ALLOWED_UPDATABLE) {
         if (data[key] !== undefined) {
           if (key === "email") {
@@ -82,7 +83,9 @@ export const updateById = async (id: string, data: Record<string, unknown>, acto
 
       const updated = await userRepository.updateById(id, updates);
       return toPublicUser(updated) as PublicUser;
-    }
+    },
+    undefined,
+    () => ({ fields: Object.keys(updates).filter((key) => key !== "updatedAt") })
   );
 };
 

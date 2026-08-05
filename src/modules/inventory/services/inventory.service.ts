@@ -1,6 +1,7 @@
 import * as inventoryRepository from "../repositories/inventory.repository";
 import * as productRepository from "../../products/repositories/product.repository";
 import * as inventoryMovementService from "../../inventory-movements/services/inventory-movement.service";
+import * as auditService from "../../audit/services/audit.service";
 import { NotFoundError } from "../../../shared/errors/not-found.error";
 import { InvalidDataError } from "../../../shared/errors/invalid-data.error";
 import { InsufficientStockError } from "../../../shared/errors/insufficient-stock.error";
@@ -94,6 +95,15 @@ export const reserveStock = async (
     reason: "order_reserved",
     createdBy: actorId,
   });
+
+  void auditService.log({
+    userId: actorId,
+    action: "INVENTORY_RESERVE",
+    resource: "inventory",
+    resourceId: productId,
+    success: true,
+    details: { productId, quantity, orderId },
+  });
 };
 
 export const releaseReservation = async (
@@ -120,6 +130,15 @@ export const releaseReservation = async (
     reason: "order_release",
     createdBy: actorId,
   });
+
+  void auditService.log({
+    userId: actorId,
+    action: "INVENTORY_RELEASE",
+    resource: "inventory",
+    resourceId: productId,
+    success: true,
+    details: { productId, quantity, orderId },
+  });
 };
 
 export const completeReservation = async (
@@ -145,6 +164,15 @@ export const completeReservation = async (
     newReservedStock: record.reservedStock,
     reason: "order_completed",
     createdBy: actorId,
+  });
+
+  void auditService.log({
+    userId: actorId,
+    action: "INVENTORY_COMPLETE_SALE",
+    resource: "inventory",
+    resourceId: productId,
+    success: true,
+    details: { productId, quantity, orderId },
   });
 };
 
@@ -246,6 +274,15 @@ export const adjustInventory = async (
     newReservedStock: updated.reservedStock,
     reason,
     createdBy: actorId,
+  });
+
+  void auditService.log({
+    userId: actorId,
+    action: "INVENTORY_ADJUST",
+    resource: "inventory",
+    resourceId: id,
+    success: true,
+    details: { operation: input.operation, quantity: input.quantity, reason: input.reason },
   });
 
   return withStatus(updated);

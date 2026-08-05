@@ -84,16 +84,49 @@ export type AuditAction =
   | "DELETE_OFFER"
   | "CREATE_USER"
   | "UPDATE_USER"
-  | "DELETE_USER";
+  | "DELETE_USER"
+  | "LOGIN"
+  | "REGISTER"
+  | "INVENTORY_ADJUST"
+  | "INVENTORY_RESERVE"
+  | "INVENTORY_RELEASE"
+  | "INVENTORY_COMPLETE_SALE"
+  | "CREATE_ORDER"
+  | "UPDATE_ORDER_STATUS"
+  | "CANCEL_ORDER";
 
 export interface AuditLog {
   id: string;
   userId?: string;
+  userName?: string;
   action: AuditAction;
   resource: string;
   resourceId?: string;
   success: boolean;
+  details?: unknown;
   createdAt: Date;
+}
+
+export interface AuditLogQuery {
+  page: number;
+  limit: number;
+  q?: string;
+  userId?: string;
+  action?: AuditAction;
+  /** Alias de API para el campo físico `resource`. */
+  entity?: string;
+  /** Alias de API para el campo físico `resourceId`. */
+  entityId?: string;
+  from?: string;
+  to?: string;
+  sortBy?: "createdAt";
+  sortOrder?: SortDirection;
+}
+
+export interface AuditLogPageResult {
+  items: AuditLog[];
+  total: number;
+  pagination: PaginationMeta;
 }
 
 export interface Subcategory {

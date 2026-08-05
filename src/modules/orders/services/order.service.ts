@@ -4,6 +4,7 @@ import * as productRepository from "../../products/repositories/product.reposito
 import * as addressRepository from "../../addresses/repositories/address.repository";
 import * as inventoryService from "../../inventory/services/inventory.service";
 import * as userRepository from "../../users/repositories/user.repository";
+import * as auditService from "../../audit/services/audit.service";
 import { NotFoundError } from "../../../shared/errors/not-found.error";
 import { InvalidDataError } from "../../../shared/errors/invalid-data.error";
 import { InsufficientStockError } from "../../../shared/errors/insufficient-stock.error";
@@ -94,6 +95,15 @@ const applyStatusTransition = async (
     }
   }
 
+  void auditService.log({
+    userId: actorId,
+    action: newStatus === "cancelled" ? "CANCEL_ORDER" : "UPDATE_ORDER_STATUS",
+    resource: "order",
+    resourceId: order.id,
+    success: true,
+    details: { from: order.status, to: newStatus },
+  });
+
   return toResponse(updated);
 };
 
@@ -168,6 +178,15 @@ export const create = async (userId: string, addressId: string) => {
   }
 
   await cartRepository.clearCart(userId);
+
+  void auditService.log({
+    userId,
+    action: "CREATE_ORDER",
+    resource: "order",
+    resourceId: order.id,
+    success: true,
+    details: { totalItems, subtotal, itemCount: items.length },
+  });
 
   return toResponse(order);
 };

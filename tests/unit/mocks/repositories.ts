@@ -267,3 +267,14 @@ export const mockStatsService = {
   getCategorySales: jest.fn(),
   getInventorySummary: jest.fn(),
 };
+
+export const mockAuditRepository = {
+  create: jest.fn(),
+  findPage: jest.fn(),
+  find: jest.fn(),
+};
+
+export const mockAuditService = {
+  getPage: jest.fn(),
+  getById: jest.fn(),
+};

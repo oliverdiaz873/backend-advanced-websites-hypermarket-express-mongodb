@@ -36,6 +36,15 @@ const config: Config = {
       testTimeout: 30000,
       collectCoverageFrom: coverageSources,
       coveragePathIgnorePatterns: coverageIgnores,
+      coverageThreshold: {
+        // Phase 10: evita regresiones en el módulo de auditoría (cobertura combinada ~95%).
+        "src/modules/audit/**": {
+          statements: 90,
+          branches: 85,
+          functions: 90,
+          lines: 90,
+        },
+      },
     },
   ],
   detectOpenHandles: true,

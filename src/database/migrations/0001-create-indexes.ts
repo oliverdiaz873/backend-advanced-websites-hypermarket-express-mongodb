@@ -24,7 +24,7 @@ export const up = async (db: import("mongodb").Db): Promise<void> => {
 
   const auditlogs = await collections().then((all) => all.find((c) => c.collectionName === "auditlogs"));
   if (auditlogs) {
-    await auditlogs.createIndex({ resource: 1, resourceId: 1 });
+    await auditlogs.createIndex({ resource: 1, resourceId: 1, createdAt: -1 });
     await auditlogs.createIndex({ createdAt: -1 });
   }
 
@@ -40,7 +40,7 @@ export const down = async (db: import("mongodb").Db): Promise<void> => {
     products: ["categoryId_1", "brandId_1", "sku_1", "name_text"],
     orders: ["userId_1_createdAt_-1", "status_1"],
     inventory: ["productId_1"],
-    auditlogs: ["resource_1_resourceId_1", "createdAt_-1"],
+    auditlogs: ["resource_1_resourceId_1_createdAt_-1", "createdAt_-1"],
     users: ["email_1"],
   };
 
