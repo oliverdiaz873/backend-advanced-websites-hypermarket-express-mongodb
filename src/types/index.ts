@@ -390,3 +390,72 @@ export interface StatsOverview {
   };
 }
 
+/** Query común reutilizada por todos los endpoints de estadísticas. */
+export interface StatsQuery {
+  /** Ventana relativa en días (fallback cuando no se envían from/to). */
+  days?: number;
+  /** Límite inferior de createdAt (ISO). Tiene prioridad sobre days. */
+  from?: string;
+  /** Límite superior de createdAt (ISO, incluido su día). */
+  to?: string;
+  /** Filtra ventas de una categoría (se resuelve a sus productos). */
+  categoryId?: string;
+  /** Filtra ventas de un producto concreto. */
+  productId?: string;
+  /** Reservado para crecimiento multi-store (sin efecto hoy). */
+  storeId?: string;
+  /** Top N (1-50) para top-products. */
+  limit?: number;
+}
+
+/** Filtro resuelto, listo para aplicar a las agregaciones de MongoDB. */
+export interface StatsFilter {
+  from?: Date;
+  to?: Date;
+  /**
+   * Ids de producto a filtrar. `undefined` = sin filtro de producto;
+   * `[]` = sin coincidencias (resultado vacío), p.ej. categoría sin productos.
+   */
+  productIds?: string[];
+}
+
+export interface DashboardKpis {
+  revenue: number;
+  averageOrderValue: number;
+  orders: number;
+  completedOrders: number;
+  pendingOrders: number;
+  customers: number;
+  newCustomers: number;
+  lowStock: number;
+  pendingContactMessages: number;
+  growthPercent: number;
+}
+
+export interface RevenueTrendPoint {
+  date: string;
+  total: number;
+}
+
+export interface TopProductStat {
+  productId: string;
+  name: string;
+  quantity: number;
+  revenue: number;
+}
+
+export interface CategorySalesStat {
+  category: string;
+  slug: string;
+  revenue: number;
+  orders: number;
+}
+
+export interface InventorySummary {
+  inventoryValue: number;
+  totalUnits: number;
+  totalProducts: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+}
+

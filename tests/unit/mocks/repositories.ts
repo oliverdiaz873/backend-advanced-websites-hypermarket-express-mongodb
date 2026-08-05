@@ -238,15 +238,32 @@ export const mockInventoryService = {
 };
 
 export const mockStatsRepository = {
+  findProductIdsByCategory: jest.fn(),
   countOrders: jest.fn(),
   countOrdersByStatus: jest.fn(),
+  countOrdersSince: jest.fn(),
+  countPendingOrders: jest.fn(),
   countCustomers: jest.fn(),
+  countNewCustomersSince: jest.fn(),
   countProducts: jest.fn(),
   countLowStock: jest.fn(),
+  countOutOfStock: jest.fn(),
   countPendingContactMessages: jest.fn(),
   sumRevenueSince: jest.fn(),
+  sumRevenue: jest.fn(),
+  sumRevenueByDay: jest.fn(),
+  topProductsByQuantity: jest.fn(),
+  sumRevenueByCategory: jest.fn(),
+  inventorySummary: jest.fn(),
 };
 
 export const mockStatsService = {
+  parseStatsQuery: jest.fn(),
   getOverview: jest.fn(),
+  getDashboard: jest.fn(),
+  getRevenueSeries: jest.fn(),
+  getOrdersByStatus: jest.fn(),
+  getTopProducts: jest.fn(),
+  getCategorySales: jest.fn(),
+  getInventorySummary: jest.fn(),
 };

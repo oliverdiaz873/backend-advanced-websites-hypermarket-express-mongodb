@@ -54,4 +54,43 @@ describe("stats.admin.controller", () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ success: true, data: overview });
   });
+
+  it("responde 200 en /overview (alias)", async () => {
+    mockStatsService.getOverview.mockResolvedValue(overview);
+
+    const res = await request(app).get("/api/admin/stats/overview").set("Authorization", `Bearer ${adminToken}`);
+
+    expect(mockStatsService.getOverview).toHaveBeenCalledTimes(1);
+    expect(res.status).toBe(200);
+  });
+
+  it("responde 200 en /dashboard", async () => {
+    mockStatsService.getDashboard.mockResolvedValue({ revenue: 100 });
+
+    const res = await request(app).get("/api/admin/stats/dashboard").set("Authorization", `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(mockStatsService.getDashboard).toHaveBeenCalledTimes(1);
+    expect(res.body).toEqual({ success: true, data: { revenue: 100 } });
+  });
+
+  it("responde 200 en /revenue con query parseado", async () => {
+    mockStatsService.parseStatsQuery.mockReturnValue({ days: 30, limit: 5 });
+    mockStatsService.getRevenueSeries.mockResolvedValue([{ date: "2026-01-01", total: 5 }]);
+
+    const res = await request(app).get("/api/admin/stats/revenue?days=30&limit=5").set("Authorization", `Bearer ${adminToken}`);
+
+    expect(mockStatsService.parseStatsQuery).toHaveBeenCalledTimes(1);
+    expect(mockStatsService.getRevenueSeries).toHaveBeenCalledTimes(1);
+    const query = mockStatsService.getRevenueSeries.mock.calls[0][0];
+    expect(query).toEqual({ days: 30, limit: 5 });
+    expect(res.status).toBe(200);
+  });
+
+  it("protege los nuevos endpoints con rol admin", async () => {
+    const res = await request(app).get("/api/admin/stats/top-products").set("Authorization", `Bearer ${customerToken}`);
+
+    expect(res.status).toBe(403);
+    expect(mockStatsService.getTopProducts).not.toHaveBeenCalled();
+  });
 });
