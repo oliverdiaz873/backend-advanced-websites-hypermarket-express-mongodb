@@ -107,10 +107,11 @@ describe("E2E: /api/auth", () => {
 
       const rateLimited = await attempt();
       expect(rateLimited.status).toBe(429);
-      expect(rateLimited.body).toEqual({
+      expect(rateLimited.body).toMatchObject({
         success: false,
         message: "Too many login attempts, please try again later",
         statusCode: 429,
+        code: "RATE_LIMITED",
       });
     });
   });

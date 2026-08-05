@@ -2,6 +2,7 @@ import app from "./app";
 import config from "./config";
 import { assertValidConfig } from "./config/validation";
 import { connectDB } from "./config/database";
+import { logger } from "./shared/logger/logger";
 import mongoose from "mongoose";
 
 const PORT = config.port || 3000;
@@ -12,7 +13,7 @@ const start = async (): Promise<void> => {
     assertValidConfig(config);
     await connectDB();
     const server = app.listen(PORT, () => {
-      console.log(`Servidor corriendo en puerto ${PORT} [${config.nodeEnv}]`);
+      logger.info("Server listening", { port: PORT, env: config.nodeEnv });
     });
 
     let shuttingDown = false;
@@ -20,24 +21,28 @@ const start = async (): Promise<void> => {
     const shutdown = (signal: string): void => {
       if (shuttingDown) return;
       shuttingDown = true;
-      console.log(`[server] Recibido ${signal}, cerrando servidor...`);
+      logger.info("Shutdown signal received", { signal });
 
       const forceExitTimer = setTimeout(() => {
-        console.error("[server] Timeout de cierre alcanzado, forzando salida");
+        logger.error("Shutdown timeout reached, forcing exit");
         process.exit(1);
       }, SHUTDOWN_TIMEOUT_MS);
       forceExitTimer.unref();
 
       server.close(async (closeError) => {
         if (closeError) {
-          console.error("[server] Error cerrando servidor:", closeError);
+          logger.error("Error closing HTTP server", {
+            error: closeError.message,
+          });
         }
         try {
           await mongoose.disconnect();
-          console.log("[server] Servidor y conexión a MongoDB cerrados");
+          logger.info("Server and MongoDB connection closed");
           process.exit(0);
         } catch (disconnectError) {
-          console.error("[server] Error desconectando MongoDB:", disconnectError);
+          logger.error("Error disconnecting MongoDB", {
+            error: disconnectError instanceof Error ? disconnectError.message : String(disconnectError),
+          });
           process.exit(1);
         }
       });
@@ -46,7 +51,9 @@ const start = async (): Promise<void> => {
     process.on("SIGINT", () => shutdown("SIGINT"));
     process.on("SIGTERM", () => shutdown("SIGTERM"));
   } catch (error) {
-    console.error("No se pudo iniciar el servidor:", error);
+    logger.error("Failed to start server", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     process.exit(1);
   }
 };

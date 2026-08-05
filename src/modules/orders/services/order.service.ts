@@ -5,6 +5,7 @@ import * as addressRepository from "../../addresses/repositories/address.reposit
 import * as inventoryService from "../../inventory/services/inventory.service";
 import * as userRepository from "../../users/repositories/user.repository";
 import * as auditService from "../../audit/services/audit.service";
+import { logger } from "../../../shared/logger/logger";
 import { NotFoundError } from "../../../shared/errors/not-found.error";
 import { InvalidDataError } from "../../../shared/errors/invalid-data.error";
 import { InsufficientStockError } from "../../../shared/errors/insufficient-stock.error";
@@ -172,7 +173,9 @@ export const create = async (userId: string, addressId: string) => {
       }
       await orderRepository.deleteById(order.id);
     } catch (rollbackError) {
-      console.error("Checkout rollback failed:", rollbackError);
+      logger.error("Checkout rollback failed", {
+      error: rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
+    });
     }
     throw error;
   }

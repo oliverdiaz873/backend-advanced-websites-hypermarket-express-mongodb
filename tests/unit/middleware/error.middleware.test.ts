@@ -21,27 +21,32 @@ describe("error.middleware", () => {
     const res = await request(app).get("/notfound");
 
     expect(res.status).toBe(404);
-    expect(res.body).toEqual({ success: false, message: "Resource missing", statusCode: 404 });
+    expect(res.body).toEqual({ success: false, message: "Resource missing", statusCode: 404, code: "NOT_FOUND" });
   });
 
   it("responde 400 para InvalidDataError", async () => {
     const res = await request(app).get("/invalid");
 
     expect(res.status).toBe(400);
-    expect(res.body).toEqual({ success: false, message: "Bad payload", statusCode: 400 });
+    expect(res.body).toEqual({ success: false, message: "Bad payload", statusCode: 400, code: "VALIDATION_ERROR" });
   });
 
   it("responde 401 para UnauthorizedError", async () => {
     const res = await request(app).get("/unauthorized");
 
     expect(res.status).toBe(401);
-    expect(res.body).toEqual({ success: false, message: "Not authenticated", statusCode: 401 });
+    expect(res.body).toEqual({
+      success: false,
+      message: "Not authenticated",
+      statusCode: 401,
+      code: "UNAUTHORIZED",
+    });
   });
 
   it("responde 500 para errores desconocidos", async () => {
     const res = await request(app).get("/generic");
 
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ success: false, message: "boom", statusCode: 500 });
+    expect(res.body).toEqual({ success: false, message: "boom", statusCode: 500, code: "INTERNAL_ERROR" });
   });
 });

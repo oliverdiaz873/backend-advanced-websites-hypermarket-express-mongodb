@@ -1,16 +1,20 @@
 import { Request, Response, NextFunction } from "express";
+import { logger } from "../logger/logger";
 
-const logger = (req: Request, res: Response, next: NextFunction): void => {
+const httpLogger = (req: Request, res: Response, next: NextFunction): void => {
   const start = Date.now();
   const { method, url } = req;
 
   res.on("finish", () => {
-    const duration = Date.now() - start;
-    const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] ${method} ${url} ${res.statusCode} - ${duration}ms`);
+    logger.info("http request", {
+      method,
+      url,
+      status: res.statusCode,
+      durationMs: Date.now() - start,
+    });
   });
 
   next();
 };
 
-export default logger;
+export default httpLogger;

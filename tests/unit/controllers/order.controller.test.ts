@@ -82,7 +82,7 @@ describe("order.controller", () => {
         .send({ addressId: "inexistente" });
 
       expect(res.status).toBe(404);
-      expect(res.body).toEqual({ success: false, message: "Address not found", statusCode: 404 });
+      expect(res.body).toEqual({ success: false, message: "Address not found", statusCode: 404, code: "NOT_FOUND" });
     });
   });
 

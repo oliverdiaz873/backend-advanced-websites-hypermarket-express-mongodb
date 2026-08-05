@@ -61,6 +61,7 @@ describe("error-handler con Mongo real", () => {
       success: false,
       message: "Duplicate value: resource already exists",
       statusCode: 409,
+      code: "CONFLICT",
     });
   });
 
@@ -81,6 +82,7 @@ describe("error-handler con Mongo real", () => {
       success: false,
       message: "Invalid identifier format",
       statusCode: 400,
+      code: "VALIDATION_ERROR",
     });
   });
 });

@@ -1,4 +1,5 @@
 import type { Config } from "../types";
+import { logger } from "../shared/logger/logger";
 
 const NODE_ENVS = ["development", "test", "production"] as const;
 
@@ -48,7 +49,7 @@ export const assertValidConfig = (config: Config): void => {
     throw new Error(`Invalid configuration:\n${details}`);
   }
 
-  console.warn(`[config] Invalid configuration (ignored outside production):\n${details}`);
+  logger.warn("Invalid configuration (ignored outside production)", { details });
 };
 
 export default assertValidConfig;

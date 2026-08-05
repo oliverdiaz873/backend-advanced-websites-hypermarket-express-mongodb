@@ -67,6 +67,8 @@ export interface Config {
   mongodbUri?: string;
   mongodbBackupUri?: string;
   backupDir: string;
+  rateLimitWindowMs: number;
+  rateLimitMaxRequests: number;
 }
 
 export type AuditAction =

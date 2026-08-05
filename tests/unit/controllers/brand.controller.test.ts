@@ -51,7 +51,7 @@ describe("brand.controller", () => {
       const res = await request(app).get("/api/brands/inexistente");
 
       expect(res.status).toBe(404);
-      expect(res.body).toEqual({ success: false, message: "Brand not found", statusCode: 404 });
+      expect(res.body).toEqual({ success: false, message: "Brand not found", statusCode: 404, code: "NOT_FOUND" });
     });
   });
 

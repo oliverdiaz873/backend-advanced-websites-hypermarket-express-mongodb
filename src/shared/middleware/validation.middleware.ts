@@ -9,6 +9,8 @@ export const validateRequiredFields = (fields: string[]) => {
         success: false,
         message: `Missing required fields: ${missing.join(", ")}`,
         statusCode: 400,
+        code: "VALIDATION_ERROR",
+        requestId: req.requestId,
       });
       return;
     }

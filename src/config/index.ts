@@ -16,6 +16,8 @@ const config: Config = {
   mongodbUri: process.env.MONGODB_URI || "mongodb://localhost:27017/hypermarket",
   mongodbBackupUri: process.env.MONGODB_BACKUP_URI || undefined,
   backupDir: process.env.BACKUP_DIR || "backups",
+  rateLimitWindowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60_000,
+  rateLimitMaxRequests: Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 300,
 };
 
 export default config;

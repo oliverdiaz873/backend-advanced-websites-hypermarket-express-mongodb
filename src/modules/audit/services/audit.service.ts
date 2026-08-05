@@ -3,6 +3,7 @@ import * as auditRepository from "../repositories/audit.repository";
 import * as userRepository from "../../users/repositories/user.repository";
 import { isValidObjectId } from "../../../shared/utils/mongo";
 import { NotFoundError } from "../../../shared/errors/not-found.error";
+import { logger } from "../../../shared/logger/logger";
 import type { AuditAction, AuditLog, AuditLogPageResult, AuditLogQuery } from "../../../types";
 
 export interface AuditEntry {
@@ -72,7 +73,7 @@ export const log = async (entry: AuditEntry): Promise<void> => {
   try {
     if (!isConnected()) {
       if (process.env.NODE_ENV !== "test") {
-        console.warn("[audit] Log omitido: MongoDB no conectado");
+        logger.warn("Audit log skipped: MongoDB not connected");
       }
       return;
     }
@@ -87,7 +88,9 @@ export const log = async (entry: AuditEntry): Promise<void> => {
     };
     await auditRepository.create(data);
   } catch (error) {
-    console.error("[audit] Error al registrar log:", error);
+    logger.error("Failed to write audit log", {
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 };
 

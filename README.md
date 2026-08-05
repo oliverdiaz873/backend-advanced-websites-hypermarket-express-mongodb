@@ -119,12 +119,55 @@ Copiar `.env.example` a `.env` y configurar los valores:
 | Variable | Descripción | Obligatorio |
 |----------|-------------|-------------|
 | `PORT` | Puerto del servidor | No (default: 3000) |
-| `NODE_ENV` | Entorno (development, production) | No (default: development) |
+| `NODE_ENV` | Entorno (`development`, `test`, `production`) | No (default: development) |
 | `CORS_ORIGIN` | Orígenes permitidos para CORS (separados por coma) | No (default: http://localhost:4200) |
-| `JWT_SECRET` | Clave secreta para firmar tokens JWT | Sí (cuando se implemente Auth) |
+| `JWT_SECRET` | Clave secreta para firmar tokens JWT | Sí |
 | `JWT_EXPIRES_IN` | Tiempo de expiración del token JWT | No (default: 1d) |
+| `MONGODB_URI` | Cadena de conexión a MongoDB | No (default: mongodb://localhost:27017/hypermarket) |
+| `RATE_LIMIT_WINDOW_MS` | Ventana del rate limit global en ms | No (default: 900000 = 15 min) |
+| `RATE_LIMIT_MAX_REQUESTS` | Nº máximo de peticiones por ventana | No (default: 300) |
+| `MONGODB_BACKUP_URI` | Conexión solo para backups/restores (NUNCA usada por Express) | No |
+| `BACKUP_DIR` | Directorio para los backups de MongoDB | No (default: backups) |
 
-> `MONGODB_URI` está definida en `.env.example` como preparación para la futura migración a MongoDB.
+> **Node**: la API exige Node **≥ 22** (definido en `engines` de `package.json` y
+> `.nvmrc`). El archivo `.env` (con credenciales) está en `.gitignore` y nunca se
+> sube al repositorio.
+
+## Instalación limpia
+
+Requisitos: **Node.js ≥ 22** y una instancia de **MongoDB** accesible
+(local, Atlas o Memory Server para tests).
+
+```bash
+# 1. Instalar dependencias (bloquea versiones desde package-lock.json)
+npm ci
+
+# 2. Crear la configuración local desde la plantilla
+cp .env.example .env   # en Windows: copy .env.example .env
+
+# 3. (Opcional) Verificar que compila y que la suite está verde
+npm run build
+npm test
+```
+
+## Arranque
+
+```bash
+npm run dev      # desarrollo con recarga en caliente (tsx watch)
+npm run build    # compila a dist/ (tsc)
+npm start        # producción: node dist/server.js
+```
+
+Utilidades de mantenimiento:
+
+```bash
+npm run seed          # sembrar datos de ejemplo
+npm run clear         # limpiar datos
+npm run migrate       # aplicar migraciones de esquema
+npm run migrate:down  # revertir última migración
+npm run backup        # respaldo de MongoDB
+npm run restore -- <archivo.archive.gz>
+```
 
 ## Middlewares
 
@@ -132,10 +175,12 @@ Copiar `.env.example` a `.env` y configurar los valores:
 
 1. **express.json()** - Parsea el body JSON de las peticiones entrantes.
 2. **express.urlencoded()** - Parsea datos de formularios URL-encoded.
-3. **logger** - Registra en consola cada petición con fecha, método, URL, código de estado y duración.
-4. **cors** - Permite peticiones desde orígenes cruzados (Angular, Next.js).
-5. **Rutas** - Enrutadores específicos de cada módulo (/api/products, /api/categories, etc.).
-6. **errorHandler** - Middleware de errores que captura cualquier error no manejado y responde con formato uniforme.
+3. **requestId** - Asigna un `requestId` (UUID) a cada petición, aceptando uno entrante via header `X-Request-Id` (solo UUIDs válidos).
+4. **logger** - Registra cada petición con fecha, método, URL, código de estado, duración y `requestId`.
+5. **cors** - Permite peticiones desde orígenes cruzados (Angular, Next.js).
+6. **rateLimiter** - Limita peticiones por IP dentro de la ventana configurada.
+7. **Rutas** - Enrutadores específicos de cada módulo (/api/products, /api/categories, etc.).
+8. **errorHandler** - Middleware de errores que captura cualquier error no manejado y responde con el envelope uniforme.
 
 ### Logger
 Ubicación: `src/shared/middleware/logger.middleware.ts`
@@ -156,8 +201,23 @@ Ubicación: `src/shared/middleware/validation.middleware.ts`
 ### Error Handler
 Ubicación: `src/shared/middleware/error-handler.ts`
 - Captura errores lanzados en rutas y middlewares.
-- Compatible con `NotFoundError` (statusCode 404).
-- Responde siempre con `{ success: false, message, statusCode }`.
+- Mapea errores de dominio (`NotFoundError`, `InvalidDataError`, `UnauthorizedError`, ...), de Mongoose (duplicate key → 409, ValidationError/CastError → 400) y genéricos (500).
+- Responde siempre con el envelope: `{ success, message, statusCode, code, requestId, stack }`.
+- `code` es un identificador estable (p. ej. `NOT_FOUND`, `VALIDATION_ERROR`, `UNAUTHORIZED`, `CONFLICT`, `RATE_LIMITED`, `INTERNAL_ERROR`).
+- `requestId` se incluye cuando el middleware de request-id está presente, permitiendo correlacionar el error con los logs del servidor.
+- `stack` solo se expone en `NODE_ENV=development`.
+- Los errores 500 no exponen el mensaje interno en producción.
+
+### Rate Limiting
+Ubicación: `src/shared/middleware/rate-limit.middleware.ts`
+- Limita el número de peticiones por IP en una ventana configurable (`RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX_REQUESTS`).
+- Responde `429` con `code: "RATE_LIMITED"` al superar el límite.
+- Se desactiva automáticamente en `NODE_ENV=test` para no interferir con los tests.
+
+### Health & Readiness
+- `GET /health` — Liveness: responde `200` si el proceso está vivo (incluye versión y uptime).
+- `GET /ready` — Readiness: responde `200` si MongoDB está accesible, `503` en caso contrario.
+- `GET /api/health` — Se mantiene por compatibilidad con los clientes existentes.
 
 ## Autenticación
 
@@ -177,7 +237,7 @@ El módulo `auth/` maneja registro, inicio de sesión y verificación de tokens 
 - El token JWT incluye `id`, `email` y `role`.
 - El middleware `auth.middleware` verifica tokens en rutas protegidas.
 - Seed users: `oliver@email.com`, `maria@email.com`, `carlos@email.com` — todas con password `123456`.
-- Configurar `JWT_SECRET` en `.env` (actual: `hypermarket_dev_secret_2026`).
+- Configurar `JWT_SECRET` en `.env` (obligatorio en producción; ver `config/validation.ts`).
 
 ## Users API
 
@@ -218,10 +278,19 @@ CORS_ORIGIN=http://localhost:4200,http://localhost:3000,https://midominio.com
 ### Formato de respuestas
 Todas las respuestas siguen un contrato uniforme:
 - Éxito: `{ "success": true, "data": [...] }`
-- Error: `{ "success": false, "message": "...", "statusCode": 400 }`
+- Error: `{ "success": false, "message": "...", "statusCode": 400, "code": "VALIDATION_ERROR" }`
+- Error (dando seguimiento): `{ "success": false, "message": "...", "statusCode": 500, "code": "INTERNAL_ERROR", "requestId": "..." }`
 
 ### Documentación detallada
 Ver [`docs/API-USAGE.md`](docs/API-USAGE.md) para la documentación completa de endpoints, parámetros, ejemplos de respuesta y errores.
+
+Otros documentos de referencia:
+
+- [`docs/API-CONTRACT.md`](docs/API-CONTRACT.md) — Contrato uniforme de respuestas y errores.
+- [`docs/SYSTEM-MODELING.md`](docs/SYSTEM-MODELING.md) — Modelado del sistema.
+- [`docs/ADR-011-module-boundaries.md`](docs/ADR-011-module-boundaries.md) — Límites entre módulos y lectura transversal de `stats`.
+- [`docs/PRODUCTION-DATA-PROTECTION.md`](docs/PRODUCTION-DATA-PROTECTION.md) — Separación de credenciales, backups, migraciones y soft-delete.
+- [`docs/PRODUCTION-RATE-LIMITS.md`](docs/PRODUCTION-RATE-LIMITS.md) — Rate limiting en producción (valores, limitaciones y ajustes).
 
 ## Arquitectura
 

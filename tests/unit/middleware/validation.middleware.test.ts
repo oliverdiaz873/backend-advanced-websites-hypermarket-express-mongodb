@@ -22,6 +22,7 @@ describe("validation.middleware", () => {
       success: false,
       message: "Missing required fields: email",
       statusCode: 400,
+      code: "VALIDATION_ERROR",
     });
   });
 

@@ -10,6 +10,8 @@ const baseConfig: Config = {
   corsOrigin: ["http://localhost:4200"],
   mongodbUri: "mongodb://localhost:27017/hypermarket",
   backupDir: "backups",
+  rateLimitWindowMs: 900_000,
+  rateLimitMaxRequests: 300,
 };
 
 describe("config validation", () => {

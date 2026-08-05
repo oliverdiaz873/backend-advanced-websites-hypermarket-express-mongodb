@@ -1,33 +1,61 @@
 import { Request, Response, NextFunction } from "express";
-import { Error as MongooseError } from "mongoose";
+import config from "../../config";
+import { logger } from "../logger/logger";
+import { mapError, type ErrorCode, type MappedError } from "../errors/error-map";
 
 interface AppError extends Error {
   statusCode?: number;
-  code?: number;
 }
 
-const errorHandler = (err: AppError, req: Request, res: Response, next: NextFunction): void => {
-  let statusCode = err.statusCode || 500;
-  let message = err.message || "Internal server error";
+export interface ErrorResponseBody {
+  success: false;
+  message: string;
+  statusCode: number;
+  code: ErrorCode;
+  requestId?: string;
+  stack?: string;
+}
 
-  if (err instanceof MongooseError.ValidationError) {
-    statusCode = 400;
-    message = Object.values(err.errors)
-      .map((e) => e.message)
-      .join(", ");
-  } else if (err instanceof MongooseError.CastError) {
-    statusCode = 400;
-    message = "Invalid identifier format";
-  } else if (err.name === "MongoServerError" && err.code === 11000) {
-    statusCode = 409;
-    message = "Duplicate value: resource already exists";
-  }
-
-  res.status(statusCode).json({
+export const toErrorResponse = (
+  mapped: MappedError,
+  requestId: string | undefined,
+  stack: string | undefined,
+  exposeStack: boolean,
+  message: string = mapped.message
+): ErrorResponseBody => {
+  const body: ErrorResponseBody = {
     success: false,
     message,
-    statusCode,
+    statusCode: mapped.statusCode,
+    code: mapped.code,
+  };
+
+  if (requestId) body.requestId = requestId;
+  if (exposeStack && stack) body.stack = stack;
+
+  return body;
+};
+
+const errorHandler = (err: AppError, req: Request, res: Response, next: NextFunction): void => {
+  const mapped = mapError(err);
+
+  logger.error(`Unhandled error: ${mapped.code}`, {
+    code: mapped.code,
+    statusCode: mapped.statusCode,
+    method: req.method,
+    path: req.originalUrl,
+    requestId: req.requestId,
+    stack: err.stack,
   });
+
+  const isProduction = config.nodeEnv === "production";
+  // En producción nunca exponemos el mensaje interno de errores desconocidos.
+  const message =
+    mapped.code === "INTERNAL_ERROR" && !isProduction ? err.message || mapped.message : mapped.message;
+
+  const exposeStack = config.nodeEnv === "development";
+
+  res.status(mapped.statusCode).json(toErrorResponse(mapped, req.requestId, err.stack, exposeStack, message));
 };
 
 export default errorHandler;

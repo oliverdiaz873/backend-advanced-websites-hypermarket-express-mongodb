@@ -27,6 +27,9 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "engines": {
+    "node": ">=22"
+  },
   "bugs": {
     "url": "https://github.com/oliverdiaz873/backend-advanced-websites-hypermarket-express-mongodb/issues"
   },

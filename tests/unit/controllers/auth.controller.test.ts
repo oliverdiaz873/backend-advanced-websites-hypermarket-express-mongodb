@@ -48,7 +48,12 @@ describe("auth.controller", () => {
         .send({ name: "Oliver Diaz", email: "oliver@example.com", password: "secret123" });
 
       expect(res.status).toBe(409);
-      expect(res.body).toEqual({ success: false, message: "Email already exists", statusCode: 409 });
+      expect(res.body).toEqual({
+        success: false,
+        message: "Email already exists",
+        statusCode: 409,
+        code: "CONFLICT",
+      });
     });
 
     it("responde 400 si los datos son inválidos", async () => {
@@ -63,6 +68,7 @@ describe("auth.controller", () => {
         success: false,
         message: "Password must be at least 6 characters",
         statusCode: 400,
+        code: "VALIDATION_ERROR",
       });
     });
 
@@ -75,6 +81,7 @@ describe("auth.controller", () => {
         success: false,
         message: "Missing required fields: email, password",
         statusCode: 400,
+        code: "VALIDATION_ERROR",
       });
     });
 
@@ -109,7 +116,12 @@ describe("auth.controller", () => {
         .send({ email: "ghost@example.com", password: "secret123" });
 
       expect(res.status).toBe(401);
-      expect(res.body).toEqual({ success: false, message: "Invalid credentials", statusCode: 401 });
+      expect(res.body).toEqual({
+        success: false,
+        message: "Invalid credentials",
+        statusCode: 401,
+        code: "UNAUTHORIZED",
+      });
     });
 
     it("responde 401 si la contraseña es incorrecta", async () => {

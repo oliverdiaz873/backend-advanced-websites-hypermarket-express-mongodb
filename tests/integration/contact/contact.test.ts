@@ -41,10 +41,11 @@ describe("E2E: /api/contact", () => {
     const rateLimited = await request(app).post("/api/contact").set("X-Forwarded-For", ip).send(validMessage);
 
     expect(rateLimited.status).toBe(429);
-    expect(rateLimited.body).toEqual({
+    expect(rateLimited.body).toMatchObject({
       success: false,
       message: "Too many messages, please try again later",
       statusCode: 429,
+      code: "RATE_LIMITED",
     });
   });
 });

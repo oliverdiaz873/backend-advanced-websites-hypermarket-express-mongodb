@@ -51,7 +51,7 @@ describe("category.controller", () => {
       const res = await request(app).get("/api/categories/inexistente");
 
       expect(res.status).toBe(404);
-      expect(res.body).toEqual({ success: false, message: "Category not found", statusCode: 404 });
+      expect(res.body).toEqual({ success: false, message: "Category not found", statusCode: 404, code: "NOT_FOUND" });
     });
   });
 

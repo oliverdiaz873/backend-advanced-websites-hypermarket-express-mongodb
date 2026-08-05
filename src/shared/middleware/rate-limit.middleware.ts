@@ -36,7 +36,13 @@ export const rateLimit = (options: RateLimitOptions) => {
     }
 
     if (bucket.count >= max) {
-      res.status(429).json({ success: false, message, statusCode: 429 });
+      res.status(429).json({
+        success: false,
+        message,
+        statusCode: 429,
+        code: "RATE_LIMITED",
+        requestId: req.requestId,
+      });
       return;
     }
 

@@ -95,7 +95,7 @@ describe("cart.controller", () => {
         .send({ productId: PRODUCT_ID });
 
       expect(res.status).toBe(404);
-      expect(res.body).toEqual({ success: false, message: "Product not found", statusCode: 404 });
+      expect(res.body).toEqual({ success: false, message: "Product not found", statusCode: 404, code: "NOT_FOUND" });
     });
   });
 

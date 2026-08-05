@@ -22,6 +22,9 @@ import statsRoutes from "./modules/stats/routes/stats.routes";
 import auditRoutes from "./modules/audit/routes/audit.routes";
 import errorHandler from "./shared/middleware/error-handler";
 import logger from "./shared/middleware/logger.middleware";
+import requestIdMiddleware from "./shared/middleware/request-id.middleware";
+import { applyGeneralRateLimit } from "./shared/middleware/general-rate-limit";
+import { buildHealth, buildReadiness, isMongoReady } from "./shared/health/health";
 
 const app = express();
 
@@ -30,12 +33,15 @@ app.set("trust proxy", 1);
 app.use(helmet());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(requestIdMiddleware);
 app.use(logger);
 app.use(cors({
   origin: config.corsOrigin,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   credentials: true,
 }));
+
+app.use(applyGeneralRateLimit);
 
 app.get("/api/health", (req: Request, res: Response) => {
   res.json({
@@ -45,6 +51,14 @@ app.get("/api/health", (req: Request, res: Response) => {
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
   });
+});
+
+app.get("/health", (req: Request, res: Response) => {
+  res.json(buildHealth(mongoose.connection.readyState));
+});
+
+app.get("/ready", (req: Request, res: Response) => {
+  res.status(isMongoReady() ? 200 : 503).json(buildReadiness(mongoose.connection.readyState));
 });
 
 app.use("/api/products", productRoutes);
@@ -70,6 +84,8 @@ app.use((req: Request, res: Response) => {
     success: false,
     message: "Route not found",
     statusCode: 404,
+    code: "NOT_FOUND",
+    requestId: req.requestId,
   });
 });
 
