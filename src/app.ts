@@ -4,6 +4,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 import config from "./config";
 import productRoutes from "./modules/products/routes/product.routes";
+import adminProductRoutes from "./modules/products/routes/admin-product.routes";
 import categoryRoutes from "./modules/categories/routes/category.routes";
 import offerRoutes from "./modules/offers/routes/offer.routes";
 import searchRoutes from "./modules/search/routes/search.routes";
@@ -65,6 +66,7 @@ app.get("/ready", (req: Request, res: Response) => {
 });
 
 app.use("/api/products", productRoutes);
+app.use("/api/admin/products", adminProductRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/offers", offerRoutes);
 app.use("/api/search", searchRoutes);

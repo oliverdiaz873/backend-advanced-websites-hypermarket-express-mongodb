@@ -17,26 +17,37 @@ claves, habría dos fuentes de verdad del mismo contenido y riesgo de deriva.
 
 ## Decisión
 
-1. **El nombre y la descripción viven en MongoDB** en un campo `translations`:
+1. **El nombre y la descripción viven en MongoDB**. El modelo real (F3/F4) es:
 
    ```json
    {
+     "name": "Café Superior",              // idioma por defecto (es)
+     "description": "...",
      "translations": {
-       "es": { "name": "Leche Entera", "description": "..." },
-       "en": { "name": "Whole Milk", "description": "..." }
+       "en": { "name": "Premium Coffee", "description": "..." }
      }
    }
    ```
 
-2. Los campos raíz `name`/`description` siguen existiendo como **idioma por
-   defecto** (es) para compatibilidad con el Dashboard y lecturas sin `lang`.
-3. La API pública acepta `?lang=es|en` y resuelve `translations[lang]` con
+   - Los campos raíz `name`/`description` son el **idioma por defecto (es)**,
+     tal como los consume el Dashboard y las lecturas sin `lang`.
+   - `translations.<lang>` guarda traducciones adicionales; en F3/F4 se siembra
+     y administra **solo `en`**. No se administra `translations.es` en el
+     boundary editorial (el ES vive en los campos raíz).
+2. La API pública acepta `?lang=es|en` y resuelve `translations[lang]` con
    fallback al valor raíz.
-4. **Cada storefront sigue haciendo su propio mapping** (API → modelo UI local);
+3. **Cada storefront sigue haciendo su propio mapping** (API → modelo UI local);
    el backend no se adapta a ningún frontend.
-5. Los textos de **presentación** (specs/detalles, breadcrumbs, unidades de
+4. Los textos de **presentación** (specs/detalles, breadcrumbs, unidades de
    medida) permanecen en las claves i18n de cada storefront; no se trasladan al
    catálogo en esta fase.
+
+> **Contrato histórico de creación** (`POST /api/products`): acepta
+> `translations` con `es` **y** `en` (como se documentó originalmente). F4 no
+> redefine ese contrato; el modelo EN-only de editorialización es exclusivo de
+> `PATCH /api/admin/products/:id`. Por tanto el documento almacenado puede
+> contener `translations.es` (creado por POST) aunque el Dashboard solo edite
+> `en`.
 
 ## Opciones consideradas
 
@@ -52,7 +63,11 @@ claves, habría dos fuentes de verdad del mismo contenido y riesgo de deriva.
   i18n de ambos storefronts mediante `npm run sync:i18n`
   (`scripts/sync-i18n.ts` → `src/modules/products/data/products.i18n.data.ts`),
   verificada idéntica 184/184 en Angular y Next.js.
-- El Dashboard debe poder editar `translations` (ES/EN) al crear/editar producto.
+- El Dashboard debe poder editar `translations` a través del boundary
+  administrativo (F4): `translations.en` se edita en
+  `PATCH /api/admin/products/:id` con merge no destructivo; el ES editorial se
+  edita en los campos raíz `name`/`description`. El `POST /api/products`
+  histórico sigue aceptando `es` + `en` al crear.
 - Los storefronts dejan de ser la fuente del nombre/descripción en producción;
   sus claves quedan como fallback para modo mock.
 - Las categorías no se traducen en el backend en esta fase: los storefronts

@@ -1,6 +1,6 @@
 # FRONTEND-COMPATIBILITY — Backend compartido por Angular y Next.js
 
-> Estado: **F2 (aprobado), F3 (implementado)**. Este backend es consumido por
+> Estado: **F2 (aprobado), F3 (implementado), F4 (implementado)**. Este backend es consumido por
 > **dos storefronts** (Angular y Next.js) además del dashboard administrativo.
 > Cualquier cambio de contrato debe contrastarse contra ambos consumidores
 > aunque hoy estén en **modo mock** (sin consumo real del API).
@@ -14,6 +14,21 @@
   localmente.
 - El backend **jamás emite** `translations`, `imageKey`, `imageThumbnailKey`,
   ni texto de precios ya formateado.
+
+### Boundary público vs Dashboard (F4)
+
+- **Público** (`/api/products`, `/api/search`, `/api/offers`): solo productos
+  `active` + `isAvailable: true`; `name`/`description` ya localizados según
+  `?lang=`; jamás incluye `translations`, `imageKey` ni `imageThumbnailKey`.
+- **Dashboard/admin** (`/api/admin/products`): boundary editorial. Lista y
+  detalle **sí** devuelven `translations` (solo `en`), `imageKey` e
+  `imageThumbnailKey`, e incluyen drafts e inactivos para gestión.
+  `PATCH /api/admin/products/:id` edita `translations.en` con merge no
+  destructivo y rechaza `translations.es` (`400`); el ES editorial se edita en
+  los campos raíz `name`/`description`.
+- **Creación** (`POST /api/products`): el contrato histórico acepta
+  `translations` con `es` **y** `en`; la editorialización EN-only es solo del
+  boundary administrativo.
 
 ## Matriz de compatibilidad
 

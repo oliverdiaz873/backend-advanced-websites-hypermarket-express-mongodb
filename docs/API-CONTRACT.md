@@ -233,6 +233,10 @@ Comportamiento:
 - Confirmar imagen **no activa** el producto: la activación es explícita vía `PATCH`.
 - `translations` es opcional; si falta, se usa `name`/`description` raíz como
   valor por defecto para ambos idiomas.
+- El contrato de creación acepta `translations` con `es` **y** `en` (F4 no
+  redefine el contrato histórico: los dos idiomas pueden crearse). La edición
+  administrativa posterior es la que queda limitada a `en` (ver
+  `PATCH /admin/products/:id`).
 
 **Response:** `201 { success: true, data: Product }` (`data.image` será `null` hasta
 que se confirme una imagen).
@@ -256,6 +260,10 @@ Actualización parcial. Requiere rol `admin`.
   (`PATCH { status: "active", isAvailable: true }`).
 - `brandId: null` limpia la marca.
 
+> Este endpoint conserva el contrato existente: la **respuesta** es pública
+> (sin `imageKey`, `imageThumbnailKey` ni `translations`). El boundary editorial
+> con `translations`/keys vive en `PATCH /admin/products/:id`.
+
 **Response:** `200 { success: true, data: Product }` (sin `imageKey` ni `translations`).
 
 ### DELETE /products/:id (admin)
@@ -267,6 +275,50 @@ Elimina un producto (físico). Requiere rol `admin`.
 - Los huérfanos que queden tras un fallo se recuperan con `npm run cleanup:orphans`.
 
 **Response:** `204` sin cuerpo.
+
+---
+
+## 5bis. Admin Products API (`/api/admin/products`)
+
+Requiere rol `admin` (Bearer token). Boundary editorial del Dashboard: devuelve
+`translations` (solo `en`), `imageKey` e `imageThumbnailKey`, campos que la API
+pública jamás expone.
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | `/api/admin/products` | Lista paginada (filtra por `status`, `q`, `category`, `brand`, `isAvailable`) |
+| GET | `/api/admin/products/:id` | Detalle administrativo (404 si no existe) |
+| PATCH | `/api/admin/products/:id` | Edición (merge no destructivo), incluyendo `translations.en` |
+
+**Lista:** acepta los mismos query params que `GET /products` (`page`, `limit`,
+`sortBy`, `sortOrder`, `q`, `category`, `brand`) más `status` (`active | inactive`)
+e `isAvailable` (`true`). Incluye drafts e inactivos (son visibles solo aquí).
+
+**PATCH body de traducciones (script)**:
+
+```json
+{
+  "name": "Café Premium",
+  "translations": {
+    "en": { "name": "Premium Coffee", "description": "..." }
+  }
+}
+```
+
+- `translations.en` → editable con **merge no destructivo**: los campos `name`/
+  `description` que no se envíen conservan su valor existente; `name` de `en`
+  nunca puede quedar vacío.
+- `translations.es` **no es administrable** en F4: se rechaza con `400`
+  (`Unsupported translation language(s)`). El ES editorial vive en los campos
+  raíz `name`/`description`.
+- El resto de campos (status, precio, imagen `imageKey`, brand, etc.) comparte
+  el flujo de `PATCH /products/:id`.
+
+**Response:** `200 { success: true, data: AdminProduct }`, donde `AdminProduct`
+es `Product` más `imageKey`, `imageThumbnailKey` y `translations.en`.
+
+**Errores:** `400` validación (incl. `translations.es`) · `401` no autenticado ·
+`403` sin rol admin · `404` producto inexistente.
 
 ---
 

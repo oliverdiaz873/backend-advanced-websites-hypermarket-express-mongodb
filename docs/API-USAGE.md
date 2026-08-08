@@ -81,6 +81,80 @@ Get a product by ID.
 
 ---
 
+## Admin Products
+
+> Boundary editorial del Dashboard (`/api/admin/products`). Requiere rol `admin`.
+> Devuelve `translations` (solo `en`), `imageKey` e `imageThumbnailKey`, que la
+> API pública nunca emite. Incluye drafts e inactivos.
+
+### GET /api/admin/products
+
+Lista paginada de productos incluyendo drafts e inactivos.
+
+**Query params:** `page`, `limit`, `q`, `category`, `brand`, `status`
+(`active | inactive`), `isAvailable` (`true`), `sortBy`, `sortOrder`.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "coca_cola",
+      "sku": "BEB-001",
+      "name": "Coca Cola",
+      "price": 80,
+      "image": "https://cdn.hipermercadosuperior.com/products/coca_cola/a1b2.webp?v=...",
+      "imageKey": "products/coca_cola/9c2d-4a7b.webp",
+      "imageThumbnailKey": "products/coca_cola/thumb-9c2d.webp",
+      "translations": { "en": { "name": "Coca Cola", "description": "... " } },
+      "categoryId": "bebidas",
+      "category": { "name": "Bebidas", "slug": "bebidas" },
+      "status": "inactive",
+      "isAvailable": false
+    }
+  ],
+  "pagination": { "page": 1, "limit": 50, "total": 184, "pages": 4 }
+}
+```
+
+### GET /api/admin/products/:id
+
+Detalle administrativo de un producto (404 si no existe).
+
+**Response:** `{ success: true, data: AdminProduct }` (mismo shape que un `data`
+de la lista).
+
+### PATCH /api/admin/products/:id
+
+Edición editorial del Dashboard. El `PATCH de `translations` acepta solo `en`
+con merge no destructivo; `translations.es` se rechaza con `400` (el ES editorial
+vive en los campos raíz `name`/`description`).
+
+**Body:**
+```json
+{
+  "name": "Café Premium",
+  "price": 150,
+  "isAvailable": true,
+  "translations": {
+    "en": { "name": "Premium Coffee", "description": "Premium ground coffee." }
+  }
+}
+```
+
+**Response:** `200 { success: true, data: AdminProduct }`.
+
+**Errors:**
+| Status | Message |
+|--------|---------|
+| 400 | Validation error (e.g., `translations` with `es` or unknown language) |
+| 401 | Unauthorized |
+| 403 | Forbidden (non-admin) |
+| 404 | Product not found |
+
+---
+
 ## Categories
 
 ### GET /api/categories

@@ -162,4 +162,36 @@ describe("E2E: visibilidad pública de productos (F1)", () => {
     const byIdAfterEdit = await request(app).get(`/api/products/${draft.id}`);
     expect(byIdAfterEdit.status).toBe(404);
   });
+
+  it("POST /api/products acepta translations es+en (F4 no redefine el contrato de creación)", async () => {
+    const res = await request(app)
+      .post("/api/products")
+      .set(adminHeaders)
+      .send({
+        name: "Leche Entera",
+        price: 120,
+        categoryId,
+        translations: {
+          es: { name: "Leche Entera", description: "Leche entera pasteurizada." },
+          en: { name: "Whole Milk", description: "Pasteurized whole milk." },
+        },
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data).toMatchObject({ status: "inactive", isAvailable: false });
+  });
+
+  it("POST /api/products rechaza translations con name vacío", async () => {
+    const res = await request(app)
+      .post("/api/products")
+      .set(adminHeaders)
+      .send({
+        name: "Leche Entera",
+        price: 120,
+        categoryId,
+        translations: { es: { name: "  " } },
+      });
+
+    expect(res.status).toBe(400);
+  });
 });

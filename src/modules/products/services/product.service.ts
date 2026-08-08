@@ -14,10 +14,11 @@ import { slugify } from "../../../shared/utils/slug";
 import { PRODUCT_SORT_FIELDS, ProductSortField } from "../constants/product-sort-fields";
 import {
   toPublicProduct,
+  toAdminProduct,
   normalizeLang,
   isPubliclyVisible,
 } from "../presenters/product.presenter";
-import type { PublicProduct } from "../presenters/product.presenter";
+import type { PublicProduct, AdminProduct } from "../presenters/product.presenter";
 import type { PaginationMeta, Product, ProductStatus, ProductTranslations } from "../../../types";
 
 export type { PublicProduct, Lang } from "../presenters/product.presenter";
@@ -43,7 +44,7 @@ export interface UpdateProductInput {
   image?: string;
   imageKey?: string;
   imageThumbnailKey?: string;
-  translations?: ProductTranslations;
+  translations?: ProductTranslationsPatch;
   categoryId?: string;
   sku?: string;
   brandId?: string | null;
@@ -53,12 +54,41 @@ export interface UpdateProductInput {
   isAvailable?: boolean;
 }
 
-const validateTranslations = (translations: ProductTranslations): void => {
+/** Patch de traducciones administrativas: solo `en`, con campos opcionales para merge. */
+export interface ProductTranslationsPatch {
+  en?: { name?: string; description?: string };
+}
+
+const TRANSLATION_LANGS = ["en"] as const;
+
+/**
+ * Validación del contrato histórico de creación (es + en). F4 no redefine el
+ * POST /api/products: ambos idiomas pueden crearse; el modelo EN-only es solo
+ * para la edición administrativa (`PATCH /api/admin/products/:id`).
+ */
+const validateCreateTranslations = (translations: ProductTranslations): void => {
   for (const lang of ["es", "en"] as const) {
     const entry = translations[lang];
     if (entry === undefined) continue;
     if (!entry.name || !entry.name.trim()) {
       throw new InvalidDataError(`Translation for ${lang} requires a name`);
+    }
+  }
+};
+
+/** Validación del parche administrativo EN-only usado por el Dashboard. */
+const validateTranslationsPatch = (translations: ProductTranslationsPatch): void => {
+  const unknown = Object.keys(translations).filter((lang) => !TRANSLATION_LANGS.includes(lang as never));
+  if (unknown.length > 0) {
+    throw new InvalidDataError(`Unsupported translation language(s): ${unknown.join(", ")}`);
+  }
+  const en = translations.en;
+  if (en !== undefined) {
+    if (en.name !== undefined && !en.name.trim()) {
+      throw new InvalidDataError("Translation for en requires a name");
+    }
+    if (en.description !== undefined && typeof en.description !== "string") {
+      throw new InvalidDataError("Translation description must be a string");
     }
   }
 };
@@ -108,7 +138,7 @@ export const create = async (data: CreateProductInput, actorId?: string): Promis
         throw new InvalidDataError("categoryId is required");
       }
       if (data.translations) {
-        validateTranslations(data.translations);
+        validateCreateTranslations(data.translations);
       }
 
       const category = await resolveCategoryEmbed(data.categoryId);
@@ -185,8 +215,24 @@ const applyImageKey = async (
   return product.imageKey && product.imageKey !== imageKey ? product.imageKey : undefined;
 };
 
-export const updateById = async (id: string, data: UpdateProductInput, actorId?: string): Promise<PublicProduct> => {
-  const updated = await auditService.runAudited(
+const mergeTranslations = (
+  existing: ProductTranslations | undefined,
+  patch: ProductTranslationsPatch
+): ProductTranslations => {
+  const merged: ProductTranslations = { ...existing };
+  const name = patch.en?.name ?? merged.en?.name;
+  if (name === undefined || !name.trim()) {
+    throw new InvalidDataError("Translation for en requires a name");
+  }
+  merged.en = {
+    name,
+    description: patch.en?.description ?? merged.en?.description,
+  };
+  return merged;
+};
+
+const performUpdate = async (id: string, data: UpdateProductInput, actorId?: string): Promise<Product> =>
+  auditService.runAudited(
     { userId: actorId, action: "UPDATE_PRODUCT", resource: "product", resourceId: id },
     async () => {
       const existing = await productRepository.findById(id);
@@ -235,8 +281,8 @@ export const updateById = async (id: string, data: UpdateProductInput, actorId?:
       }
 
       if (data.translations !== undefined) {
-        validateTranslations(data.translations);
-        updates.translations = data.translations;
+        validateTranslationsPatch(data.translations);
+        updates.translations = mergeTranslations(existing.translations, data.translations);
       }
 
       if (data.sku !== undefined && data.sku.trim() && data.sku.trim() !== existing.sku) {
@@ -283,6 +329,9 @@ export const updateById = async (id: string, data: UpdateProductInput, actorId?:
       return result;
     }
   );
+
+export const updateById = async (id: string, data: UpdateProductInput, actorId?: string): Promise<PublicProduct> => {
+  const updated = await performUpdate(id, data, actorId);
   return toPublicProduct(updated);
 };
 
@@ -355,4 +404,48 @@ export const getPage = async (
     data: result.items.map((product) => toPublicProduct(product, lang)),
     pagination: result.pagination,
   };
+};
+
+export const getAdminById = async (id: string): Promise<AdminProduct> => {
+  const product = await productRepository.findById(id);
+  if (!product) {
+    throw new NotFoundError("Product not found");
+  }
+  return toAdminProduct(product);
+};
+
+export const getAdminPage = async (
+  query: Record<string, unknown>
+): Promise<{ data: AdminProduct[]; pagination: PaginationMeta }> => {
+  const page = Math.max(DEFAULT_PAGE, toInt(query.page, DEFAULT_PAGE));
+  const limit = Math.min(MAX_LIMIT, Math.max(1, toInt(query.limit, DEFAULT_LIMIT)));
+  const sortOrder = query.sortOrder === "asc" ? "asc" : "desc";
+  const sortBy = refineSortBy(query.sortBy);
+  const status = query.status === "inactive" ? "inactive" : query.status === "active" ? "active" : undefined;
+
+  const result = await productRepository.findPage({
+    page,
+    limit,
+    q: typeof query.q === "string" ? query.q : undefined,
+    category: typeof query.category === "string" ? query.category : undefined,
+    brand: typeof query.brand === "string" ? query.brand : undefined,
+    status,
+    isAvailable: query.isAvailable === "true" ? true : undefined,
+    sortBy,
+    sortOrder,
+  });
+
+  return {
+    data: result.items.map((product) => toAdminProduct(product)),
+    pagination: result.pagination,
+  };
+};
+
+export const updateAdminById = async (
+  id: string,
+  data: UpdateProductInput,
+  actorId?: string
+): Promise<AdminProduct> => {
+  const updated = await performUpdate(id, data, actorId);
+  return toAdminProduct(updated);
 };

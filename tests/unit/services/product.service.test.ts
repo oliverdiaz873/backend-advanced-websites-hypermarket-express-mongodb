@@ -277,6 +277,41 @@ describe("product.service", () => {
       ).rejects.toThrow(InvalidDataError);
     });
 
+    it("permite translations.es y translations.en en el contrato de creación (F4 no redefine POST)", async () => {
+      mockCategoryRepository.findById.mockResolvedValue(makeCategory());
+      mockProductRepository.findBySku.mockResolvedValue(null);
+      mockProductRepository.create.mockResolvedValue(makeProduct());
+
+      await productService.create({
+        ...base,
+        translations: {
+          es: { name: "Leche Entera", description: "Leche entera pasteurizada." },
+          en: { name: "Whole Milk", description: "Pasteurized whole milk." },
+        },
+      });
+
+      expect(mockProductRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          translations: {
+            es: { name: "Leche Entera", description: "Leche entera pasteurizada." },
+            en: { name: "Whole Milk", description: "Pasteurized whole milk." },
+          },
+        })
+      );
+    });
+
+    it("permite solo translations.es en la creación", async () => {
+      mockCategoryRepository.findById.mockResolvedValue(makeCategory());
+      mockProductRepository.findBySku.mockResolvedValue(null);
+      mockProductRepository.create.mockResolvedValue(makeProduct());
+
+      await productService.create({ ...base, translations: { es: { name: "Leche Entera" } } });
+
+      expect(mockProductRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ translations: { es: { name: "Leche Entera" } } })
+      );
+    });
+
     it("lanza NotFoundError si la categoría no existe", async () => {
       mockCategoryRepository.findById.mockResolvedValue(null);
 
@@ -503,6 +538,86 @@ describe("product.service", () => {
 
       await expect(productService.updateById(PRODUCT_ID, { imageKey: imageKeyOf("bad") })).rejects.toThrow(InvalidDataError);
       expect(mockProductRepository.updateById).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("F4: updateById con translations (merge por lengua)", () => {
+    it("merge no destructivo: conserva en.name al actualizar solo en.description", async () => {
+      mockProductRepository.findById.mockResolvedValue(
+        makeProduct({
+          translations: { en: { name: "Rice", description: "EN old" } },
+        })
+      );
+      mockProductRepository.updateById.mockResolvedValue(
+        makeProduct({
+          translations: { en: { name: "Ground", description: "EN new" } },
+        })
+      );
+
+      const result = await productService.updateById(PRODUCT_ID, {
+        translations: { en: { description: "EN new" } },
+      });
+
+      expect(mockProductRepository.updateById).toHaveBeenCalledWith(
+        PRODUCT_ID,
+expect.objectContaining({
+      translations: { en: { name: "Rice", description: "EN new" } },
+    }),
+    expect.anything()
+      );
+      expect(result).not.toHaveProperty("translations");
+    });
+
+    it("rechaza translations.es (idioma no administrable en este contrato)", async () => {
+      mockProductRepository.findById.mockResolvedValue(makeProduct());
+
+      await expect(
+        productService.updateById(PRODUCT_ID, { translations: { es: { name: "X" } } } as never)
+      ).rejects.toThrow(InvalidDataError);
+      expect(mockProductRepository.updateById).not.toHaveBeenCalled();
+    });
+
+    it("rechaza un idioma desconocido", async () => {
+      mockProductRepository.findById.mockResolvedValue(makeProduct());
+
+      await expect(
+        productService.updateById(PRODUCT_ID, { translations: { fr: { name: "X" } } } as never)
+      ).rejects.toThrow(InvalidDataError);
+      expect(mockProductRepository.updateById).not.toHaveBeenCalled();
+    });
+
+    it("rechaza en.name vacío en update", async () => {
+      mockProductRepository.findById.mockResolvedValue(makeProduct());
+
+      await expect(
+        productService.updateById(PRODUCT_ID, { translations: { en: { name: "  " } } })
+      ).rejects.toThrow(InvalidDataError);
+      expect(mockProductRepository.updateById).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("F4: updateAdminById devuelve el boundary administrativo", () => {
+    it("expone translations e imageKey y conserva root tras editar", async () => {
+      mockProductRepository.findById.mockResolvedValue(
+        makeProduct({ name: "Arroz", translations: { en: { name: "Rice" } } })
+      );
+      mockProductRepository.updateById.mockResolvedValue(
+        makeProduct({ name: "Arroz Premium", translations: { en: { name: "Premium Rice", description: "D" } } })
+      );
+
+      const result = await productService.updateAdminById(PRODUCT_ID, {
+        name: "Arroz Premium",
+        translations: { en: { description: "D" } },
+      });
+
+      expect(result.name).toBe("Arroz Premium");
+      expect(result.translations).toEqual({ en: { name: "Premium Rice", description: "D" } });
+    });
+
+    it("404 cuando el producto no existe", async () => {
+      mockProductRepository.findById.mockResolvedValue(null);
+
+      await expect(productService.updateAdminById(PRODUCT_ID, {})).rejects.toThrow(NotFoundError);
     });
   });
 
