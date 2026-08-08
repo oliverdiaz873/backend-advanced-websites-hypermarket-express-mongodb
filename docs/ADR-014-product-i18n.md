@@ -48,8 +48,10 @@ claves, habría dos fuentes de verdad del mismo contenido y riesgo de deriva.
 
 ## Consecuencias
 
-- La seed debe incorporar traducciones EN (F3) a partir de las claves i18n
-  existentes.
+- La seed incorpora traducciones EN (**F3 cumplida**) a partir de las claves
+  i18n de ambos storefronts mediante `npm run sync:i18n`
+  (`scripts/sync-i18n.ts` → `src/modules/products/data/products.i18n.data.ts`),
+  verificada idéntica 184/184 en Angular y Next.js.
 - El Dashboard debe poder editar `translations` (ES/EN) al crear/editar producto.
 - Los storefronts dejan de ser la fuente del nombre/descripción en producción;
   sus claves quedan como fallback para modo mock.
@@ -60,3 +62,4 @@ claves, habría dos fuentes de verdad del mismo contenido y riesgo de deriva.
 
 - `docs/API-CONTRACT.md` §5 — contrato con `?lang=` y `translations`.
 - `docs/PRODUCT-IMAGES-MIGRATION.md` — migración de claves i18n a la seed.
+- `scripts/sync-i18n.ts` — generador determinista de `productsI18nEn` (F3).

@@ -1,9 +1,9 @@
 # FRONTEND-COMPATIBILITY — Backend compartido por Angular y Next.js
 
-> Estado: **F2 (aprobado)**. Este backend es consumido por **dos storefronts**
-> (Angular y Next.js) además del dashboard administrativo. Cualquier cambio de
-> contrato debe contrastarse contra ambos consumidores aunque hoy estén en
-> **modo mock** (sin consumo real del API).
+> Estado: **F2 (aprobado), F3 (implementado)**. Este backend es consumido por
+> **dos storefronts** (Angular y Next.js) además del dashboard administrativo.
+> Cualquier cambio de contrato debe contrastarse contra ambos consumidores
+> aunque hoy estén en **modo mock** (sin consumo real del API).
 
 ## Regla de diseño del contrato
 
@@ -69,6 +69,10 @@
 
 ## Go-forward
 
-- F3: seed con traducciones EN (los storefronts siguen en mock).
+- F3 (hecho): la seed puebla `translations.en` de cada producto con las
+  traducciones reales de los storefronts (Angular y Next.js en.json, verificados
+  idénticos 184/184 por `npm run sync:i18n`). Solo se siembra EN; los campos raíz
+  `name`/`description` siguen siendo el idioma por defecto (es). El backend no
+  depende en runtime de los repos storefront.
 - F4+: integración real de los storefronts contra esta API (cart/orders/auth
   fuera del alcance de F2 salvo documentación).

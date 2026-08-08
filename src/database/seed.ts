@@ -3,43 +3,15 @@ import mongoose from "mongoose";
 import { connectDB } from "../config/database";
 import { CategoryModel } from "../modules/categories/models/category.model";
 import { ProductModel } from "../modules/products/models/product.model";
-import type { IProduct } from "../modules/products/models/product.model";
 import { OfferModel } from "../modules/offers/models/offer.model";
 import { InventoryModel } from "../modules/inventory/models/inventory.model";
 import { UserModel } from "../modules/users/models/user.model";
+import { buildSubcategoryMap, mapProduct } from "./seed.mapper";
 import categoriesData from "../modules/categories/data/categories.data";
 import productsData from "../modules/products/data/products.data";
 import offersData from "../modules/offers/data/offers.data";
 
 const SALT_ROUNDS = 10;
-
-const buildSubcategoryMap = (): Record<string, string> => {
-  const map: Record<string, string> = {};
-  for (const category of categoriesData) {
-    for (const sub of category.subcategories) {
-      map[sub.slug] = sub.name;
-    }
-  }
-  return map;
-};
-
-const mapProduct = (raw: (typeof productsData)[number], subcategoryNames: Record<string, string>): IProduct => ({
-  _id: raw.id,
-  sku: `sku-${raw.id}`,
-  name: raw.name,
-  description: `Detalle de ${raw.name}`,
-  price: raw.price,
-  image: raw.image,
-  categoryId: raw.category,
-  category: {
-    name: subcategoryNames[raw.category] || "Otros",
-    slug: raw.category,
-  },
-  unit: raw.unit || undefined,
-  unitQuantity: raw.unitQuantity || undefined,
-  status: "active",
-  isAvailable: true,
-});
 
 const seed = async (): Promise<void> => {
   await connectDB();
