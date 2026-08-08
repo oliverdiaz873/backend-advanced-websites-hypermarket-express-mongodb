@@ -987,10 +987,13 @@ Conversión del modelo conceptual del dominio a un diseño físico para MongoDB.
                          ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                      products                               │
-│  { _id, sku, name, description, price, image,               │
+│  { _id, sku, name, description, price, image, imageKey,     │
 │    categoryId, category: { name, slug },                    │
 │    brandId, brand: { name, slug },                          │
-│    unit, unitQuantity, status, createdAt, updatedAt }       │
+│    unit, unitQuantity, status, isAvailable,                 │
+│    translations: { es: { name, description },               │
+│                    en: { name, description } },              │
+│    createdAt, updatedAt }                                   │
 └───────┬──────────────────────┬──────────────────┬───────────┘
         │ 1:1                  │ N:1              │ 1:N
         ▼                      ▼                  ▼
@@ -1048,3 +1051,48 @@ El diseño del sistema se realizó siguiendo un proceso estructurado de modelado
 - Flujo de negocio completo (sección 4.14).
 
 **Metodología aplicada:** Domain-Driven Design (táctico) para identificación de entidades y relaciones. Patrones de modelado MongoDB (Embedding vs References) para decisiones de persistencia. Documentación progresiva (ADR-light) para cada decisión de diseño.
+
+---
+
+## 6. Object Storage Architecture (F0.0)
+
+### 6.1 Contexto
+
+Los productos requieren imágenes. **MongoDB no almacena el binario**: guarda únicamente la metadata y las URLs necesarias (ver `docs/STORAGE-ARCHITECTURE.md`). El almacenamiento de archivos es responsabilidad de un **object storage** externo (Cloudflare R2 en producción), accesible vía CDN. Los dos storefronts (Angular y Next.js) y el Dashboard consumen las mismas URLs públicas.
+
+### 6.2 Principios
+
+1. **MongoDB es la fuente de verdad de los datos** del catálogo (incluidas las traducciones).
+2. **R2 es la fuente de verdad de los archivos multimedia**. No hay copias: ni en el servidor Express, ni en los frontends, ni en el repositorio git.
+3. **El backend controla autorización y metadata**; el archivo sube directo al storage mediante **presigned URLs** (ver `ADR-013-presigned-uploads.md`).
+4. **El almacenamiento está detrás de una interfaz** `ObjectStorageProvider`: `LocalStorageProvider` (desarrollo) y `R2StorageProvider` (producción). El dominio de productos no conoce el proveedor concreto (ver `ADR-012-storage-r2.md`).
+
+### 6.3 Arquitectura de datos de imagen
+
+| Campo | Responsabilidad |
+| --- | --- |
+| `image` | URL pública (CDN) que consumen Angular Store y Next.js. Nunca se construye manualmente en los frontends. |
+| `imageKey` | Referencia interna de storage (`products/{id}/{uuid}.{ext}`). Solo el backend la usa para reemplazar/confirmar/eliminar objetos. |
+| `imageThumbnail` | URL pública de la miniatura (opcional, generada client-side en F2). |
+
+### 6.4 Flujo de alto nivel
+
+```
+Dashboard Angular ──Admin API (JWT)──► Express API ──► MongoDB (datos + traducciones)
+                                              │ Presigned URLs
+                                              ▼
+                                       Cloudflare R2 ──► CDN / URLs públicas
+                                              ▲
+                                              │
+                       Angular Store ◄─────────┴─────────► Next.js Store
+```
+
+- **Un solo contrato de API** definido por el backend (`docs/API-CONTRACT.md`).
+- **Un solo R2 compartido**: Angular Store y Next.js consumen las mismas URLs; no se duplican assets ni se crean fuentes de verdad separadas.
+- Cada storefront hace su propio **mapping** (API → modelo UI local) sin adaptar el backend a cada uno.
+
+### 6.5 Referencias
+
+- `docs/STORAGE-ARCHITECTURE.md` — estructura de keys, límites, limpieza.
+- `docs/ECOMMERCE-DATA-FLOW.md` — flujo extremo a extremo del producto.
+- `docs/PRODUCT-IMAGES-MIGRATION.md` — migración de los 184 assets históricos.

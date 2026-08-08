@@ -23,7 +23,7 @@ describe("search.controller", () => {
 
     const res = await request(app).get("/api/search").query({ q: "arroz" });
 
-    expect(mockSearchService.search).toHaveBeenCalledWith("arroz", undefined);
+    expect(mockSearchService.search).toHaveBeenCalledWith("arroz", undefined, undefined);
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ success: true, data: toJson(results) });
   });
@@ -33,7 +33,16 @@ describe("search.controller", () => {
 
     const res = await request(app).get("/api/search").query({ q: "arroz", category: "granos" });
 
-    expect(mockSearchService.search).toHaveBeenCalledWith("arroz", "granos");
+    expect(mockSearchService.search).toHaveBeenCalledWith("arroz", "granos", undefined);
+    expect(res.status).toBe(200);
+  });
+
+  it("propaga el lang de la consulta al servicio", async () => {
+    mockSearchService.search.mockResolvedValue([]);
+
+    const res = await request(app).get("/api/search").query({ q: "arroz", lang: "en" });
+
+    expect(mockSearchService.search).toHaveBeenCalledWith("arroz", undefined, "en");
     expect(res.status).toBe(200);
   });
 

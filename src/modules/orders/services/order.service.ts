@@ -136,7 +136,7 @@ export const create = async (userId: string, addressId: string) => {
       productId: item.productId,
       name: product.name,
       price: product.price,
-      image: product.image,
+      image: product.image ?? "",
       quantity: item.quantity,
     });
   }

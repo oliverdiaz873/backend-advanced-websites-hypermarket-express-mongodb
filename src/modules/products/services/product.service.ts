@@ -4,25 +4,34 @@ import * as categoryRepository from "../../categories/repositories/category.repo
 import * as brandRepository from "../../brands/repositories/brand.repository";
 import * as inventoryService from "../../inventory/services/inventory.service";
 import * as auditService from "../../../modules/audit/services/audit.service";
+import { getStorageProvider } from "../../../shared/storage/storage.factory";
+import { isSafeStorageKey } from "../../../shared/storage/uploads.constants";
+import { logger } from "../../../shared/logger/logger";
 import { NotFoundError } from "../../../shared/errors/not-found.error";
 import { InvalidDataError } from "../../../shared/errors/invalid-data.error";
 import { ConflictError } from "../../../shared/errors/conflict.error";
 import { slugify } from "../../../shared/utils/slug";
 import { PRODUCT_SORT_FIELDS, ProductSortField } from "../constants/product-sort-fields";
-import type { PaginationMeta, Product, ProductStatus } from "../../../types";
+import {
+  toPublicProduct,
+  normalizeLang,
+  isPubliclyVisible,
+} from "../presenters/product.presenter";
+import type { PublicProduct } from "../presenters/product.presenter";
+import type { PaginationMeta, Product, ProductStatus, ProductTranslations } from "../../../types";
+
+export type { PublicProduct, Lang } from "../presenters/product.presenter";
 
 export interface CreateProductInput {
   name: string;
   price: number;
-  image: string;
   categoryId: string;
   sku?: string;
   description?: string;
   brandId?: string;
   unit?: string;
   unitQuantity?: number;
-  status?: ProductStatus;
-  isAvailable?: boolean;
+  translations?: ProductTranslations;
   stock?: number;
   minStock?: number;
 }
@@ -30,10 +39,13 @@ export interface CreateProductInput {
 export interface UpdateProductInput {
   name?: string;
   price?: number;
+  description?: string;
   image?: string;
+  imageKey?: string;
+  imageThumbnailKey?: string;
+  translations?: ProductTranslations;
   categoryId?: string;
   sku?: string;
-  description?: string;
   brandId?: string | null;
   unit?: string;
   unitQuantity?: number;
@@ -41,16 +53,29 @@ export interface UpdateProductInput {
   isAvailable?: boolean;
 }
 
-export const getAll = async (): Promise<Product[]> => {
-  return productRepository.findAll();
+const validateTranslations = (translations: ProductTranslations): void => {
+  for (const lang of ["es", "en"] as const) {
+    const entry = translations[lang];
+    if (entry === undefined) continue;
+    if (!entry.name || !entry.name.trim()) {
+      throw new InvalidDataError(`Translation for ${lang} requires a name`);
+    }
+  }
 };
 
-export const getById = async (id: string): Promise<Product> => {
+export const getAll = async (lang?: unknown): Promise<PublicProduct[]> => {
+  const products = await productRepository.findAll();
+  return products
+    .filter((product) => isPubliclyVisible(product))
+    .map((product) => toPublicProduct(product, normalizeLang(lang)));
+};
+
+export const getById = async (id: string, rawLang?: unknown): Promise<PublicProduct> => {
   const product = await productRepository.findById(id);
-  if (!product) {
+  if (!product || !isPubliclyVisible(product)) {
     throw new NotFoundError("Product not found");
   }
-  return product;
+  return toPublicProduct(product, normalizeLang(rawLang));
 };
 
 const resolveCategoryEmbed = async (categoryId: string): Promise<{ name: string; slug: string }> => {
@@ -69,8 +94,8 @@ const resolveBrandEmbed = async (brandId: string): Promise<{ name: string; slug:
   return { name: brand.name, slug: brand.slug };
 };
 
-export const create = async (data: CreateProductInput, actorId?: string): Promise<Product> => {
-  return auditService.runAudited(
+export const create = async (data: CreateProductInput, actorId?: string): Promise<PublicProduct> => {
+  const product = await auditService.runAudited(
     { userId: actorId, action: "CREATE_PRODUCT", resource: "product" },
     async () => {
       if (!data.name || !data.name.trim()) {
@@ -79,17 +104,20 @@ export const create = async (data: CreateProductInput, actorId?: string): Promis
       if (data.price === undefined || !Number.isFinite(data.price) || data.price < 0) {
         throw new InvalidDataError("Price must be a non-negative number");
       }
-      if (!data.image || !data.image.trim()) {
-        throw new InvalidDataError("Image is required");
-      }
       if (!data.categoryId) {
         throw new InvalidDataError("categoryId is required");
+      }
+      if (data.translations) {
+        validateTranslations(data.translations);
       }
 
       const category = await resolveCategoryEmbed(data.categoryId);
       const brand = data.brandId ? await resolveBrandEmbed(data.brandId) : null;
 
-      const sku = data.sku && data.sku.trim() ? data.sku.trim() : `sku-${slugify(data.name) || "product"}-${randomUUID().slice(0, 6)}`;
+      const sku =
+        data.sku && data.sku.trim()
+          ? data.sku.trim()
+          : `sku-${slugify(data.name) || "product"}-${randomUUID().slice(0, 6)}`;
       const existingSku = await productRepository.findBySku(sku);
       if (existingSku) {
         throw new ConflictError(`Product sku already exists: ${sku}`);
@@ -101,15 +129,15 @@ export const create = async (data: CreateProductInput, actorId?: string): Promis
         name: data.name.trim(),
         description: data.description,
         price: data.price,
-        image: data.image,
         categoryId: data.categoryId,
         category,
         brandId: brand ? data.brandId : undefined,
         brand: brand ?? undefined,
         unit: data.unit,
         unitQuantity: data.unitQuantity,
-        status: data.status ?? "active",
-        isAvailable: data.isAvailable ?? true,
+        translations: data.translations,
+        status: "inactive",
+        isAvailable: false,
       });
 
       await inventoryService.createForProduct({
@@ -122,10 +150,43 @@ export const create = async (data: CreateProductInput, actorId?: string): Promis
     },
     (result) => result.id
   );
+  return toPublicProduct(product);
 };
 
-export const updateById = async (id: string, data: UpdateProductInput, actorId?: string): Promise<Product> => {
-  return auditService.runAudited(
+/**
+ * Confirma una imagen subida (flujo F1): valida que la key sea segura, que
+ * pertenezca a este producto y que el objeto exista en storage; prepara el
+ * update de Mongo. La imagen antigua se borra DESPUÉS de que Mongo confirme.
+ */
+const applyImageKey = async (
+  product: Product,
+  imageKey: string,
+  updates: Record<string, unknown>
+): Promise<string | undefined> => {
+  if (typeof imageKey !== "string" || !isSafeStorageKey(imageKey)) {
+    throw new InvalidDataError("Invalid imageKey");
+  }
+  if (!imageKey.startsWith(`products/${product.id}/`)) {
+    throw new InvalidDataError("imageKey does not belong to this product");
+  }
+
+  const provider = getStorageProvider();
+  const inspection = await provider.inspectImage(imageKey);
+  if (!inspection.exists) {
+    throw new NotFoundError("Image not found in storage");
+  }
+  if (!inspection.validContentType) {
+    throw new InvalidDataError("Uploaded file is not a supported image");
+  }
+
+  updates.imageKey = imageKey;
+  updates.image = provider.getPublicUrl(imageKey);
+
+  return product.imageKey && product.imageKey !== imageKey ? product.imageKey : undefined;
+};
+
+export const updateById = async (id: string, data: UpdateProductInput, actorId?: string): Promise<PublicProduct> => {
+  const updated = await auditService.runAudited(
     { userId: actorId, action: "UPDATE_PRODUCT", resource: "product", resourceId: id },
     async () => {
       const existing = await productRepository.findById(id);
@@ -134,6 +195,8 @@ export const updateById = async (id: string, data: UpdateProductInput, actorId?:
       }
 
       const updates: Record<string, unknown> = { updatedAt: new Date() };
+      const unset: string[] = [];
+      let replacedImageKey: string | undefined;
 
       if (data.name !== undefined) {
         if (!data.name.trim()) {
@@ -147,17 +210,34 @@ export const updateById = async (id: string, data: UpdateProductInput, actorId?:
         }
         updates.price = data.price;
       }
-      if (data.image !== undefined) {
-        if (!data.image.trim()) {
-          throw new InvalidDataError("Image cannot be empty");
-        }
-        updates.image = data.image;
-      }
       if (data.description !== undefined) updates.description = data.description;
       if (data.unit !== undefined) updates.unit = data.unit;
       if (data.unitQuantity !== undefined) updates.unitQuantity = data.unitQuantity;
       if (data.status !== undefined) updates.status = data.status;
       if (data.isAvailable !== undefined) updates.isAvailable = data.isAvailable;
+
+      if (data.image !== undefined) {
+        if (typeof data.image !== "string" || !data.image.trim()) {
+          throw new InvalidDataError("Image cannot be empty");
+        }
+        updates.image = data.image;
+      }
+
+      if (data.imageKey !== undefined) {
+        replacedImageKey = await applyImageKey(existing, data.imageKey, updates);
+      }
+      if (data.imageThumbnailKey !== undefined) {
+        const thumbnailKey = data.imageThumbnailKey;
+        if (typeof thumbnailKey !== "string" || !isSafeStorageKey(thumbnailKey) || !thumbnailKey.startsWith(`products/${id}/`)) {
+          throw new InvalidDataError("Invalid imageThumbnailKey");
+        }
+        updates.imageThumbnailKey = thumbnailKey;
+      }
+
+      if (data.translations !== undefined) {
+        validateTranslations(data.translations);
+        updates.translations = data.translations;
+      }
 
       if (data.sku !== undefined && data.sku.trim() && data.sku.trim() !== existing.sku) {
         const sku = data.sku.trim();
@@ -174,7 +254,6 @@ export const updateById = async (id: string, data: UpdateProductInput, actorId?:
         updates.category = category;
       }
 
-      const unset: string[] = [];
       if (data.brandId !== undefined) {
         if (data.brandId === null) {
           unset.push("brandId", "brand");
@@ -185,17 +264,30 @@ export const updateById = async (id: string, data: UpdateProductInput, actorId?:
         }
       }
 
-      const updated = await productRepository.updateById(id, updates, { unset });
-      if (!updated) {
+      const result = await productRepository.updateById(id, updates, { unset });
+      if (!result) {
         throw new NotFoundError("Product not found");
       }
-      return updated;
+
+      if (replacedImageKey) {
+        try {
+          await getStorageProvider().deleteObject(replacedImageKey);
+        } catch (error) {
+          logger.warn("Failed to delete replaced product image", {
+            imageKey: replacedImageKey,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
+      return result;
     }
   );
+  return toPublicProduct(updated);
 };
 
 export const remove = async (id: string, actorId?: string): Promise<void> => {
-  return auditService.runAudited(
+  await auditService.runAudited(
     { userId: actorId, action: "DELETE_PRODUCT", resource: "product", resourceId: id },
     async () => {
       const existing = await productRepository.findById(id);
@@ -205,9 +297,19 @@ export const remove = async (id: string, actorId?: string): Promise<void> => {
 
       await productRepository.deleteById(id);
       await inventoryService.removeByProductId(id);
+
+      try {
+        await getStorageProvider().deletePrefix(`products/${id}/`);
+      } catch (error) {
+        logger.warn("Failed to delete product image prefix", {
+          productId: id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
   );
 };
+
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
@@ -226,11 +328,16 @@ const refineSortBy = (value: unknown): ProductSortField | undefined => {
 
 export const getPage = async (
   query: Record<string, unknown>
-): Promise<{ data: Product[]; pagination: PaginationMeta }> => {
+): Promise<{ data: PublicProduct[]; pagination: PaginationMeta }> => {
   const page = Math.max(DEFAULT_PAGE, toInt(query.page, DEFAULT_PAGE));
   const limit = Math.min(MAX_LIMIT, Math.max(1, toInt(query.limit, DEFAULT_LIMIT)));
   const sortOrder = query.sortOrder === "asc" ? "asc" : "desc";
   const sortBy = refineSortBy(query.sortBy);
+  const lang = normalizeLang(query.lang);
+
+  if (query.status === "inactive") {
+    return { data: [], pagination: { page, limit, total: 0, pages: 1 } };
+  }
 
   const result = await productRepository.findPage({
     page,
@@ -238,10 +345,14 @@ export const getPage = async (
     q: typeof query.q === "string" ? query.q : undefined,
     category: typeof query.category === "string" ? query.category : undefined,
     brand: typeof query.brand === "string" ? query.brand : undefined,
-    status: query.status === "active" || query.status === "inactive" ? query.status : undefined,
+    status: "active",
+    isAvailable: true,
     sortBy,
     sortOrder,
   });
 
-  return { data: result.items, pagination: result.pagination };
+  return {
+    data: result.items.map((product) => toPublicProduct(product, lang)),
+    pagination: result.pagination,
+  };
 };

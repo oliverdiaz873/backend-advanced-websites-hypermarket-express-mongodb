@@ -11,6 +11,16 @@ export interface IProductBrand {
   slug: string;
 }
 
+export interface IProductTranslation {
+  name: string;
+  description?: string;
+}
+
+export interface IProductTranslations {
+  es?: IProductTranslation;
+  en?: IProductTranslation;
+}
+
 export interface IProduct {
   _id: string;
   sku: string;
@@ -18,6 +28,9 @@ export interface IProduct {
   description?: string;
   price: number;
   image: string;
+  imageKey?: string;
+  imageThumbnailKey?: string;
+  translations?: IProductTranslations;
   categoryId: string;
   category: IProductCategory;
   brandId?: string;
@@ -46,6 +59,22 @@ const brandEmbed = new Schema<IProductBrand>(
   { _id: false }
 );
 
+const translationEmbed = new Schema<IProductTranslation>(
+  {
+    name: { type: String, required: true },
+    description: { type: String },
+  },
+  { _id: false }
+);
+
+const translationsEmbed = new Schema<IProductTranslations>(
+  {
+    es: { type: translationEmbed },
+    en: { type: translationEmbed },
+  },
+  { _id: false }
+);
+
 const productSchema = new Schema<IProduct>(
   {
     _id: { type: String, required: true },
@@ -53,7 +82,10 @@ const productSchema = new Schema<IProduct>(
     name: { type: String, required: true, trim: true },
     description: { type: String },
     price: { type: Number, required: true, min: 0 },
-    image: { type: String, required: true },
+    image: { type: String },
+    imageKey: { type: String },
+    imageThumbnailKey: { type: String },
+    translations: { type: translationsEmbed },
     categoryId: { type: String, required: true },
     category: { type: categoryEmbed, required: true },
     brandId: { type: String },

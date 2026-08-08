@@ -4,6 +4,8 @@ import type { Config } from "../types";
 
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
+const storageProvider = process.env.STORAGE_PROVIDER === "s3" ? "s3" : "local";
+
 const config: Config = {
   port: Number(process.env.PORT) || 3000,
   nodeEnv: process.env.NODE_ENV || "development",
@@ -18,6 +20,16 @@ const config: Config = {
   backupDir: process.env.BACKUP_DIR || "backups",
   rateLimitWindowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60_000,
   rateLimitMaxRequests: Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 300,
+  storageProvider,
+  storageLocalDir: process.env.STORAGE_LOCAL_DIR || path.resolve(process.cwd(), "storage"),
+  storagePublicBaseUrl: process.env.STORAGE_PUBLIC_BASE_URL || `http://localhost:${Number(process.env.PORT) || 3000}`,
+  uploadMaxSizeBytes: Number(process.env.UPLOAD_MAX_SIZE_BYTES) || 5 * 1024 * 1024,
+  uploadPresignExpiresSeconds: Number(process.env.UPLOAD_PRESIGN_EXPIRES_SECONDS) || 600,
+  r2AccountId: process.env.R2_ACCOUNT_ID || undefined,
+  r2AccessKeyId: process.env.R2_ACCESS_KEY_ID || undefined,
+  r2SecretAccessKey: process.env.R2_SECRET_ACCESS_KEY || undefined,
+  r2Bucket: process.env.R2_BUCKET || undefined,
+  r2PublicUrl: process.env.R2_PUBLIC_URL || undefined,
 };
 
 export default config;

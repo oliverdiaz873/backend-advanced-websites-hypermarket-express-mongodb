@@ -8,6 +8,8 @@ interface ConfigError {
   message: string;
 }
 
+const STORAGE_PROVIDERS = ["local", "s3"] as const;
+
 const validateConfig = (config: Config): ConfigError[] => {
   const errors: ConfigError[] = [];
 
@@ -31,6 +33,26 @@ const validateConfig = (config: Config): ConfigError[] => {
 
   if (!config.corsOrigin.length) {
     errors.push({ field: "CORS_ORIGIN", message: "is required" });
+  }
+
+  if (!STORAGE_PROVIDERS.includes(config.storageProvider as (typeof STORAGE_PROVIDERS)[number])) {
+    errors.push({ field: "STORAGE_PROVIDER", message: `must be one of: ${STORAGE_PROVIDERS.join(", ")}` });
+  }
+
+  if (!Number.isInteger(config.uploadMaxSizeBytes) || config.uploadMaxSizeBytes <= 0) {
+    errors.push({ field: "UPLOAD_MAX_SIZE_BYTES", message: "must be a positive integer" });
+  }
+
+  if (!Number.isInteger(config.uploadPresignExpiresSeconds) || config.uploadPresignExpiresSeconds <= 0) {
+    errors.push({ field: "UPLOAD_PRESIGN_EXPIRES_SECONDS", message: "must be a positive integer" });
+  }
+
+  if (config.storageProvider === "s3") {
+    if (!config.r2AccountId) errors.push({ field: "R2_ACCOUNT_ID", message: "is required when STORAGE_PROVIDER=s3" });
+    if (!config.r2AccessKeyId) errors.push({ field: "R2_ACCESS_KEY_ID", message: "is required when STORAGE_PROVIDER=s3" });
+    if (!config.r2SecretAccessKey) errors.push({ field: "R2_SECRET_ACCESS_KEY", message: "is required when STORAGE_PROVIDER=s3" });
+    if (!config.r2Bucket) errors.push({ field: "R2_BUCKET", message: "is required when STORAGE_PROVIDER=s3" });
+    if (!config.r2PublicUrl) errors.push({ field: "R2_PUBLIC_URL", message: "is required when STORAGE_PROVIDER=s3" });
   }
 
   return errors;

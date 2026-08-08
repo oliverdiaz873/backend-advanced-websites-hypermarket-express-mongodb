@@ -46,7 +46,7 @@ export const getAll = async (): Promise<OfferResponse[]> => {
         originalPrice: offer.originalPrice,
         discountPrice: offer.discountPrice,
         discountPercentage,
-        image: product.image,
+        image: product.image ?? "",
         category: product.categoryId,
         unit: product.unit,
         unitQuantity: product.unitQuantity,

@@ -46,7 +46,7 @@ describe("product.controller", () => {
 
       const res = await request(app).get(`/api/products/${PRODUCT_ID}`);
 
-      expect(mockProductService.getById).toHaveBeenCalledWith(PRODUCT_ID);
+      expect(mockProductService.getById).toHaveBeenCalledWith(PRODUCT_ID, undefined);
       expect(res.status).toBe(200);
       expect(res.body.data).toEqual(toJson(product));
     });

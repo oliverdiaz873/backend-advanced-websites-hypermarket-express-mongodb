@@ -6,7 +6,8 @@ export const search = async (req: Request, res: Response, next: NextFunction): P
     const rawQ = req.query.q;
     const q = typeof rawQ === "string" ? rawQ : Array.isArray(rawQ) ? String(rawQ[0] ?? "") : "";
     const category = req.query.category as string | undefined;
-    const results = await searchService.search(q, category);
+    const lang = req.query.lang;
+    const results = await searchService.search(q, category, lang);
     res.json({ success: true, data: results });
   } catch (error) {
     next(error);

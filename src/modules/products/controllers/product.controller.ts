@@ -12,7 +12,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
 
 export const getById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const product = await productService.getById(req.params.id as string);
+    const product = await productService.getById(req.params.id as string, req.query.lang);
     res.json({ success: true, data: product });
   } catch (error) {
     next(error);

@@ -21,12 +21,13 @@ export const findAll = async (): Promise<Product[]> => {
 };
 
 export const findPage = async (query: ProductQuery): Promise<ProductPageResult> => {
-  const { page, limit, q, category, brand, status, sortBy, sortOrder } = query;
+  const { page, limit, q, category, brand, status, isAvailable, sortBy, sortOrder } = query;
 
   const filter: Record<string, unknown> = {};
   if (category) filter["category.slug"] = category.trim().toLowerCase();
   if (brand) filter["brand.slug"] = brand.trim().toLowerCase();
   if (status) filter.status = status;
+  if (isAvailable === true) filter.isAvailable = true;
   if (q && q.trim()) filter.name = { $regex: escapeRegExp(q.trim()), $options: "i" };
   const skip = (page - 1) * limit;
   const sort = buildSort(sortBy, sortOrder ?? "desc");
@@ -119,10 +120,11 @@ export const deleteById = async (id: string): Promise<boolean> => {
 
 export const search = async (query: string, category?: string): Promise<Product[]> => {
   const term = query.trim();
-  const categoryFilter = category ? { "category.slug": category.trim().toLowerCase() } : {};
+  const filters: Record<string, unknown> = { status: "active", isAvailable: true };
+  if (category) filters["category.slug"] = category.trim().toLowerCase();
 
   if (term.split(/\s+/).length > 1) {
-    const docs = await ProductModel.find({ $text: { $search: term }, ...categoryFilter }).sort({
+    const docs = await ProductModel.find({ $text: { $search: term }, ...filters }).sort({
       score: { $meta: "textScore" },
     });
     if (docs.length > 0) {
@@ -130,9 +132,6 @@ export const search = async (query: string, category?: string): Promise<Product[
     }
   }
 
-  const docs = await ProductModel.find({
-    name: { $regex: escapeRegExp(term), $options: "i" },
-    ...categoryFilter,
-  });
+  const docs = await ProductModel.find({ name: { $regex: escapeRegExp(term), $options: "i" }, ...filters });
   return docs.map((doc) => doc.toJSON() as unknown as Product);
 };

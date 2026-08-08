@@ -34,6 +34,7 @@ export interface ProductQuery {
   category?: string;
   brand?: string;
   status?: ProductStatus;
+  isAvailable?: boolean;
   sortBy?: ProductSortField;
   sortOrder?: SortDirection;
 }
@@ -69,6 +70,16 @@ export interface Config {
   backupDir: string;
   rateLimitWindowMs: number;
   rateLimitMaxRequests: number;
+  storageProvider: "local" | "s3";
+  storageLocalDir: string;
+  storagePublicBaseUrl: string;
+  uploadMaxSizeBytes: number;
+  uploadPresignExpiresSeconds: number;
+  r2AccountId?: string;
+  r2AccessKeyId?: string;
+  r2SecretAccessKey?: string;
+  r2Bucket?: string;
+  r2PublicUrl?: string;
 }
 
 export type AuditAction =
@@ -152,13 +163,26 @@ export interface Brand {
   status: BrandStatus;
 }
 
+export interface ProductTranslation {
+  name: string;
+  description?: string;
+}
+
+export interface ProductTranslations {
+  es?: ProductTranslation;
+  en?: ProductTranslation;
+}
+
 export interface Product {
   id: string;
   sku: string;
   name: string;
   description?: string;
   price: number;
-  image: string;
+  image?: string;
+  imageKey?: string;
+  imageThumbnailKey?: string;
+  translations?: ProductTranslations;
   categoryId: string;
   category: {
     name: string;

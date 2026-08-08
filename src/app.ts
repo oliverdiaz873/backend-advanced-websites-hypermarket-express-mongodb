@@ -20,6 +20,9 @@ import contactRoutes from "./modules/contact/routes/contact.routes";
 import adminContactRoutes from "./modules/contact/routes/admin-contact.routes";
 import statsRoutes from "./modules/stats/routes/stats.routes";
 import auditRoutes from "./modules/audit/routes/audit.routes";
+import uploadRoutes from "./modules/uploads/routes/upload.routes";
+import localUploadRoutes from "./modules/uploads/routes/local-upload.routes";
+import { getStorageProvider } from "./shared/storage/storage.factory";
 import errorHandler from "./shared/middleware/error-handler";
 import logger from "./shared/middleware/logger.middleware";
 import requestIdMiddleware from "./shared/middleware/request-id.middleware";
@@ -78,6 +81,12 @@ app.use("/api/contact", contactRoutes);
 app.use("/api/admin/contact", adminContactRoutes);
 app.use("/api/admin/stats", statsRoutes);
 app.use("/api/admin/audit-logs", auditRoutes);
+app.use("/api/admin/uploads", uploadRoutes);
+
+if (getStorageProvider().name === "local") {
+  app.use("/api/uploads", localUploadRoutes);
+  app.use("/uploads", express.static(config.storageLocalDir));
+}
 
 app.use((req: Request, res: Response) => {
   res.status(404).json({

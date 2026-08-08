@@ -39,7 +39,7 @@ describe("E2E: /api/products (CRUD admin)", () => {
       expect(res.status).toBe(403);
     });
 
-    it("responde 201, crea el producto y su inventario", async () => {
+    it("responde 201, crea un producto DRAFT e inventario en cascada", async () => {
       const category = await createTestCategory();
       const brand = await createTestBrand();
 
@@ -61,14 +61,37 @@ describe("E2E: /api/products (CRUD admin)", () => {
         categoryId: category.id,
         category: { name: category.name, slug: category.slug },
         brand: { name: brand.name, slug: brand.slug },
-        status: "active",
+        status: "inactive",
+        isAvailable: false,
       });
+      expect(res.body.data).not.toHaveProperty("imageKey");
+      expect(res.body.data).not.toHaveProperty("translations");
       expect(res.body.data.id).toBeTruthy();
 
       const inventory = await InventoryModel.findOne({ productId: res.body.data.id });
       expect(inventory).not.toBeNull();
       expect(inventory?.stock).toBe(25);
       expect(inventory?.minStock).toBe(5);
+    });
+
+    it("activa un draft mediante PATCH explícito", async () => {
+      const category = await createTestCategory();
+
+      const created = await request(app).post("/api/products").set(adminHeaders).send({
+        name: "Café Molido 250g",
+        price: 60,
+        categoryId: category.id,
+      });
+
+      expect(created.body.data.status).toBe("inactive");
+
+      const res = await request(app)
+        .patch(`/api/products/${created.body.data.id}`)
+        .set(adminHeaders)
+        .send({ status: "active", isAvailable: true });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data).toMatchObject({ status: "active", isAvailable: true });
     });
 
     it("responde 409 si el sku ya existe", async () => {

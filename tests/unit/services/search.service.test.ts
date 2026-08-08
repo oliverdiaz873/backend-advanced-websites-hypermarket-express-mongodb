@@ -1,5 +1,6 @@
 import * as searchService from "../../../src/modules/search/services/search.service";
 import { InvalidDataError } from "../../../src/shared/errors/invalid-data.error";
+import { toPublicProduct } from "../../../src/modules/products/presenters/product.presenter";
 import { makeProduct } from "../factories/product.factory";
 
 jest.mock("../../../src/modules/products/repositories/product.repository", () =>
@@ -24,14 +25,14 @@ describe("search.service", () => {
     expect(mockProductRepository.search).not.toHaveBeenCalled();
   });
 
-  it("busca productos con categoría", async () => {
+  it("busca productos con categoría y los mapea al shape público", async () => {
     const results = [makeProduct()];
     mockProductRepository.search.mockResolvedValue(results);
 
     const result = await searchService.search("arroz", "granos");
 
     expect(mockProductRepository.search).toHaveBeenCalledWith("arroz", "granos");
-    expect(result).toEqual(results);
+    expect(result).toEqual(results.map((product) => toPublicProduct(product)));
   });
 
   it("busca productos sin categoría", async () => {

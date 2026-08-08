@@ -12,6 +12,11 @@ const baseConfig: Config = {
   backupDir: "backups",
   rateLimitWindowMs: 900_000,
   rateLimitMaxRequests: 300,
+  storageProvider: "local",
+  storageLocalDir: ".tmp/test",
+  storagePublicBaseUrl: "http://localhost:3001",
+  uploadMaxSizeBytes: 5 * 1024 * 1024,
+  uploadPresignExpiresSeconds: 600,
 };
 
 describe("config validation", () => {

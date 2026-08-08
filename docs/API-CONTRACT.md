@@ -76,10 +76,13 @@ Todas las respuestas exitosas:
       "id": "arroz-superior",
       "sku": "ARROZ-001",
       "name": "Arroz Superior",
+      "description": "Arroz superior de grano largo.",
       "price": 80,
-      "image": "products/arroz-superior.jpg",
+      "image": "https://cdn.hipermercadosuperior.com/products/arroz-superior/68f1-9c2d-4a7b.webp?v=2026-08-08T10:00:00.000Z",
       "categoryId": "alimentos",
       "category": { "name": "Despensa", "slug": "despensa" },
+      "brandId": "alguna",
+      "brand": { "name": "Marca", "slug": "marca" },
       "unit": "kg",
       "unitQuantity": 1,
       "status": "active",
@@ -88,6 +91,13 @@ Todas las respuestas exitosas:
   ]
 }
 ```
+
+> `imageKey`, `imageThumbnailKey` y `translations` son **internos del backend** y
+> no se exponen en las respuestas públicas. Los frontends consumen únicamente
+> `image` (URL pública). El `name`/`description` devueltos ya están localizados
+> según `?lang=` (fallback al idioma raíz). El catálogo público solo lista
+> productos que cumplen **ambas** condiciones: `status: "active"` **y**
+> `isAvailable: true`.
 
 ---
 
@@ -117,45 +127,48 @@ Todas las respuestas exitosas:
 
 ### GET /products
 
-Obtiene todos los productos.
+Obtiene los productos disponibles públicamente.
 
-**Query params (futuro):**
-- `category` → filtrar por categoría
-- `page` → número de página
-- `limit` → items por página
-- `search` → búsqueda por término
+**Query params:**
+- `category` → filtrar por categoría (slug de categoría o subcategoría)
+- `page` → número de página (default 1)
+- `limit` → items por página (default 50, máx 100)
+- `q` → búsqueda por término (nombre/sku)
+- `status` → aceptado por compatibilidad, pero **no amplía el catálogo público**:
+  la consulta pública fuerza siempre `status: "active"` + `isAvailable: true`.
+- `lang` → `es | en` (localiza `name`/`description` desde `translations`; fallback al idioma raíz/es)
+- `sortBy` → `name | price | createdAt | updatedAt`
+- `sortOrder` → `asc | desc`
+
+El catálogo público **solo muestra productos con `status: "active"` y
+`isAvailable: true`** (drafts e inactivos quedan ocultos). `?status=inactive`
+devuelve una lista vacía porque el filtro de visibilidad se aplica siempre; el
+parámetro no puede exponer productos no activados.
 
 **Response:**
 
 ```json
 {
   "success": true,
-  "data": [
-    {
-      "id": "string",
-      "sku": "string",
-      "name": "string",
-      "description": "string | null",
-      "price": "number",
-      "image": "string",
-      "categoryId": "string",
-      "category": { "name": "string", "slug": "string" },
-      "brandId": "string | null",
-      "brand": { "name": "string", "slug": "string" } | null,
-      "unit": "string | null",
-      "unitQuantity": "number | null",
-      "status": "active | inactive",
-      "isAvailable": "boolean",
-      "createdAt": "string (ISO)",
-      "updatedAt": "string (ISO)"
-    }
-  ]
+  "data": [ /* Product[] */ ],
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 184,
+    "pages": 4
+  }
 }
 ```
 
+> La lista paginada devuelve `data` (array) + `pagination` (`page`, `limit`,
+> `total`, `pages`) como objetos separados.
+
 ### GET /products/:id
 
-Obtiene un producto específico.
+Obtiene un producto específico (solo si `status: "active"` **y** `isAvailable: true`).
+
+**Query params:**
+- `lang` → `es | en` (localiza `name`/`description`; fallback al idioma raíz)
 
 **Response:**
 
@@ -166,8 +179,9 @@ Obtiene un producto específico.
     "id": "arroz-superior",
     "sku": "ARROZ-001",
     "name": "Arroz Superior",
+    "description": "Arroz superior de grano largo.",
     "price": 80,
-    "image": "products/arroz-superior.jpg",
+    "image": "https://cdn.hipermercadosuperior.com/products/arroz-superior/68f1-9c2d-4a7b.webp?v=2026-08-08T10:00:00.000Z",
     "categoryId": "alimentos",
     "category": { "name": "Despensa", "slug": "despensa" },
     "unit": "kg",
@@ -178,7 +192,8 @@ Obtiene un producto específico.
 }
 ```
 
-**Error:**
+**Error:** si el producto no existe o no está disponible públicamente (debe
+cumplir `status: "active"` **y** `isAvailable: true`):
 
 ```json
 {
@@ -188,17 +203,118 @@ Obtiene un producto específico.
 }
 ```
 
-### POST /products (futuro)
+### POST /products (admin)
 
-Crear producto.
+Crea un producto **draft**. Requiere `Authorization: Bearer <token>` con rol `admin`.
 
-### PUT /products/:id (futuro)
+**Body:**
 
-Actualizar producto.
+```json
+{
+  "name": "Leche Entera",
+  "sku": "LECHE-001",
+  "description": "Leche entera pasteurizada.",
+  "price": 120,
+  "categoryId": "lacteos",
+  "brandId": "marca-x",
+  "unit": "litro",
+  "unitQuantity": 1,
+  "translations": {
+    "es": { "name": "Leche Entera", "description": "Leche entera pasteurizada." },
+    "en": { "name": "Whole Milk", "description": "Pasteurized whole milk." }
+  }
+}
+```
 
-### DELETE /products/:id (futuro)
+Comportamiento:
 
-Eliminar producto.
+- La imagen es **opcional** y se confirma después mediante `PATCH`.
+- El producto se crea como `status: "inactive"` y `isAvailable: false`.
+- Confirmar imagen **no activa** el producto: la activación es explícita vía `PATCH`.
+- `translations` es opcional; si falta, se usa `name`/`description` raíz como
+  valor por defecto para ambos idiomas.
+
+**Response:** `201 { success: true, data: Product }` (`data.image` será `null` hasta
+que se confirme una imagen).
+
+**Errores:** `400` validación · `401` no autenticado · `403` sin rol admin · `409` SKU duplicado.
+
+### PATCH /products/:id (admin)
+
+Actualización parcial. Requiere rol `admin`.
+
+- Campo `imageKey` (confirmación de imagen): recibe una key emitida por el
+  presign — `products/{productId}/{uuid}.{ext}`. El backend:
+  1. valida que la key sea segura;
+  2. comprueba que pertenece al producto (`products/{id}/...`);
+  3. verifica que el objeto existe en storage;
+  4. valida contenido best-effort (magic bytes local / HEAD en R2);
+  5. actualiza MongoDB (`imageKey` + `image` pública);
+  6. elimina la imagen anterior **después** de que Mongo confirme (si esta falla,
+     la imagen anterior sigue vigente).
+- Campos `status` / `isAvailable`: activación explícita del producto
+  (`PATCH { status: "active", isAvailable: true }`).
+- `brandId: null` limpia la marca.
+
+**Response:** `200 { success: true, data: Product }` (sin `imageKey` ni `translations`).
+
+### DELETE /products/:id (admin)
+
+Elimina un producto (físico). Requiere rol `admin`.
+
+- Borra el documento en MongoDB, el inventario asociado y el prefijo
+  `products/{id}/` en storage (`deletePrefix`, best-effort).
+- Los huérfanos que queden tras un fallo se recuperan con `npm run cleanup:orphans`.
+
+**Response:** `204` sin cuerpo.
+
+---
+
+### POST /admin/uploads/presigned (admin)
+
+Solicita una URL firmada para subir una imagen directamente al storage (R2 en
+producción / local en dev). El `productId` **no se genera aquí**: lo aporta el
+cliente, ya creado previamente con `POST /api/products`.
+
+**Body:**
+
+```json
+{
+  "productId": "8f3a-1234-...",
+  "fileName": "coca-cola.webp",
+  "contentType": "image/webp",
+  "purpose": "product"
+}
+```
+
+- `purpose: "product"` requiere `productId`; la key generada es
+  `products/{productId}/{uuid}.{ext}` versionada e inmutable.
+- `purpose: "pending"` (opcional, upload en curso sin confirmar) genera
+  `pending/{uuid}.{ext}`.
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "productId": "8f3a...",
+    "key": "products/8f3a.../9c2d-4a7b-68f1.webp",
+    "uploadUrl": "https://...presigned-put-url",
+    "publicUrl": "https://cdn.hipermercadosuperior.com/products/8f3a.../9c2d-4a7b-68f1.webp",
+    "expiresInSeconds": 600,
+    "purpose": "product"
+  }
+}
+```
+
+- `uploadUrl` expira en 10 minutos (600 s).
+- MIME permitidos: `image/jpeg`, `image/png`, `image/webp`, `image/avif`, `image/gif`.
+- Tamaño máximo: 5 MB (validado en storage local).
+- La existencia del producto se valida en el flujo de confirmación (`PATCH`),
+  no en el presign.
+
+**Errores:** `400` MIME/tamaño inválido o `productId` ausente para `product` · `401` no autenticado · `403` sin rol admin · `429` rate limit.
 
 ---
 
@@ -263,13 +379,15 @@ Obtiene productos con descuento activo.
 
 ## 8. Search API
 
-### GET /search?q=termino
-
-Busca productos por término.
+Busca productos por término. El filtro de visibilidad es el mismo que `GET /products`:
+**solo** productos con `status: "active"` **y** `isAvailable: true` (drafts e
+inactivos nunca aparecen) y la respuesta pasa por el **mismo serializer público**
+(aplicado `?lang=` con fallback, y sin `imageKey`/`imageThumbnailKey`/`translations`).
 
 **Query params:**
 - `q` → término de búsqueda (requerido)
 - `category` → filtrar por categoría (opcional)
+- `lang` → `es | en` (localiza `name`/`description`; fallback al idioma raíz)
 
 **Response:**
 
@@ -282,7 +400,7 @@ Busca productos por término.
       "sku": "ARROZ-001",
       "name": "Arroz Superior",
       "price": 80,
-      "image": "products/arroz-superior.jpg",
+      "image": "https://cdn.hipermercadosuperior.com/products/arroz-superior/68f1-9c2d-4a7b.webp?v=2026-08-08T10:00:00.000Z",
       "categoryId": "alimentos",
       "category": { "name": "Despensa", "slug": "despensa" }
     }
@@ -290,7 +408,7 @@ Busca productos por término.
 }
 ```
 
-> Devuelve la misma estructura que `GET /products` (ver sección 5).
+> Devuelve la misma estructura de producto que `GET /products` (ver sección 5).
 
 ---
 
@@ -503,9 +621,14 @@ Requiere rol `admin` (Bearer token).
 
 ---
 
-## 15. Versioning (futuro)
+## 15. Versioning (decisión actual)
+
+**Decisión (ADR-015):** se mantiene `/api` **sin versionado** por ahora. La
+transición hacia un prefijo versionado (p. ej. `/api/v1`) se evaluará cuando
+exista un cambio de contrato rompedor. Documentado en
+`docs/ADR-015-api-versioning-policy.md`.
 
 ```
-/api/v1/products
-/api/v2/products
+/api/products        → hoy
+/api/v1/products     → futuro (solo si hay breaking change)
 ```

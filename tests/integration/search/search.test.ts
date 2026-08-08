@@ -1,6 +1,10 @@
 import request from "supertest";
 import app from "../../../src/app";
 import { createTestProduct } from "../helpers/product.helper";
+import { createAuthHeaders, createAuthToken } from "../helpers/auth.helper";
+import { createTestAdmin } from "../helpers/user.helper";
+import { createTestCategory } from "../helpers/category.helper";
+import type { User } from "../../../src/types";
 
 describe("E2E: /api/search", () => {
   it("GET /?q= busca y responde 200", async () => {
@@ -38,5 +42,81 @@ describe("E2E: /api/search", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual([]);
+  });
+});
+
+describe("E2E: /api/search visibilidad pública (F1)", () => {
+  let admin: User;
+  let adminHeaders: { Authorization: string };
+  let categoryId: string;
+
+  beforeEach(async () => {
+    admin = await createTestAdmin();
+    adminHeaders = createAuthHeaders(createAuthToken(admin));
+    categoryId = (await createTestCategory()).id;
+  });
+
+  const createDraft = async (name: string) => {
+    const res = await request(app)
+      .post("/api/products")
+      .set(adminHeaders)
+      .send({ name, price: 50, categoryId });
+    expect(res.status).toBe(201);
+    return res.body.data as { id: string };
+  };
+
+  it("un draft no aparece en search; al activarlo sí, y sin campos internos", async () => {
+    const draft = await createDraft("Cereal Buscar");
+
+    const hidden = await request(app).get("/api/search").query({ q: "cereal" });
+    expect(hidden.status).toBe(200);
+    expect(hidden.body.data.map((p: { id: string }) => p.id)).not.toContain(draft.id);
+
+    await request(app)
+      .patch(`/api/products/${draft.id}`)
+      .set(adminHeaders)
+      .send({ status: "active", isAvailable: true })
+      .expect(200);
+
+    const found = await request(app).get("/api/search").query({ q: "cereal" });
+    expect(found.status).toBe(200);
+    expect(found.body.data.map((p: { id: string }) => p.id)).toContain(draft.id);
+
+    const item = found.body.data.find((p: { id: string }) => p.id === draft.id);
+    expect(item).not.toHaveProperty("imageKey");
+    expect(item).not.toHaveProperty("imageThumbnailKey");
+    expect(item).not.toHaveProperty("translations");
+    expect(item).not.toHaveProperty("__v");
+  });
+
+  it("estado inconsistente inactive + isAvailable:true no aparece en search", async () => {
+    const draft = await createDraft("Fideos Oculto");
+    await request(app)
+      .patch(`/api/products/${draft.id}`)
+      .set(adminHeaders)
+      .send({ status: "inactive", isAvailable: true })
+      .expect(200);
+
+    const res = await request(app).get("/api/search").query({ q: "fideos" });
+    expect(res.body.data.map((p: { id: string }) => p.id)).not.toContain(draft.id);
+  });
+
+  it("?lang resolve la traducción sin exponer el bloque translations", async () => {
+    const draft = await createDraft("Galletas Buscar");
+    await request(app)
+      .patch(`/api/products/${draft.id}`)
+      .set(adminHeaders)
+      .send({
+        status: "active",
+        isAvailable: true,
+        translations: { en: { name: "Search Cookies", description: "EN description" } },
+      })
+      .expect(200);
+
+    const res = await request(app).get("/api/search").query({ q: "galletas", lang: "en" });
+    const item = res.body.data.find((p: { id: string }) => p.id === draft.id);
+    expect(item).toBeDefined();
+    expect(item.name).toBe("Search Cookies");
+    expect(item).not.toHaveProperty("translations");
   });
 });

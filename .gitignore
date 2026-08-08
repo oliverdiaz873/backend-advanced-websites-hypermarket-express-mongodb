@@ -4,6 +4,8 @@ dist/
 build/
 coverage/
 backups/
+/storage/
+.tmp/
 *.log
 .DS_Store
 Thumbs.db

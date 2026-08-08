@@ -5,6 +5,7 @@ import { ConflictError } from "../../../src/shared/errors/conflict.error";
 import { makeProduct, PRODUCT_ID } from "../factories/product.factory";
 import { makeCategory, CATEGORY_ID } from "../factories/category.factory";
 import { makeBrand, BRAND_ID } from "../factories/brand.factory";
+import { getStorageProvider } from "../../../src/shared/storage/storage.factory";
 
 jest.mock("../../../src/modules/products/repositories/product.repository", () =>
   require("../mocks/repositories").mockProductRepository
@@ -18,6 +19,9 @@ jest.mock("../../../src/modules/brands/repositories/brand.repository", () =>
 jest.mock("../../../src/modules/inventory/services/inventory.service", () =>
   require("../mocks/repositories").mockInventoryService
 );
+jest.mock("../../../src/shared/storage/storage.factory", () => ({
+  getStorageProvider: jest.fn(),
+}));
 
 import {
   mockProductRepository,
@@ -26,9 +30,25 @@ import {
   mockInventoryService,
 } from "../mocks/repositories";
 
+const getStorageProviderMock = getStorageProvider as jest.Mock;
+
+const storageProviderMock = {
+  name: "local",
+  getPresignedUploadUrl: jest.fn(),
+  getPublicUrl: jest.fn((key: string) => `https://cdn.test/${key}`),
+  objectExists: jest.fn(),
+  inspectImage: jest.fn(),
+  listObjects: jest.fn(),
+  deleteObject: jest.fn(),
+  deletePrefix: jest.fn(),
+};
+
+const imageKeyOf = (suffix: string): string => `products/${PRODUCT_ID}/${suffix}.webp`;
+
 describe("product.service", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    getStorageProviderMock.mockReturnValue(storageProviderMock);
   });
 
   describe("getAll", () => {
@@ -40,6 +60,18 @@ describe("product.service", () => {
 
       expect(mockProductRepository.findAll).toHaveBeenCalledTimes(1);
       expect(result).toEqual(products);
+    });
+
+    it("omite los productos no disponibles en la lista pública (F1)", async () => {
+      mockProductRepository.findAll.mockResolvedValue([
+        makeProduct(),
+        makeProduct({ id: "64b0000000000000000000a2", isAvailable: false, status: "inactive" }),
+      ]);
+
+      const result = await productService.getAll();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe(PRODUCT_ID);
     });
   });
 
@@ -69,6 +101,7 @@ describe("product.service", () => {
         category: "Granos",
         brand: undefined,
         status: "active",
+        isAvailable: true,
         sortBy: "name",
         sortOrder: "asc",
       });
@@ -90,10 +123,19 @@ describe("product.service", () => {
         q: undefined,
         category: undefined,
         brand: undefined,
-        status: undefined,
+        status: "active",
+        isAvailable: true,
         sortBy: undefined,
         sortOrder: "desc",
       });
+    });
+
+    it("no amplía el catálogo hacia ?status=inactive: responde vacío sin consultar", async () => {
+      const result = await productService.getPage({ status: "inactive" });
+
+      expect(mockProductRepository.findPage).not.toHaveBeenCalled();
+      expect(result.data).toEqual([]);
+      expect(result.pagination.total).toBe(0);
     });
 
     it("descarta valores inválidos de page, limit, status y sortBy", async () => {
@@ -117,7 +159,8 @@ describe("product.service", () => {
         q: undefined,
         category: undefined,
         brand: undefined,
-        status: undefined,
+        status: "active",
+        isAvailable: true,
         sortBy: undefined,
         sortOrder: "desc",
       });
@@ -141,12 +184,25 @@ describe("product.service", () => {
       await expect(productService.getById(PRODUCT_ID)).rejects.toThrow(NotFoundError);
       await expect(productService.getById(PRODUCT_ID)).rejects.toThrow("Product not found");
     });
+
+    it("lanza NotFoundError si el producto no está disponible públicamente (F1)", async () => {
+      mockProductRepository.findById.mockResolvedValue(makeProduct({ isAvailable: false, status: "inactive" }));
+
+      await expect(productService.getById(PRODUCT_ID)).rejects.toThrow(NotFoundError);
+      await expect(productService.getById(PRODUCT_ID)).rejects.toThrow("Product not found");
+    });
+
+    it("lanza NotFoundError si el producto está inactive aunque isAvailable sea true (gate conjunto)", async () => {
+      mockProductRepository.findById.mockResolvedValue(makeProduct({ isAvailable: true, status: "inactive" }));
+
+      await expect(productService.getById(PRODUCT_ID)).rejects.toThrow(NotFoundError);
+    });
   });
 
   describe("create", () => {
-    const base = { name: "Arroz 1kg", price: 89.5, image: "https://example.com/arroz.png", categoryId: CATEGORY_ID };
+    const base = { name: "Arroz 1kg", price: 89.5, categoryId: CATEGORY_ID };
 
-    it("crea el producto con sku generado y crea inventario en cascada", async () => {
+    it("crea el producto draft con sku generado y crea inventario en cascada", async () => {
       mockCategoryRepository.findById.mockResolvedValue(makeCategory());
       mockProductRepository.create.mockResolvedValue(makeProduct());
       mockInventoryService.createForProduct.mockResolvedValue({ productId: PRODUCT_ID, stock: 0 });
@@ -160,16 +216,34 @@ describe("product.service", () => {
           name: "Arroz 1kg",
           categoryId: CATEGORY_ID,
           category: { name: "Bebidas", slug: "bebidas" },
-          status: "active",
-          isAvailable: true,
+          status: "inactive",
+          isAvailable: false,
         })
       );
+      expect(mockProductRepository.create.mock.calls[0][0].image).toBeUndefined();
       expect(mockInventoryService.createForProduct).toHaveBeenCalledWith({
         productId: PRODUCT_ID,
         stock: 15,
         minStock: 5,
       });
       expect(result).toEqual(makeProduct());
+    });
+
+    it("crea un draft sin imagen (status inactive, isAvailable false)", async () => {
+      mockCategoryRepository.findById.mockResolvedValue(makeCategory());
+      mockProductRepository.create.mockResolvedValue(makeProduct({ image: undefined }));
+      mockInventoryService.createForProduct.mockResolvedValue({ productId: PRODUCT_ID, stock: 0 });
+
+      const result = await productService.create({ name: "Producto sin imagen", price: 10, categoryId: CATEGORY_ID });
+
+      const createArg = mockProductRepository.create.mock.calls[0][0];
+      expect(createArg).toMatchObject({
+        name: "Producto sin imagen",
+        status: "inactive",
+        isAvailable: false,
+      });
+      expect(createArg.image).toBeUndefined();
+      expect(result.image).toBeNull();
     });
 
     it("usa el sku provisto y resuelve el embed de marca", async () => {
@@ -197,8 +271,10 @@ describe("product.service", () => {
       await expect(productService.create({ ...base, price: -1 })).rejects.toThrow(InvalidDataError);
     });
 
-    it("lanza InvalidDataError si falta la imagen", async () => {
-      await expect(productService.create({ ...base, image: "" })).rejects.toThrow(InvalidDataError);
+    it("lanza InvalidDataError si las traducciones tienen name vacío", async () => {
+      await expect(
+        productService.create({ ...base, translations: { es: { name: "  " } } })
+      ).rejects.toThrow(InvalidDataError);
     });
 
     it("lanza NotFoundError si la categoría no existe", async () => {
@@ -318,6 +394,138 @@ describe("product.service", () => {
 
       await expect(productService.remove(PRODUCT_ID)).rejects.toThrow(NotFoundError);
       expect(mockProductRepository.deleteById).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getById con lang (F1)", () => {
+    it("resuelve translations[lang] con fallback a la raíz", async () => {
+      mockProductRepository.findById.mockResolvedValue(
+        makeProduct({
+          name: "Arroz",
+          description: "Arroz blanco",
+          translations: { es: { name: "Arroz (ES)" }, en: { name: "Rice", description: "White rice" } },
+        })
+      );
+
+      const result = await productService.getById(PRODUCT_ID, "en");
+      expect(result.name).toBe("Rice");
+      expect(result.description).toBe("White rice");
+
+      const resultEs = await productService.getById(PRODUCT_ID, "es");
+      expect(resultEs.name).toBe("Arroz (ES)");
+      expect(resultEs.description).toBe("Arroz blanco");
+    });
+
+    it("no expone imageKey ni translations en la respuesta pública", async () => {
+      mockProductRepository.findById.mockResolvedValue(
+        makeProduct({
+          imageKey: imageKeyOf("a81f23"),
+          translations: { es: { name: "X" } },
+        })
+      );
+
+      const result = await productService.getById(PRODUCT_ID);
+
+      expect(result).not.toHaveProperty("imageKey");
+      expect(result).not.toHaveProperty("translations");
+      expect(storageProviderMock.getPublicUrl).toHaveBeenCalledWith(imageKeyOf("a81f23"));
+      expect(result.image).toContain("?v=");
+    });
+  });
+
+  describe("updateById con imageKey (flujo F1)", () => {
+    it("confirma la imagen nueva y borra la anterior tras actualizar Mongo", async () => {
+      mockProductRepository.findById.mockResolvedValue(makeProduct({ imageKey: imageKeyOf("old") }));
+      mockProductRepository.updateById.mockResolvedValue(makeProduct({ imageKey: imageKeyOf("new") }));
+      storageProviderMock.inspectImage.mockResolvedValue({ exists: true, validContentType: true });
+
+      await productService.updateById(PRODUCT_ID, { imageKey: imageKeyOf("new") });
+
+      expect(mockProductRepository.updateById).toHaveBeenCalledWith(
+        PRODUCT_ID,
+        expect.objectContaining({
+          imageKey: imageKeyOf("new"),
+          image: `https://cdn.test/${imageKeyOf("new")}`,
+        }),
+        { unset: [] }
+      );
+      expect(storageProviderMock.deleteObject).toHaveBeenCalledWith(imageKeyOf("old"));
+    });
+
+    it("expone a la imagen vigente y no borra si es la misma key", async () => {
+      mockProductRepository.findById.mockResolvedValue(makeProduct({ imageKey: imageKeyOf("same") }));
+      mockProductRepository.updateById.mockResolvedValue(makeProduct({ imageKey: imageKeyOf("same") }));
+      storageProviderMock.inspectImage.mockResolvedValue({ exists: true, validContentType: true });
+
+      await productService.updateById(PRODUCT_ID, { imageKey: imageKeyOf("same") });
+
+      expect(storageProviderMock.deleteObject).not.toHaveBeenCalled();
+    });
+
+    it("si Mongo falla, conserva la imagen anterior y no borra nada (rollback lógico)", async () => {
+      mockProductRepository.findById.mockResolvedValue(makeProduct({ imageKey: imageKeyOf("old") }));
+      storageProviderMock.inspectImage.mockResolvedValue({ exists: true, validContentType: true });
+      mockProductRepository.updateById.mockRejectedValue(new Error("mongo down"));
+
+      await expect(productService.updateById(PRODUCT_ID, { imageKey: imageKeyOf("new") })).rejects.toThrow("mongo down");
+      expect(storageProviderMock.deleteObject).not.toHaveBeenCalled();
+    });
+
+    it("rechaza una imageKey que no pertenezca al producto", async () => {
+      mockProductRepository.findById.mockResolvedValue(makeProduct());
+
+      await expect(productService.updateById(PRODUCT_ID, { imageKey: "products/other-id/a.webp" })).rejects.toThrow(
+        InvalidDataError
+      );
+      expect(mockProductRepository.updateById).not.toHaveBeenCalled();
+    });
+
+    it("rechaza una imageKey insegura", async () => {
+      mockProductRepository.findById.mockResolvedValue(makeProduct());
+
+      await expect(productService.updateById(PRODUCT_ID, { imageKey: "../escape.webp" })).rejects.toThrow(
+        InvalidDataError
+      );
+      expect(mockProductRepository.updateById).not.toHaveBeenCalled();
+    });
+
+    it("lanza NotFoundError si el objeto no existe en storage", async () => {
+      mockProductRepository.findById.mockResolvedValue(makeProduct());
+      storageProviderMock.inspectImage.mockResolvedValue({ exists: false, validContentType: false });
+
+      await expect(productService.updateById(PRODUCT_ID, { imageKey: imageKeyOf("missing") })).rejects.toThrow(NotFoundError);
+      expect(mockProductRepository.updateById).not.toHaveBeenCalled();
+    });
+
+    it("lanza InvalidDataError si el objeto no es una imagen válida", async () => {
+      mockProductRepository.findById.mockResolvedValue(makeProduct());
+      storageProviderMock.inspectImage.mockResolvedValue({ exists: true, validContentType: false });
+
+      await expect(productService.updateById(PRODUCT_ID, { imageKey: imageKeyOf("bad") })).rejects.toThrow(InvalidDataError);
+      expect(mockProductRepository.updateById).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("remove con borrado de storage (F1)", () => {
+    it("borra el producto, su inventario y el prefijo de imágenes", async () => {
+      mockProductRepository.findById.mockResolvedValue(makeProduct());
+      mockProductRepository.deleteById.mockResolvedValue(true);
+      mockInventoryService.removeByProductId.mockResolvedValue(undefined);
+
+      await productService.remove(PRODUCT_ID);
+
+      expect(mockProductRepository.deleteById).toHaveBeenCalledWith(PRODUCT_ID);
+      expect(mockInventoryService.removeByProductId).toHaveBeenCalledWith(PRODUCT_ID);
+      expect(storageProviderMock.deletePrefix).toHaveBeenCalledWith(`products/${PRODUCT_ID}/`);
+    });
+
+    it("continúa aunque el borrado del prefijo falle (best-effort)", async () => {
+      mockProductRepository.findById.mockResolvedValue(makeProduct());
+      mockProductRepository.deleteById.mockResolvedValue(true);
+      mockInventoryService.removeByProductId.mockResolvedValue(undefined);
+      storageProviderMock.deletePrefix.mockRejectedValue(new Error("s3 down"));
+
+      await expect(productService.remove(PRODUCT_ID)).resolves.toBeUndefined();
     });
   });
 });

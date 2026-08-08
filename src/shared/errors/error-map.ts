@@ -81,6 +81,11 @@ export const mapError = (err: AppError): MappedError => {
     };
   }
 
+  const bodyParserError = err as { type?: string };
+  if (bodyParserError.type === "entity.too.large") {
+    return { statusCode: 413, code: "VALIDATION_ERROR", message: "File too large" };
+  }
+
   const code = errorByName(err.name);
   if (code) {
     const statusCode = err.statusCode ?? statusCodeFor(code);
