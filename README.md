@@ -287,6 +287,7 @@ Ver [`docs/API-USAGE.md`](docs/API-USAGE.md) para la documentación completa de 
 Otros documentos de referencia:
 
 - [`docs/API-CONTRACT.md`](docs/API-CONTRACT.md) — Contrato uniforme de respuestas y errores.
+- [`docs/FRONTEND-COMPATIBILITY.md`](docs/FRONTEND-COMPATIBILITY.md) — Matriz de compatibilidad del contrato frente a los dos storefronts (Angular y Next.js).
 - [`docs/SYSTEM-MODELING.md`](docs/SYSTEM-MODELING.md) — Modelado del sistema.
 - [`docs/ADR-011-module-boundaries.md`](docs/ADR-011-module-boundaries.md) — Límites entre módulos y lectura transversal de `stats`.
 - [`docs/PRODUCTION-DATA-PROTECTION.md`](docs/PRODUCTION-DATA-PROTECTION.md) — Separación de credenciales, backups, migraciones y soft-delete.

@@ -31,8 +31,9 @@ describe("offer.controller", () => {
         discountPrice: 80,
         discountPercentage: 20,
         image: "https://example.com/arroz.png",
-        category: "cat_granos",
-        priceLabel: "Precio: $80 / kg",
+        categoryId: "cat_granos",
+        unit: "kg",
+        unitQuantity: 1,
       };
       mockOfferService.getAll.mockResolvedValue([offerResponse]);
 
@@ -41,6 +42,14 @@ describe("offer.controller", () => {
       expect(mockOfferService.getAll).toHaveBeenCalledTimes(1);
       expect(res.status).toBe(200);
       expect(res.body).toEqual({ success: true, data: [offerResponse] });
+    });
+
+    it("propaga el query param lang al service", async () => {
+      mockOfferService.getAll.mockResolvedValue([]);
+
+      await request(app).get("/api/offers").query({ lang: "en" });
+
+      expect(mockOfferService.getAll).toHaveBeenCalledWith("en");
     });
   });
 

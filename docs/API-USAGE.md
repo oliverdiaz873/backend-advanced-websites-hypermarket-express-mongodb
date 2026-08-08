@@ -147,9 +147,16 @@ Get a category by ID.
 
 ### GET /api/offers
 
-List all discounted products.
+List all discounted products that are publicly visible
+(`status: "active"` AND `isAvailable: true`). `?lang=es|en` localizes `name`
+with root-language fallback (no `translations` exposed). `image` is the public
+URL with cache-bust (`?v=`). `priceLabel` and price formatting are the
+consumer's responsibility (Angular/Next.js) and are NOT emitted.
 
-**Parameters:** None
+**Parameters:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| lang | string | No | `es` or `en` (localizes `name`) |
 
 **Response:**
 ```json
@@ -163,17 +170,18 @@ List all discounted products.
       "originalPrice": 56,
       "discountPrice": 45,
       "discountPercentage": 20,
-      "image": "products/frutas-y-verduras/manzana-verde.avif",
-      "category": "frutas-y-verduras",
+      "image": "https://cdn.hipermercadosuperior.com/products/manzanas_verdes/a1b2.webp?v=2026-08-08T10:00:00.000Z",
+      "categoryId": "frutas-y-verduras",
       "unit": "lb",
-      "unitQuantity": 1,
-      "priceLabel": "Precio: $45 / lb"
+      "unitQuantity": 1
     }
   ]
 }
 ```
 
-> `price` es el precio final (`discountPrice`). `category` es el `categoryId` del producto. `originalPrice`, `discountPrice` y `discountPercentage` son **números**, no strings.
+> `price` es el precio final (`discountPrice`). `categoryId` es el id de la
+> categoría del producto. `image` puede ser `null` si el producto no tiene una
+> imagen resoluble.
 
 **Errors:** None
 

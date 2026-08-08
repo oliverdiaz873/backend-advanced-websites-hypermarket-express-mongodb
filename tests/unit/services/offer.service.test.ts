@@ -36,9 +36,13 @@ describe("offer.service", () => {
           originalPrice: 100,
           discountPrice: 80,
           discountPercentage: 20,
-          priceLabel: "Precio: $80 / kg",
+          image: "https://example.com/arroz.png",
+          categoryId: "64b0000000000000000000c1",
         }),
       ]);
+      expect(result[0]).not.toHaveProperty("priceLabel");
+      expect(result[0]).not.toHaveProperty("translations");
+      expect(result[0]).not.toHaveProperty("imageKey");
     });
 
     it("omite ofertas cuyo producto ya no existe", async () => {
@@ -48,6 +52,41 @@ describe("offer.service", () => {
       const result = await offerService.getAll();
 
       expect(result).toEqual([]);
+    });
+
+    it("omite ofertas cuyo producto no es públicamente visible", async () => {
+      mockOfferRepository.findAllActive.mockResolvedValue([makeOffer()]);
+      mockProductRepository.findById.mockResolvedValue(makeProduct({ status: "inactive", isAvailable: false }));
+
+      const result = await offerService.getAll();
+
+      expect(result).toEqual([]);
+    });
+
+    it("omite ofertas de productos inactivos aunque estén disponibles", async () => {
+      mockOfferRepository.findAllActive.mockResolvedValue([makeOffer()]);
+      mockProductRepository.findById.mockResolvedValue(makeProduct({ status: "inactive", isAvailable: true }));
+
+      const result = await offerService.getAll();
+
+      expect(result).toEqual([]);
+    });
+
+    it("respeta ?lang en el nombre con fallback al idioma raíz", async () => {
+      mockOfferRepository.findAllActive.mockResolvedValue([makeOffer()]);
+      mockProductRepository.findById.mockResolvedValue(
+        makeProduct({ translations: { en: { name: "Rice 1kg", description: "EN" } } })
+      );
+
+      const en = await offerService.getAll("en");
+      expect(en[0]).toMatchObject({ name: "Rice 1kg" });
+      expect(en[0]).not.toHaveProperty("translations");
+
+      const es = await offerService.getAll("es");
+      expect(es[0]).toMatchObject({ name: "Arroz 1kg" });
+
+      const porDefecto = await offerService.getAll();
+      expect(porDefecto[0]).toMatchObject({ name: "Arroz 1kg" });
     });
   });
 

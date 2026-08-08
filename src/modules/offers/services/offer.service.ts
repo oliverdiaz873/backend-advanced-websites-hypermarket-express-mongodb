@@ -1,6 +1,7 @@
 import * as offerRepository from "../repositories/offer.repository";
 import * as productRepository from "../../products/repositories/product.repository";
 import * as auditService from "../../../modules/audit/services/audit.service";
+import { normalizeLang, isPubliclyVisible, toPublicProduct } from "../../products/presenters/product.presenter";
 import { NotFoundError } from "../../../shared/errors/not-found.error";
 import { InvalidDataError } from "../../../shared/errors/invalid-data.error";
 import type { OfferData, OfferResponse } from "../../../types";
@@ -25,32 +26,32 @@ export interface UpdateOfferInput {
   title?: string;
 }
 
-export const getAll = async (): Promise<OfferResponse[]> => {
+export const getAll = async (rawLang?: unknown): Promise<OfferResponse[]> => {
+  const lang = normalizeLang(rawLang);
   const offers = await offerRepository.findAllActive(new Date());
 
   const results = await Promise.all(
     offers.map(async (offer) => {
       const product = await productRepository.findById(offer.productId);
-      if (!product) return null;
+      if (!product || !isPubliclyVisible(product)) return null;
 
       const discountPercentage = offer.originalPrice
         ? Math.round(((offer.originalPrice - offer.discountPrice) / offer.originalPrice) * 100)
         : 0;
 
-      const unitLabel = product.unit ? ` / ${product.unit}` : "";
+      const pub = toPublicProduct(product, lang);
 
       return {
-        id: product.id,
-        name: product.name,
+        id: pub.id,
+        name: pub.name,
         price: offer.discountPrice,
         originalPrice: offer.originalPrice,
         discountPrice: offer.discountPrice,
         discountPercentage,
-        image: product.image ?? "",
-        category: product.categoryId,
-        unit: product.unit,
-        unitQuantity: product.unitQuantity,
-        priceLabel: `Precio: $${offer.discountPrice}${unitLabel}`,
+        image: pub.image,
+        categoryId: pub.categoryId,
+        unit: pub.unit,
+        unitQuantity: pub.unitQuantity,
       };
     })
   );

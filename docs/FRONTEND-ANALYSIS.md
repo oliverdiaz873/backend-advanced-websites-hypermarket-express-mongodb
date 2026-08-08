@@ -165,11 +165,10 @@ interface Product {
   "id": "coca_cola",
   "name": "Coca Cola",
   "price": 80,
-  "image": "products/bebidas/coca-cola.avif",
-  "category": "bebidas",
+  "image": "https://cdn.hipermercadosuperior.com/products/coca_cola/a1b2.webp?v=2026-08-08T10:00:00.000Z",
+  "categoryId": "bebidas",
   "unit": "litro",
-  "unitQuantity": 2,
-  "priceLabel": "Precio: $80 / 2 Litros"
+  "unitQuantity": 2
 }
 ```
 
@@ -177,9 +176,16 @@ interface Product {
 |---------------|-----------|
 | `precio` | `price` |
 | `imagen` | `image` |
-| `categoria` | `category` |
+| `categoria` | `category.slug` / `categoryId` |
 | `unidad` | `unit` |
 | `quantity` | `unitQuantity` |
+| `precioTexto` | **no lo emite el backend** — formato local en Angular/Next.js |
+
+> **Contrato F2:** el backend entrega datos semánticos (`price`, `unit`,
+> `unitQuantity`, `image` pública con `?v=`) y el frontend construye la
+> presentación (`precioTexto`, URLs amigables, moneda). Consultar
+> `docs/FRONTEND-COMPATIBILITY.md` para la matriz completa de ambos
+> consumidores.
 
 ### Category (idéntico en Angular y Next.js)
 

@@ -348,7 +348,18 @@ Obtiene todas las categorías con subcategorías.
 
 ### GET /offers
 
-Obtiene productos con descuento activo.
+Obtiene productos con descuento activo. Comportamiento F2:
+- **Visibilidad:** solo productos con `status: "active"` **y** `isAvailable: true`
+  (drafts e inactivos nunca aparecen, igual que `GET /products`).
+- **i18n:** `?lang=es|en` localiza `name` con fallback al idioma raíz (mismo
+  mecanismo que Products/Search). No se expone el bloque `translations`.
+- **Imagen:** `image` es la URL pública con cache-bust (`?v=`), resuelta por el
+  mismo serializer público; jamás se exponen `imageKey`/`imageThumbnailKey`.
+- **Presentación:** `priceLabel` y el formateo de precios **no se emiten**; son
+  responsabilidad del consumidor (Angular/Next.js).
+
+**Query params:**
+- `lang` → `es | en` (localiza `name`; fallback al idioma raíz)
 
 **Response:**
 
@@ -363,17 +374,19 @@ Obtiene productos con descuento activo.
       "originalPrice": 56,
       "discountPrice": 45,
       "discountPercentage": 20,
-      "image": "products/frutas-y-verduras/manzana-verde.avif",
-      "category": "frutas-y-verduras",
+      "image": "https://cdn.hipermercadosuperior.com/products/manzanas_verdes/a1b2.webp?v=2026-08-08T10:00:00.000Z",
+      "categoryId": "frutas-y-verduras",
       "unit": "lb",
-      "unitQuantity": 1,
-      "priceLabel": "Precio: $45 / lb"
+      "unitQuantity": 1
     }
   ]
 }
 ```
 
-> `price` es el precio final (`discountPrice`). `category` es el `categoryId` del producto. `originalPrice`, `discountPrice` y `discountPercentage` son **números**, no strings.
+> `price` es el precio final (`discountPrice`). `categoryId` es el id de la
+> categoría del producto. `originalPrice`, `discountPrice` y
+> `discountPercentage` son **números**, no strings. `image` puede ser `null`
+> si el producto no tiene imagen resoluble.
 
 ---
 
@@ -412,7 +425,11 @@ inactivos nunca aparecen) y la respuesta pasa por el **mismo serializer público
 
 ---
 
-## 9. Pagination (futuro)
+## 9. Pagination
+
+Ya implementada en `GET /products` (ver sección 5). `page` (default 1) y
+`limit` (default 50, máx 100) via query params; la respuesta devuelve
+`pagination` junto a `data`:
 
 ```json
 GET /products?page=1&limit=20
@@ -432,6 +449,9 @@ GET /products?page=1&limit=20
   }
 }
 ```
+
+> `page` se clampa a ≥1 y `limit` a [1, 100]. `GET /offers` y `GET /categories`
+> devuelven listas planas sin paginación.
 
 ---
 
@@ -621,7 +641,52 @@ Requiere rol `admin` (Bearer token).
 
 ---
 
-## 15. Versioning (decisión actual)
+## 15. Cart, Brands y Auth (Read-only / provisional contract)
+
+> **Etiqueta:** `Read-only / provisional contract` — **no hay cambios de
+> comportamiento en F2.** Estos endpoints existen en el backend pero todavía
+> no se consumen desde los storefronts (Angular/Next.js en modo mock). Su
+> contrato se documenta tal como está hoy para que el diseño F2 no asuma
+> supuestos; cualquier modificación será Fase posterior con su propia revisión.
+
+### GET /api/cart
+
+Requiere `Authorization: Bearer <token>` (rol `customer`). Shape actual:
+
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "productId": "64b...",
+        "name": "Arroz 1kg",
+        "price": 80,
+        "quantity": 2,
+        "image": "https://cdn.hipermercadosuperior.com/products/...?v=..."
+      }
+    ],
+    "totalItems": 2,
+    "subtotal": 160,
+    "createdAt": "2026-08-08T10:00:00.000Z",
+    "updatedAt": "2026-08-08T10:00:00.000Z"
+  }
+}
+```
+
+### GET /api/brands
+
+Lista plana de marcas (`id`, `name`, `slug`, `description?`, `logo?`, `status`)
+**público y sin filtro** (devuelve el conjunto completo tal como está hoy).
+
+### POST /api/auth/login · POST /api/auth/register · GET /api/auth/me
+
+Autenticación con JWT. El contrato exacto (payload, expiración, roles) se
+define en su fase de integración; aquí solo se documenta su existencia.
+
+---
+
+## 16. Versioning (decisión actual)
 
 **Decisión (ADR-015):** se mantiene `/api` **sin versionado** por ahora. La
 transición hacia un prefijo versionado (p. ej. `/api/v1`) se evaluará cuando

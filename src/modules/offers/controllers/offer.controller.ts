@@ -3,7 +3,7 @@ import * as offerService from "../services/offer.service";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const offers = await offerService.getAll();
+    const offers = await offerService.getAll(req.query.lang);
     res.json({ success: true, data: offers });
   } catch (error) {
     next(error);

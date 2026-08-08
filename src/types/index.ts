@@ -293,6 +293,12 @@ export interface OfferData {
   title?: string;
 }
 
+/**
+ * Oferta pública (contrato F2). Solo productos `status: "active"` AND
+ * `isAvailable: true`; `image` es la URL pública (cache-bust `?v=`) y el
+ * `name` respeta `?lang=` con fallback. `priceLabel` y el formateo de precio
+ * son responsabilidad del consumidor (Angular/Next.js) — no se emiten aquí.
+ */
 export interface OfferResponse {
   id: string;
   name: string;
@@ -300,11 +306,10 @@ export interface OfferResponse {
   originalPrice: number;
   discountPrice: number;
   discountPercentage: number;
-  image: string;
-  category: string;
+  image: string | null;
+  categoryId: string;
   unit?: string;
   unitQuantity?: number;
-  priceLabel: string;
 }
 
 export interface User {
