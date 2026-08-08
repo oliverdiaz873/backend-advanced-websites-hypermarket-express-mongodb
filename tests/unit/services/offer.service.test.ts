@@ -72,6 +72,16 @@ describe("offer.service", () => {
       expect(result).toEqual([]);
     });
 
+    it("omite ofertas de productos activos pero no disponibles (isAvailable:false)", async () => {
+      mockOfferRepository.findAllActive.mockResolvedValue([makeOffer()]);
+      mockProductRepository.findById.mockResolvedValue(makeProduct({ status: "active", isAvailable: false }));
+
+      const result = await offerService.getAll();
+
+      expect(result).toEqual([]);
+      expect(mockOfferRepository.findAllActive).toHaveBeenCalled();
+    });
+
     it("respeta ?lang en el nombre con fallback al idioma raíz", async () => {
       mockOfferRepository.findAllActive.mockResolvedValue([makeOffer()]);
       mockProductRepository.findById.mockResolvedValue(

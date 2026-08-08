@@ -58,6 +58,16 @@ describe("E2E: /api/offers visibilidad pública (F2)", () => {
     expect(res.body.data.map((o: { id: string }) => o.id)).not.toContain(product.id);
   });
 
+  it("producto activo pero no disponible (isAvailable:false) no aparece en ofertas", async () => {
+    const product = await createTestProduct({ name: "Activo No Disponible", status: "active", isAvailable: false });
+    await createTestOffer(product.id);
+
+    const res = await request(app).get("/api/offers");
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.map((o: { id: string }) => o.id)).not.toContain(product.id);
+  });
+
   it("shape del contrato F2: sin priceLabel, sin claves internas, imagen pública", async () => {
     const product = await createTestProduct({ name: "Oferta Shape", status: "active", isAvailable: true });
     await createTestOffer(product.id);
