@@ -47,22 +47,24 @@ export const mockBrandRepository = {
 };
 
 export const mockOfferRepository = {
-  findAll: jest.fn(),
-  findAllActive: jest.fn(),
-  findById: jest.fn(),
-  create: jest.fn(),
-  updateById: jest.fn(),
-  deleteById: jest.fn(),
-};
+    findAll: jest.fn(),
+    findAllActive: jest.fn(),
+    findById: jest.fn(),
+    create: jest.fn(),
+    updateById: jest.fn(),
+    deleteById: jest.fn(),
+    findActiveByProductId: jest.fn(),
+  };
 
 export const mockCartRepository = {
-  findByUserId: jest.fn(),
-  createCart: jest.fn(),
-  addItem: jest.fn(),
-  updateItem: jest.fn(),
-  removeItem: jest.fn(),
-  clearCart: jest.fn(),
-};
+    findByUserId: jest.fn(),
+    createCart: jest.fn(),
+    addItem: jest.fn(),
+    updateItem: jest.fn(),
+    removeItem: jest.fn(),
+    clearCart: jest.fn(),
+    mergeItems: jest.fn(),
+  };
 
 export const mockInventoryRepository = {
   findAll: jest.fn(),
@@ -183,12 +185,13 @@ export const mockOfferService = {
 };
 
 export const mockCartService = {
-  getCart: jest.fn(),
-  addItem: jest.fn(),
-  updateItem: jest.fn(),
-  removeItem: jest.fn(),
-  clearCart: jest.fn(),
-};
+    getCart: jest.fn(),
+    addItem: jest.fn(),
+    updateItem: jest.fn(),
+    removeItem: jest.fn(),
+    clearCart: jest.fn(),
+    mergeCart: jest.fn(),
+  };
 
 export const mockOrderService = {
   create: jest.fn(),

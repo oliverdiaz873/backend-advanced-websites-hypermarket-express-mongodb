@@ -8,6 +8,11 @@ const baseConfig: Config = {
   jwtSecret: "secret",
   jwtExpiresIn: "1d",
   corsOrigin: ["http://localhost:4200"],
+  authCookieName: "hypermarket_auth",
+  authCookieHttpOnly: true,
+  authCookieSameSite: "lax",
+  authCookieMaxAgeSeconds: 86400,
+  authCookieSecure: false,
   mongodbUri: "mongodb://localhost:27017/hypermarket",
   backupDir: "backups",
   rateLimitWindowMs: 900_000,
@@ -46,6 +51,22 @@ describe("config validation", () => {
     const config = { ...baseConfig, nodeEnv: "production", corsOrigin: [] };
 
     expect(() => assertValidConfig(config)).toThrow("CORS_ORIGIN");
+  });
+
+  it("lanza si AUTH_COOKIE_SAMESITE no es válido", () => {
+    const config = {
+      ...baseConfig,
+      nodeEnv: "production",
+      authCookieSameSite: "none-invalido" as "lax",
+    };
+
+    expect(() => assertValidConfig(config)).toThrow("AUTH_COOKIE_SAMESITE");
+  });
+
+  it("lanza si AUTH_COOKIE_MAX_AGE_SECONDS no es un entero positivo", () => {
+    const config = { ...baseConfig, nodeEnv: "production", authCookieMaxAgeSeconds: 0 };
+
+    expect(() => assertValidConfig(config)).toThrow("AUTH_COOKIE_MAX_AGE_SECONDS");
   });
 
   it("lanza en producción si PORT no es un entero positivo", () => {

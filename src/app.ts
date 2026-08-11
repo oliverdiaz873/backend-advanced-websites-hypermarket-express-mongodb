@@ -1,6 +1,7 @@
 import express, { Request, Response } from "express";
 import helmet from "helmet";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import mongoose from "mongoose";
 import config from "./config";
 import productRoutes from "./modules/products/routes/product.routes";
@@ -37,6 +38,7 @@ app.set("trust proxy", 1);
 app.use(helmet());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 app.use(requestIdMiddleware);
 app.use(logger);
 app.use(cors({

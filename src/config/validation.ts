@@ -35,6 +35,22 @@ const validateConfig = (config: Config): ConfigError[] => {
     errors.push({ field: "CORS_ORIGIN", message: "is required" });
   }
 
+  const SAME_SITES = ["strict", "lax", "none"] as const;
+  if (!SAME_SITES.includes(config.authCookieSameSite)) {
+    errors.push({
+      field: "AUTH_COOKIE_SAMESITE",
+      message: `must be one of: ${SAME_SITES.join(", ")}`,
+    });
+  }
+
+  if (!config.authCookieName) {
+    errors.push({ field: "AUTH_COOKIE_NAME", message: "is required" });
+  }
+
+  if (!Number.isInteger(config.authCookieMaxAgeSeconds) || config.authCookieMaxAgeSeconds <= 0) {
+    errors.push({ field: "AUTH_COOKIE_MAX_AGE_SECONDS", message: "must be a positive integer" });
+  }
+
   if (!STORAGE_PROVIDERS.includes(config.storageProvider as (typeof STORAGE_PROVIDERS)[number])) {
     errors.push({ field: "STORAGE_PROVIDER", message: `must be one of: ${STORAGE_PROVIDERS.join(", ")}` });
   }

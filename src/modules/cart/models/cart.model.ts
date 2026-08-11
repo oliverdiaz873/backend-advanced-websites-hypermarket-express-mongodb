@@ -4,6 +4,9 @@ import { toJSONOptions } from "../../../shared/utils/mongo";
 export interface ICartItem {
   productId: string;
   quantity: number;
+  unitPrice?: number;
+  originalPrice?: number;
+  discountPercentage?: number;
 }
 
 export interface ICart {
@@ -18,6 +21,9 @@ const cartItemSchema = new Schema<ICartItem>(
   {
     productId: { type: String, ref: "Product", required: true },
     quantity: { type: Number, required: true, min: 1 },
+    unitPrice: { type: Number, min: 0 },
+    originalPrice: { type: Number, min: 0 },
+    discountPercentage: { type: Number, min: 0, max: 100 },
   },
   { _id: false }
 );

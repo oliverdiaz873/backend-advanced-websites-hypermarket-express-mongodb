@@ -45,3 +45,15 @@ export const clearCart = async (req: Request, res: Response, next: NextFunction)
     next(error);
   }
 };
+
+export const mergeCart = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const items = Array.isArray((req.body as { items?: unknown })?.items)
+      ? ((req.body as { items: Array<{ productId?: string; quantity?: number }> }).items)
+      : undefined;
+    const cart = await cartService.mergeCart(req.user!.id, items);
+    res.json({ success: true, data: cart });
+  } catch (error) {
+    next(error);
+  }
+};

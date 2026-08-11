@@ -20,6 +20,7 @@ const registerRateLimit = rateLimit({
 
 router.post("/register", registerRateLimit, validateRequiredFields(["email", "password"]), authController.register);
 router.post("/login", loginRateLimit, authController.login);
+router.post("/logout", authController.logout);
 router.get("/me", authMiddleware, authController.getMe);
 
 export default router;

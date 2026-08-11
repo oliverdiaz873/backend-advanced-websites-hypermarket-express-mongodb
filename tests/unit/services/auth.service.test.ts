@@ -153,10 +153,10 @@ describe("auth.service", () => {
       expect(result).not.toHaveProperty("password");
     });
 
-    it("lanza InvalidDataError si el usuario no existe", async () => {
+    it("lanza UnauthorizedError si el usuario no existe", async () => {
       mockUserRepository.findById.mockResolvedValue(null);
 
-      await expect(authService.getMe(USER_ID)).rejects.toThrow(InvalidDataError);
+      await expect(authService.getMe(USER_ID)).rejects.toThrow(UnauthorizedError);
       await expect(authService.getMe(USER_ID)).rejects.toThrow("User not found");
     });
   });

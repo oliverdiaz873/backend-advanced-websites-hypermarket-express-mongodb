@@ -20,6 +20,17 @@ export const findById = async (id: string): Promise<OfferData | null> => {
   return doc ? (doc.toJSON() as unknown as OfferData) : null;
 };
 
+/** Oferta activa vigente para un producto (la más reciente creada), o null. */
+export const findActiveByProductId = async (productId: string, now: Date): Promise<OfferData | null> => {
+  const doc = await OfferModel.findOne({
+    productId,
+    isActive: true,
+    startDate: { $lte: now },
+    $or: [{ endDate: null }, { endDate: { $gte: now } }],
+  }).sort({ createdAt: -1 });
+  return doc ? (doc.toJSON() as unknown as OfferData) : null;
+};
+
 export const create = async (data: Omit<OfferData, "id">): Promise<OfferData> => {
   const doc = await OfferModel.create(data);
   return doc.toJSON() as unknown as OfferData;

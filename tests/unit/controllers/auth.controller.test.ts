@@ -106,6 +106,8 @@ describe("auth.controller", () => {
       expect(mockAuthService.login).toHaveBeenCalledWith("oliver@example.com", "secret123");
       expect(res.status).toBe(200);
       expect(res.body).toEqual({ success: true, data: { token: "token-abc", user: toJson(user) } });
+      expect(res.headers["set-cookie"]?.[0]).toMatch(/^hypermarket_auth=token-abc/);
+      expect(res.headers["set-cookie"]?.[0]).toContain("HttpOnly");
     });
 
     it("responde 401 si el usuario no existe", async () => {
@@ -133,6 +135,27 @@ describe("auth.controller", () => {
 
       expect(res.status).toBe(401);
       expect(res.body.statusCode).toBe(401);
+    });
+
+    it("no emite cookie de sesión si el login falla", async () => {
+      mockAuthService.login.mockRejectedValue(new UnauthorizedError("Invalid credentials"));
+
+      const res = await request(app)
+        .post("/api/auth/login")
+        .send({ email: "oliver@example.com", password: "wrong-pass" });
+
+      expect(res.headers["set-cookie"]).toBeUndefined();
+    });
+  });
+
+  describe("POST /api/auth/logout", () => {
+    it("responde 200 y borra la cookie de sesión", async () => {
+      const res = await request(app).post("/api/auth/logout");
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ success: true, data: null });
+      expect(res.headers["set-cookie"]?.[0]).toContain("hypermarket_auth=");
+      expect(res.headers["set-cookie"]?.[0]).toMatch(/(Max-Age=0|Expires=Thu, 01 Jan 1970)/i);
     });
   });
 

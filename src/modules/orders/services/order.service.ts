@@ -135,7 +135,9 @@ export const create = async (userId: string, addressId: string) => {
     items.push({
       productId: item.productId,
       name: product.name,
-      price: product.price,
+      // Cart es la fuente de verdad del precio en E2: el checkout usa el snapshot
+      // del CartItem (server-side). Nunca se confía en un precio del cliente.
+      price: item.unitPrice ?? product.price,
       image: product.image ?? "",
       quantity: item.quantity,
     });

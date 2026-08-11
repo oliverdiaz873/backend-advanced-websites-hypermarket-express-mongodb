@@ -36,6 +36,8 @@ export const rateLimit = (options: RateLimitOptions) => {
     }
 
     if (bucket.count >= max) {
+      const retryAfterSeconds = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
+      res.setHeader("Retry-After", String(retryAfterSeconds));
       res.status(429).json({
         success: false,
         message,

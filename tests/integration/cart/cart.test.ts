@@ -2,6 +2,7 @@ import request from "supertest";
 import app from "../../../src/app";
 import { createAuthToken, createAuthHeaders } from "../helpers/auth.helper";
 import { createTestProduct } from "../helpers/product.helper";
+import { createTestOffer } from "../helpers/offer.helper";
 import { createTestUser } from "../helpers/user.helper";
 import type { User } from "../../../src/types";
 
@@ -138,5 +139,77 @@ describe("E2E: /api/cart", () => {
     const res = await request(app).get("/api/cart");
 
     expect(res.status).toBe(401);
+  });
+
+  it("POST /merge acumula items y aplica la oferta activa (snapshot server-side)", async () => {
+    const product = await createTestProduct();
+    await createTestOffer(product.id);
+
+    const res = await request(app).post("/api/cart/merge").set(headers).send({
+      items: [{ productId: product.id, quantity: 3 }],
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.items[0]).toMatchObject({
+      productId: product.id,
+      quantity: 3,
+      unitPrice: 80,
+      originalPrice: 100,
+      discountPercentage: 20,
+      isOffer: true,
+    });
+    expect(res.body.data.subtotal).toBe(240);
+  });
+
+  it("POST /merge acumula sobre items ya existentes en el carrito", async () => {
+    const product = await createTestProduct();
+    await request(app).post("/api/cart/items").set(headers).send({ productId: product.id, quantity: 2 });
+
+    const res = await request(app)
+      .post("/api/cart/merge")
+      .set(headers)
+      .send({ items: [{ productId: product.id, quantity: 4 }] });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.items[0].quantity).toBe(6);
+    expect(res.body.data.items[0].unitPrice).toBe(product.price);
+    expect(res.body.data.items[0].isOffer).toBe(false);
+  });
+
+  it("POST /merge descarta ghost (producto inexistente) y no disponible", async () => {
+    const available = await createTestProduct();
+    const unavailable = await createTestProduct({ isAvailable: false });
+
+    const res = await request(app).post("/api/cart/merge").set(headers).send({
+      items: [
+        { productId: available.id, quantity: 1 },
+        { productId: "prod_fantasma", quantity: 2 },
+        { productId: unavailable.id, quantity: 1 },
+      ],
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.items).toEqual([
+      expect.objectContaining({ productId: available.id, quantity: 1 }),
+    ]);
+  });
+
+  it("POST /merge responde 400 si items no es un array", async () => {
+    const res = await request(app).post("/api/cart/merge").set(headers).send({ items: "nope" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe("items must be an array");
+  });
+
+  it("POST /merge responde 400 si alguna cantidad no es un entero positivo", async () => {
+    const product = await createTestProduct();
+
+    const res = await request(app)
+      .post("/api/cart/merge")
+      .set(headers)
+      .send({ items: [{ productId: product.id, quantity: 0 }] });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe("Quantity must be a positive integer");
   });
 });

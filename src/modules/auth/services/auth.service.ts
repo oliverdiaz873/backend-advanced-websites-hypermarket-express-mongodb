@@ -77,7 +77,7 @@ export const login = async (email: string, password: string): Promise<{ token: s
 export const getMe = async (userId: string): Promise<PublicUser> => {
   const user = await userRepository.findById(userId);
   if (!user) {
-    throw new InvalidDataError("User not found");
+    throw new UnauthorizedError("User not found");
   }
   const { password: _, ...publicUser } = user;
   return publicUser;

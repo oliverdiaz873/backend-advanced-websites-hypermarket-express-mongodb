@@ -35,6 +35,15 @@ describe("rate-limit middleware", () => {
     });
   });
 
+  it("incluye el header Retry-After en la respuesta 429", async () => {
+    const app = buildApp(60_000, 1);
+    await request(app).get("/ping");
+    const res = await request(app).get("/ping");
+
+    expect(res.status).toBe(429);
+    expect(res.headers["retry-after"]).toMatch(/^\d+$/);
+  });
+
   it("aplica el límite por IP de forma independiente con trust proxy", async () => {
     const app = express();
     app.set("trust proxy", 1);

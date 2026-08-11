@@ -68,4 +68,46 @@ describe("cart.repository (Mongo real)", () => {
 
     expect(await cartRepository.removeItem(user.id, "prod_no_existe")).toBeNull();
   });
+
+  it("addItem persiste el snapshot de precio/oferta server-side", async () => {
+    const user = await createTestUser();
+    const product = await createTestProduct();
+    await cartRepository.createCart(user.id);
+
+    const snapshot = { unitPrice: 80, originalPrice: 100, discountPercentage: 20 };
+    await cartRepository.addItem(user.id, product.id, 2, snapshot);
+
+    const after = await cartRepository.findByUserId(user.id);
+    expect(after?.items).toEqual([{ productId: product.id, quantity: 2, ...snapshot }]);
+  });
+
+  it("addItem acumula cantidades y refresca el snapshot del item existente", async () => {
+    const user = await createTestUser();
+    const product = await createTestProduct();
+    await cartRepository.createCart(user.id);
+
+    await cartRepository.addItem(user.id, product.id, 2, { unitPrice: 80, originalPrice: 100, discountPercentage: 20 });
+    const after = await cartRepository.addItem(user.id, product.id, 3, { unitPrice: 90 });
+
+    expect(after?.items).toEqual([{ productId: product.id, quantity: 5, unitPrice: 90 }]);
+  });
+
+  it("mergeItems acumula duplicados dentro de la misma lista y refresca snapshots", async () => {
+    const user = await createTestUser();
+    const p1 = await createTestProduct();
+    await cartRepository.createCart(user.id);
+    await cartRepository.addItem(user.id, p1.id, 2, { unitPrice: 10 });
+
+    const after = await cartRepository.mergeItems(user.id, [
+      { productId: p1.id, quantity: 3, unitPrice: 8 },
+      { productId: p1.id, quantity: 1, unitPrice: 8 },
+    ]);
+
+    expect(after?.items).toEqual([{ productId: p1.id, quantity: 6, unitPrice: 8 }]);
+  });
+
+  it("mergeItems devuelve null si el usuario no tiene carrito", async () => {
+    const user = await createTestUser();
+    expect(await cartRepository.mergeItems(user.id, [{ productId: "x", quantity: 1 }])).toBeNull();
+  });
 });

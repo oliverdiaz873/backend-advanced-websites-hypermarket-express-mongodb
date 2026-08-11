@@ -14,7 +14,19 @@ export const makeCart = (overrides: Partial<Cart> = {}): Cart => ({
 });
 
 export const makeCartResponse = (overrides: Partial<CartResponse> = {}): CartResponse => ({
-  items: [{ productId: PRODUCT_ID, name: "Arroz 1kg", price: 89.5, quantity: 2, image: "https://example.com/arroz.png" }],
+  items: [
+    {
+      productId: PRODUCT_ID,
+      name: "Arroz 1kg",
+      price: 89.5,
+      unitPrice: 89.5,
+      isOffer: false,
+      quantity: 2,
+      image: "https://example.com/arroz.png",
+      unit: "kg",
+      unitQuantity: 1,
+    },
+  ],
   totalItems: 2,
   subtotal: 179,
   createdAt: new Date("2026-01-01T00:00:00.000Z"),

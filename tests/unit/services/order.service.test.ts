@@ -126,6 +126,30 @@ describe("order.service", () => {
       });
     });
 
+    it("usa el snapshot de precio del carrito (descuento server-side) para el total", async () => {
+      const order = makeOrder({ items: [{ productId: PRODUCT_ID, name: "Arroz 1kg", price: 80, image: "https://example.com/arroz.png", quantity: 2 }], subtotal: 160 });
+      mockCartRepository.findByUserId.mockResolvedValue(
+        makeCart({ items: [{ productId: PRODUCT_ID, quantity: 2, unitPrice: 80, originalPrice: 100, discountPercentage: 20 }] })
+      );
+      mockAddressRepository.findById.mockResolvedValue(makeAddress());
+      mockProductRepository.findByIds.mockResolvedValue([makeProduct()]);
+      mockInventoryService.getByProductId.mockResolvedValue(makeInventory());
+      mockInventoryService.reserveStock.mockResolvedValue(undefined);
+      mockOrderRepository.create.mockResolvedValue(order);
+      mockCartRepository.clearCart.mockResolvedValue(true);
+
+      await orderService.create(USER_ID, "address-id");
+
+      expect(mockOrderRepository.create).toHaveBeenCalledWith(
+        USER_ID,
+        [{ productId: PRODUCT_ID, name: "Arroz 1kg", price: 80, image: "https://example.com/arroz.png", quantity: 2 }],
+        2,
+        160,
+        shippingAddress,
+        USER_ID
+      );
+    });
+
     it("hace rollback liberando reservas y eliminando la orden si falla la reserva", async () => {
       const order = makeOrder({
         items: [

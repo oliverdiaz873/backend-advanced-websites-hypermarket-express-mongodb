@@ -12,9 +12,14 @@ const config: Config = {
   appVersion: process.env.npm_package_version ?? "1.0.0",
   corsOrigin: process.env.CORS_ORIGIN
     ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
-    : ["http://localhost:4200"],
+    : ["http://localhost:4200", "http://localhost:3000", "http://localhost:3001"],
   jwtSecret: process.env.JWT_SECRET || "",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "1d",
+  authCookieName: process.env.AUTH_COOKIE_NAME || "hypermarket_auth",
+  authCookieHttpOnly: process.env.AUTH_COOKIE_HTTPONLY !== "false",
+  authCookieSameSite: (process.env.AUTH_COOKIE_SAMESITE as "strict" | "lax" | "none") || "lax",
+  authCookieMaxAgeSeconds: Number(process.env.AUTH_COOKIE_MAX_AGE_SECONDS) || 60 * 60 * 24,
+  authCookieSecure: process.env.AUTH_COOKIE_SECURE === "true",
   mongodbUri: process.env.MONGODB_URI || "mongodb://localhost:27017/hypermarket",
   mongodbBackupUri: process.env.MONGODB_BACKUP_URI || undefined,
   backupDir: process.env.BACKUP_DIR || "backups",

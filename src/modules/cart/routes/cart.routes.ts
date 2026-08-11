@@ -9,6 +9,7 @@ router.use(authMiddleware);
 
 router.get("/", cartController.getCart);
 router.post("/items", validateRequiredFields(["productId"]), cartController.addItem);
+router.post("/merge", cartController.mergeCart);
 router.patch("/items/:productId", cartController.updateItem);
 router.delete("/items/:productId", cartController.removeItem);
 router.delete("/", cartController.clearCart);

@@ -5,8 +5,16 @@ import type { JwtPayload } from "../../types";
 
 const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   const authHeader = req.headers.authorization;
+  let token: string | undefined;
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  // Antes que la cookie, para no romper el flujo actual del dashboard (Bearer).
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    token = authHeader.split(" ")[1];
+  } else if (req.cookies && typeof req.cookies[config.authCookieName] === "string") {
+    token = req.cookies[config.authCookieName];
+  }
+
+  if (!token) {
     res.status(401).json({
       success: false,
       message: "Missing or invalid authorization header",
@@ -14,8 +22,6 @@ const authMiddleware = (req: Request, res: Response, next: NextFunction): void =
     });
     return;
   }
-
-  const token = authHeader.split(" ")[1];
 
   try {
     const decoded = jwt.verify(token, config.jwtSecret) as JwtPayload;

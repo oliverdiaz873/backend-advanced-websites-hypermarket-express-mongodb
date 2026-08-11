@@ -65,6 +65,11 @@ export interface Config {
   jwtSecret: string;
   jwtExpiresIn: string;
   corsOrigin: string[];
+  authCookieName: string;
+  authCookieHttpOnly: boolean;
+  authCookieSameSite: "strict" | "lax" | "none";
+  authCookieMaxAgeSeconds: number;
+  authCookieSecure: boolean;
   mongodbUri?: string;
   mongodbBackupUri?: string;
   backupDir: string;
@@ -331,18 +336,35 @@ export interface PublicUser {
   updatedAt: Date;
 }
 
+/** Item persistido en la colección Cart: referencia + snapshot server-side. */
+export interface CartItemStored {
+  productId: string;
+  quantity: number;
+  unitPrice?: number;
+  originalPrice?: number;
+  discountPercentage?: number;
+}
+
 export interface CartItem {
   productId: string;
   name: string;
+  /** Precio NETO de línea (igual a `unitPrice`); se mantiene por compatibilidad. */
   price: number;
+  /** Precio neto canónico calculado exclusivamente en backend (snapshot). */
+  unitPrice: number;
+  originalPrice?: number;
+  discountPercentage?: number;
+  isOffer: boolean;
   quantity: number;
   image: string;
+  unit?: string;
+  unitQuantity?: number;
 }
 
 export interface Cart {
   id: string;
   userId: string;
-  items: Array<{ productId: string; quantity: number }>;
+  items: CartItemStored[];
   createdAt: Date;
   updatedAt: Date;
 }

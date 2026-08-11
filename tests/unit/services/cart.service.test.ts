@@ -3,6 +3,7 @@ import { NotFoundError } from "../../../src/shared/errors/not-found.error";
 import { InvalidDataError } from "../../../src/shared/errors/invalid-data.error";
 import { makeCart } from "../factories/cart.factory";
 import { makeProduct, PRODUCT_ID } from "../factories/product.factory";
+import { makeOffer } from "../factories/offer.factory";
 import { USER_ID } from "../factories/user.factory";
 
 jest.mock("../../../src/modules/cart/repositories/cart.repository", () =>
@@ -11,12 +12,20 @@ jest.mock("../../../src/modules/cart/repositories/cart.repository", () =>
 jest.mock("../../../src/modules/products/repositories/product.repository", () =>
   require("../mocks/repositories").mockProductRepository
 );
+jest.mock("../../../src/modules/offers/repositories/offer.repository", () =>
+  require("../mocks/repositories").mockOfferRepository
+);
 
-import { mockCartRepository, mockProductRepository } from "../mocks/repositories";
+import {
+  mockCartRepository,
+  mockProductRepository,
+  mockOfferRepository,
+} from "../mocks/repositories";
 
 describe("cart.service", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockOfferRepository.findActiveByProductId.mockResolvedValue(null);
   });
 
   describe("getCart", () => {
@@ -29,10 +38,54 @@ describe("cart.service", () => {
       expect(mockCartRepository.findByUserId).toHaveBeenCalledWith(USER_ID);
       expect(mockCartRepository.createCart).not.toHaveBeenCalled();
       expect(result.items).toEqual([
-        { productId: PRODUCT_ID, name: "Arroz 1kg", price: 89.5, image: "https://example.com/arroz.png", quantity: 2 },
+        {
+          productId: PRODUCT_ID,
+          name: "Arroz 1kg",
+          price: 89.5,
+          unitPrice: 89.5,
+          originalPrice: undefined,
+          discountPercentage: undefined,
+          isOffer: false,
+          quantity: 2,
+          image: "https://example.com/arroz.png",
+          unit: "kg",
+          unitQuantity: 1,
+        },
       ]);
       expect(result.totalItems).toBe(2);
       expect(result.subtotal).toBe(179);
+    });
+
+    it("item legacy (sin snapshot) con oferta activa usa el precio de oferta del server", async () => {
+      mockCartRepository.findByUserId.mockResolvedValue(makeCart());
+      mockProductRepository.findById.mockResolvedValue(makeProduct());
+      mockOfferRepository.findActiveByProductId.mockResolvedValue(makeOffer());
+
+      const result = await cartService.getCart(USER_ID);
+
+      expect(result.items[0]).toMatchObject({
+        unitPrice: 80,
+        price: 80,
+        originalPrice: 100,
+        discountPercentage: 20,
+        isOffer: true,
+      });
+      expect(result.subtotal).toBe(160);
+    });
+
+    it("el snapshot persistido del item es autoritativo aunque exista una oferta viva distinta", async () => {
+      mockCartRepository.findByUserId.mockResolvedValue(
+        makeCart({
+          items: [{ productId: PRODUCT_ID, quantity: 2, unitPrice: 70, originalPrice: 90, discountPercentage: 22 }],
+        })
+      );
+      mockProductRepository.findById.mockResolvedValue(makeProduct());
+      mockOfferRepository.findActiveByProductId.mockResolvedValue(makeOffer());
+
+      const result = await cartService.getCart(USER_ID);
+
+      expect(result.items[0]).toMatchObject({ unitPrice: 70, originalPrice: 90, discountPercentage: 22, isOffer: true });
+      expect(result.subtotal).toBe(140);
     });
 
     it("crea un carrito vacío si el usuario no tiene uno", async () => {
@@ -93,8 +146,27 @@ describe("cart.service", () => {
       const result = await cartService.addItem(USER_ID, PRODUCT_ID, 2);
 
       expect(mockCartRepository.createCart).toHaveBeenCalledWith(USER_ID);
-      expect(mockCartRepository.addItem).toHaveBeenCalledWith(USER_ID, PRODUCT_ID, 2);
+      expect(mockCartRepository.addItem).toHaveBeenCalledWith(USER_ID, PRODUCT_ID, 2, { unitPrice: 89.5 });
       expect(result.totalItems).toBe(2);
+    });
+
+    it("aplica la oferta activa al snapshot en add", async () => {
+      mockProductRepository.findById.mockResolvedValue(makeProduct());
+      mockOfferRepository.findActiveByProductId.mockResolvedValue(makeOffer());
+      mockCartRepository.findByUserId.mockResolvedValueOnce(null).mockResolvedValue(
+        makeCart({ items: [{ productId: PRODUCT_ID, quantity: 1, unitPrice: 80, originalPrice: 100, discountPercentage: 20 }] })
+      );
+      mockCartRepository.createCart.mockResolvedValue(makeCart());
+      mockCartRepository.addItem.mockResolvedValue(true);
+
+      const result = await cartService.addItem(USER_ID, PRODUCT_ID, 1);
+
+      expect(mockCartRepository.addItem).toHaveBeenCalledWith(USER_ID, PRODUCT_ID, 1, {
+        unitPrice: 80,
+        originalPrice: 100,
+        discountPercentage: 20,
+      });
+      expect(result.items[0]).toMatchObject({ unitPrice: 80, originalPrice: 100, discountPercentage: 20, isOffer: true });
     });
   });
 
@@ -132,14 +204,14 @@ describe("cart.service", () => {
       await expect(cartService.updateItem(USER_ID, PRODUCT_ID, 1)).rejects.toThrow("Cart item not found");
     });
 
-    it("actualiza el item y retorna el carrito", async () => {
+    it("actualiza el item (con snapshot) y retorna el carrito", async () => {
       mockProductRepository.findById.mockResolvedValue(makeProduct());
       mockCartRepository.findByUserId.mockResolvedValue(makeCart());
       mockCartRepository.updateItem.mockResolvedValue(makeCart());
 
       const result = await cartService.updateItem(USER_ID, PRODUCT_ID, 3);
 
-      expect(mockCartRepository.updateItem).toHaveBeenCalledWith(USER_ID, PRODUCT_ID, 3);
+      expect(mockCartRepository.updateItem).toHaveBeenCalledWith(USER_ID, PRODUCT_ID, 3, { unitPrice: 89.5 });
       expect(result.totalItems).toBe(2);
     });
   });
@@ -193,6 +265,90 @@ describe("cart.service", () => {
 
       expect(mockCartRepository.createCart).toHaveBeenCalledWith(USER_ID);
       expect(result.totalItems).toBe(2);
+    });
+  });
+
+  describe("mergeCart (guest→server, server-wins)", () => {
+    it("acumula cantidades y calcula el snapshot en backend", async () => {
+      mockProductRepository.findById.mockResolvedValue(makeProduct());
+      mockCartRepository.findByUserId.mockResolvedValueOnce(null).mockResolvedValue(makeCart());
+      mockCartRepository.createCart.mockResolvedValue(makeCart());
+      mockCartRepository.mergeItems.mockResolvedValue(makeCart());
+
+      const result = await cartService.mergeCart(USER_ID, [{ productId: PRODUCT_ID, quantity: 2 }]);
+
+      expect(mockCartRepository.mergeItems).toHaveBeenCalledWith(USER_ID, [
+        { productId: PRODUCT_ID, quantity: 2, unitPrice: 89.5 },
+      ]);
+      expect(result.totalItems).toBe(2);
+      expect(result.subtotal).toBe(179);
+    });
+
+    it("aplica oferta activa en el snapshot del merge", async () => {
+      mockProductRepository.findById.mockResolvedValue(makeProduct());
+      mockOfferRepository.findActiveByProductId.mockResolvedValue(makeOffer());
+      mockCartRepository.findByUserId.mockResolvedValueOnce(null).mockResolvedValue(makeCart());
+      mockCartRepository.createCart.mockResolvedValue(makeCart());
+      mockCartRepository.mergeItems.mockResolvedValue(makeCart());
+
+      await cartService.mergeCart(USER_ID, [{ productId: PRODUCT_ID, quantity: 1 }]);
+
+      expect(mockCartRepository.mergeItems).toHaveBeenCalledWith(USER_ID, [
+        { productId: PRODUCT_ID, quantity: 1, unitPrice: 80, originalPrice: 100, discountPercentage: 20 },
+      ]);
+    });
+
+    it("descarta ghost (producto inexistente) y no disponible en el merge", async () => {
+      mockProductRepository.findById
+        .mockResolvedValueOnce(makeProduct())
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(makeProduct({ isAvailable: false }));
+      mockCartRepository.findByUserId.mockResolvedValueOnce(null).mockResolvedValue(makeCart());
+      mockCartRepository.createCart.mockResolvedValue(makeCart());
+      mockCartRepository.mergeItems.mockResolvedValue(makeCart());
+
+      await cartService.mergeCart(USER_ID, [
+        { productId: PRODUCT_ID, quantity: 1 },
+        { productId: "ghost", quantity: 1 },
+        { productId: "unavailable", quantity: 1 },
+      ]);
+
+      expect(mockCartRepository.mergeItems).toHaveBeenCalledWith(USER_ID, [
+        { productId: PRODUCT_ID, quantity: 1, unitPrice: 89.5 },
+      ]);
+    });
+
+    it("omite items malformados (sin productId)", async () => {
+      mockProductRepository.findById.mockResolvedValue(makeProduct());
+      mockCartRepository.findByUserId.mockResolvedValueOnce(null).mockResolvedValue(makeCart());
+      mockCartRepository.createCart.mockResolvedValue(makeCart());
+      mockCartRepository.mergeItems.mockResolvedValue(makeCart());
+
+      await cartService.mergeCart(USER_ID, [
+        { productId: PRODUCT_ID, quantity: 1 },
+        { productId: undefined, quantity: 1 },
+        { quantity: 3 },
+      ]);
+
+      expect(mockCartRepository.mergeItems).toHaveBeenCalledWith(USER_ID, [
+        { productId: PRODUCT_ID, quantity: 1, unitPrice: 89.5 },
+      ]);
+    });
+
+    it("lanza InvalidDataError si items no es un array", async () => {
+      await expect(cartService.mergeCart(USER_ID, undefined as never)).rejects.toThrow(InvalidDataError);
+      await expect(cartService.mergeCart(USER_ID, undefined as never)).rejects.toThrow("items must be an array");
+    });
+
+    it("lanza InvalidDataError si alguna cantidad no es un entero positivo", async () => {
+      mockProductRepository.findById.mockResolvedValue(makeProduct());
+
+      await expect(cartService.mergeCart(USER_ID, [{ productId: PRODUCT_ID, quantity: 0 }])).rejects.toThrow(
+        InvalidDataError
+      );
+      await expect(cartService.mergeCart(USER_ID, [{ productId: PRODUCT_ID, quantity: 1.5 }])).rejects.toThrow(
+        InvalidDataError
+      );
     });
   });
 });

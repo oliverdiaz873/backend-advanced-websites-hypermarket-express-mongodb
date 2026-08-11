@@ -1,6 +1,7 @@
 import request from "supertest";
 import cartRoutes from "../../../src/modules/cart/routes/cart.routes";
 import { NotFoundError } from "../../../src/shared/errors/not-found.error";
+import { InvalidDataError } from "../../../src/shared/errors/invalid-data.error";
 import { makeCartResponse } from "../factories/cart.factory";
 import { PRODUCT_ID } from "../factories/product.factory";
 import { USER_ID } from "../factories/user.factory";
@@ -96,6 +97,41 @@ describe("cart.controller", () => {
 
       expect(res.status).toBe(404);
       expect(res.body).toEqual({ success: false, message: "Product not found", statusCode: 404, code: "NOT_FOUND" });
+    });
+  });
+
+  describe("POST /api/cart/merge", () => {
+    it("llama mergeCart con los items y responde 200", async () => {
+      mockCartService.mergeCart.mockResolvedValue(makeCartResponse());
+
+      const res = await request(app)
+        .post("/api/cart/merge")
+        .set("Authorization", `Bearer ${authToken}`)
+        .send({ items: [{ productId: PRODUCT_ID, quantity: 2 }] });
+
+      expect(mockCartService.mergeCart).toHaveBeenCalledWith(USER_ID, [{ productId: PRODUCT_ID, quantity: 2 }]);
+      expect(res.status).toBe(200);
+    });
+
+    it("pasa undefined si el body no trae items", async () => {
+      mockCartService.mergeCart.mockResolvedValue(makeCartResponse());
+
+      const res = await request(app).post("/api/cart/merge").set("Authorization", `Bearer ${authToken}`).send({});
+
+      expect(mockCartService.mergeCart).toHaveBeenCalledWith(USER_ID, undefined);
+      expect(res.status).toBe(200);
+    });
+
+    it("propaga los errores del service", async () => {
+      mockCartService.mergeCart.mockRejectedValue(new InvalidDataError("items must be an array"));
+
+      const res = await request(app)
+        .post("/api/cart/merge")
+        .set("Authorization", `Bearer ${authToken}`)
+        .send({ items: "nope" });
+
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe("VALIDATION_ERROR");
     });
   });
 
