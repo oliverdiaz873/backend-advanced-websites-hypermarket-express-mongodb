@@ -28,6 +28,73 @@ const toStored = (item: CartItemStored): CartItemStored => ({
   ...(item.discountPercentage !== undefined ? { discountPercentage: item.discountPercentage } : {}),
 });
 
+/**
+ * Prepara `$set`/`$unset` posicionales del snapshot. La key de referencia usa
+ * `unitPrice` como marcador y se reescribe para `originalPrice`/`discountPercentage`,
+ * de modo que funcione con `items.$` y `items.$[el]`.
+ *
+ * Semántica (compatible con la versión previa): si el snapshot no trae
+ * `originalPrice`/`discountPercentage`, esos campos se eliminan del item
+ * (el snapshot autoritativo se refresca por completo).
+ */
+const snapshotUpdate = (
+  refKey: "items.$.unitPrice" | "items.$[el].unitPrice",
+  snapshot?: Omit<CartItemStored, "productId" | "quantity">
+): { set: Record<string, number>; unset: Record<string, number> } => {
+  const set: Record<string, number> = {};
+  const unset: Record<string, number> = {};
+  if (!snapshot) return { set, unset };
+
+  if (snapshot.unitPrice !== undefined) {
+    set[refKey] = snapshot.unitPrice;
+  } else {
+    unset[refKey] = 1;
+  }
+  if (snapshot.originalPrice !== undefined) {
+    set[refKey.replace("unitPrice", "originalPrice")] = snapshot.originalPrice;
+  } else {
+    unset[refKey.replace("unitPrice", "originalPrice")] = 1;
+  }
+  if (snapshot.discountPercentage !== undefined) {
+    set[refKey.replace("unitPrice", "discountPercentage")] = snapshot.discountPercentage;
+  } else {
+    unset[refKey.replace("unitPrice", "discountPercentage")] = 1;
+  }
+  return { set, unset };
+};
+
+const applyAtomicInc = async (
+  userId: string,
+  productId: string,
+  quantity: number,
+  snapshot?: Omit<CartItemStored, "productId" | "quantity">
+): Promise<Cart | null> => {
+  const userIdObj = toObjectId(userId);
+  const { set, unset } = snapshotUpdate("items.$[el].unitPrice", snapshot);
+  const update: Record<string, Record<string, number>> = { $inc: { "items.$[el].quantity": quantity } };
+  if (Object.keys(set).length > 0) update.$set = set;
+  if (Object.keys(unset).length > 0) update.$unset = unset;
+
+  const result = await CartModel.updateOne(
+    { userId: userIdObj, "items.productId": productId },
+    update,
+    { arrayFilters: [{ "el.productId": productId }] }
+  );
+
+  if (result.matchedCount === 0) {
+    await CartModel.updateOne(
+      { userId: userIdObj },
+      { $push: { items: toStored({ productId, quantity, ...snapshot }) } }
+    );
+  }
+
+  return findByUserId(userId);
+};
+
+/**
+ * Agrega un item al carrito de forma atómica (`$inc` sobre el elemento existente).
+ * Evita el read-modify-write que perdía incrementos bajo mutaciones concurrentes.
+ */
 export const addItem = async (
   userId: string,
   productId: string,
@@ -35,25 +102,12 @@ export const addItem = async (
   snapshot?: Omit<CartItemStored, "productId" | "quantity">
 ): Promise<Cart | null> => {
   if (!isValidObjectId(userId)) return null;
-  const cart = await CartModel.findOne({ userId: toObjectId(userId) });
-  if (!cart) return null;
-
-  const existing = cart.items.find((i) => i.productId === productId);
-  if (existing) {
-    existing.quantity += quantity;
-    if (snapshot) {
-      existing.unitPrice = snapshot.unitPrice;
-      existing.originalPrice = snapshot.originalPrice;
-      existing.discountPercentage = snapshot.discountPercentage;
-    }
-  } else {
-    cart.items.push(toStored({ productId, quantity, ...snapshot }));
-  }
-
-  await cart.save();
-  return cart.toJSON() as unknown as Cart;
+  return applyAtomicInc(userId, productId, quantity, snapshot);
 };
 
+/**
+ * Reemplaza la cantidad de un item existente de forma atómica.
+ */
 export const updateItem = async (
   userId: string,
   productId: string,
@@ -61,57 +115,41 @@ export const updateItem = async (
   snapshot?: Omit<CartItemStored, "productId" | "quantity">
 ): Promise<Cart | null> => {
   if (!isValidObjectId(userId)) return null;
-  const cart = await CartModel.findOne({ userId: toObjectId(userId) });
-  if (!cart) return null;
+  const userIdObj = toObjectId(userId);
 
-  const item = cart.items.find((i) => i.productId === productId);
-  if (!item) return null;
+  const { set, unset } = snapshotUpdate("items.$.unitPrice", snapshot);
+  const update: Record<string, Record<string, number>> = { $set: { "items.$.quantity": quantity } };
+  Object.assign(update.$set, set);
+  if (Object.keys(unset).length > 0) update.$unset = unset;
 
-  item.quantity = quantity;
-  if (snapshot) {
-    item.unitPrice = snapshot.unitPrice;
-    item.originalPrice = snapshot.originalPrice;
-    item.discountPercentage = snapshot.discountPercentage;
-  }
-  await cart.save();
-  return cart.toJSON() as unknown as Cart;
+  const result = await CartModel.updateOne(
+    { userId: userIdObj, "items.productId": productId },
+    update
+  );
+
+  if (result.matchedCount === 0) return null;
+  return findByUserId(userId);
 };
 
 /** Acumula una lista de items (merge guest→server): suma cantidades y refresca snapshots. */
 export const mergeItems = async (userId: string, items: CartItemStored[]): Promise<Cart | null> => {
   if (!isValidObjectId(userId)) return null;
-  const cart = await CartModel.findOne({ userId: toObjectId(userId) });
-  if (!cart) return null;
 
   for (const incoming of items) {
-    const existing = cart.items.find((i) => i.productId === incoming.productId);
-    if (existing) {
-      existing.quantity += incoming.quantity;
-      if (incoming.unitPrice !== undefined) {
-        existing.unitPrice = incoming.unitPrice;
-        existing.originalPrice = incoming.originalPrice;
-        existing.discountPercentage = incoming.discountPercentage;
-      }
-    } else {
-      cart.items.push(toStored(incoming));
-    }
+    await applyAtomicInc(userId, incoming.productId, incoming.quantity, incoming);
   }
 
-  await cart.save();
-  return cart.toJSON() as unknown as Cart;
+  return findByUserId(userId);
 };
 
 export const removeItem = async (userId: string, productId: string): Promise<Cart | null> => {
   if (!isValidObjectId(userId)) return null;
-  const cart = await CartModel.findOne({ userId: toObjectId(userId) });
-  if (!cart) return null;
-
-  const index = cart.items.findIndex((i) => i.productId === productId);
-  if (index === -1) return null;
-
-  cart.items.splice(index, 1);
-  await cart.save();
-  return cart.toJSON() as unknown as Cart;
+  const result = await CartModel.updateOne(
+    { userId: toObjectId(userId), "items.productId": productId },
+    { $pull: { items: { productId } } }
+  );
+  if (result.modifiedCount === 0) return null;
+  return findByUserId(userId);
 };
 
 export const clearCart = async (userId: string): Promise<Cart | null> => {

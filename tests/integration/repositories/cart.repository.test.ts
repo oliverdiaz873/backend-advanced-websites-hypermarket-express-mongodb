@@ -110,4 +110,48 @@ describe("cart.repository (Mongo real)", () => {
     const user = await createTestUser();
     expect(await cartRepository.mergeItems(user.id, [{ productId: "x", quantity: 1 }])).toBeNull();
   });
+
+  it("addItem concurrente: el $inc atómico no pierde incrementos", async () => {
+    const user = await createTestUser();
+    const product = await createTestProduct();
+    await cartRepository.createCart(user.id);
+    await cartRepository.addItem(user.id, product.id, 1);
+
+    await Promise.all(Array.from({ length: 10 }, () => cartRepository.addItem(user.id, product.id, 1)));
+
+    const cart = await cartRepository.findByUserId(user.id);
+    expect(cart?.items).toEqual([{ productId: product.id, quantity: 11 }]);
+  });
+
+  it("mergeItems concurrente acumula cantidades sin pérdidas", async () => {
+    const user = await createTestUser();
+    const product = await createTestProduct();
+    await cartRepository.createCart(user.id);
+    await cartRepository.addItem(user.id, product.id, 1);
+
+    await Promise.all(
+      Array.from({ length: 5 }, () =>
+        cartRepository.mergeItems(user.id, [{ productId: product.id, quantity: 2, unitPrice: 10 }])
+      )
+    );
+
+    const cart = await cartRepository.findByUserId(user.id);
+    expect(cart?.items).toEqual([{ productId: product.id, quantity: 11, unitPrice: 10 }]);
+  });
+
+  it("updateItem concurrente mantiene la última escritura sin duplicar items", async () => {
+    const user = await createTestUser();
+    const product = await createTestProduct();
+    await cartRepository.createCart(user.id);
+    await cartRepository.addItem(user.id, product.id, 1);
+
+    await Promise.all([
+      cartRepository.updateItem(user.id, product.id, 3),
+      cartRepository.updateItem(user.id, product.id, 7),
+    ]);
+
+    const cart = await cartRepository.findByUserId(user.id);
+    expect(cart?.items).toHaveLength(1);
+    expect([3, 7]).toContain(cart?.items[0].quantity);
+  });
 });
