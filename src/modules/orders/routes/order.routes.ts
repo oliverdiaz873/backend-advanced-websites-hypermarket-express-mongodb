@@ -7,8 +7,9 @@ const router = Router();
 
 router.use(authMiddleware);
 
-router.post("/", validateRequiredFields(["addressId"]), orderController.create);
+router.post("/", validateRequiredFields(["addressId", "idempotencyKey"]), orderController.create);
 router.get("/", orderController.findAll);
+router.post("/:id/pay", orderController.pay);
 router.get("/:id", orderController.findById);
 router.patch("/:id/status", validateRequiredFields(["status"]), orderController.updateStatus);
 

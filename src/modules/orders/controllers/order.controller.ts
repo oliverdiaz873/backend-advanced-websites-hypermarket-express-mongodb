@@ -4,8 +4,21 @@ import type { OrderQuery, OrderSortField, OrderStatus } from "../../../types";
 
 export const create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const order = await orderService.create(req.user!.id, req.body.addressId);
+    const order = await orderService.create(
+      req.user!.id,
+      req.body.addressId,
+      typeof req.body.idempotencyKey === "string" ? req.body.idempotencyKey : undefined
+    );
     res.status(201).json({ success: true, data: order });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const pay = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const order = await orderService.pay(req.user!.id, req.params.id as string);
+    res.json({ success: true, data: order });
   } catch (error) {
     next(error);
   }

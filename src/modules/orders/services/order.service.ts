@@ -8,9 +8,9 @@ import * as auditService from "../../audit/services/audit.service";
 import { logger } from "../../../shared/logger/logger";
 import { NotFoundError } from "../../../shared/errors/not-found.error";
 import { InvalidDataError } from "../../../shared/errors/invalid-data.error";
-import { InsufficientStockError } from "../../../shared/errors/insufficient-stock.error";
-import { canTransitionOrderStatus } from "../../../shared/constants/order-status";
+import { canTransitionOrderStatus, canTransitionPaymentStatus } from "../../../shared/constants/order-status";
 import { isValidObjectId } from "../../../shared/utils/mongo";
+import { generateOrderNumber } from "../utils/order-number";
 import { ORDER_SORT_FIELDS } from "../constants/order-sort-fields";
 import type {
   AdminOrder,
@@ -57,6 +57,8 @@ const refineSortBy = (value: unknown): OrderSortField | undefined => {
 const toResponse = (order: Order) => ({
   id: order.id,
   userId: order.userId,
+  orderNumber: order.orderNumber,
+  idempotencyKey: order.idempotencyKey,
   items: order.items,
   shippingAddress: order.shippingAddress,
   totalItems: order.totalItems,
@@ -75,7 +77,7 @@ const applyStatusTransition = async (
   note?: string
 ): Promise<ReturnType<typeof toResponse>> => {
   const historyEntry = { status: newStatus, changedAt: new Date(), by: actorId, note };
-  const updated = await orderRepository.updateStatus(order.id, order.status, newStatus, historyEntry);
+  let updated = await orderRepository.updateStatus(order.id, order.status, newStatus, historyEntry);
   if (!updated) {
     const current = await orderRepository.findById(order.id);
     if (!current) {
@@ -87,6 +89,12 @@ const applyStatusTransition = async (
   if (newStatus === "cancelled") {
     for (const item of updated.items) {
       await inventoryService.releaseReservation(item.productId, item.quantity, order.id, actorId);
+    }
+    if (order.paymentStatus === "paid") {
+      const refunded = await orderRepository.updatePaymentStatus(order.id, "paid", "refunded");
+      if (refunded) {
+        updated = refunded;
+      }
     }
   }
 
@@ -108,7 +116,16 @@ const applyStatusTransition = async (
   return toResponse(updated);
 };
 
-export const create = async (userId: string, addressId: string) => {
+export const create = async (userId: string, addressId: string, idempotencyKey?: string) => {
+  if (!idempotencyKey) {
+    throw new InvalidDataError("idempotencyKey is required");
+  }
+
+  const existing = await orderRepository.findByUserAndIdempotencyKey(userId, idempotencyKey);
+  if (existing) {
+    return toResponse(existing);
+  }
+
   const cart = await cartRepository.findByUserId(userId);
   if (!cart) {
     throw new NotFoundError("Cart not found");
@@ -135,44 +152,58 @@ export const create = async (userId: string, addressId: string) => {
     items.push({
       productId: item.productId,
       name: product.name,
-      // Cart es la fuente de verdad del precio en E2: el checkout usa el snapshot
-      // del CartItem (server-side). Nunca se confía en un precio del cliente.
+      // El snapshot del CartItem (server-side, fijado por el backend en E2) es la
+      // fuente de verdad del precio/oferta: el checkout copia precio + descuento
+      // + unidad sin re-snapshot de la oferta viva. El cliente nunca provee precio.
       price: item.unitPrice ?? product.price,
+      originalPrice: item.originalPrice,
+      discountPercentage: item.discountPercentage,
       image: product.image ?? "",
+      unit: product.unit,
+      unitQuantity: product.unitQuantity,
       quantity: item.quantity,
     });
-  }
-
-  for (const item of items) {
-    const inventory = await inventoryService.getByProductId(item.productId);
-    if (inventory.availableStock < item.quantity) {
-      throw new InsufficientStockError(`Insufficient stock for product ${item.name}`);
-    }
   }
 
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
   const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
-  const order = await orderRepository.create(
-    userId,
-    items,
-    totalItems,
-    subtotal,
-    shippingAddress,
-    userId
-  );
-
-  let reservedCount = 0;
+  let order: Order;
   try {
-    for (const item of items) {
-      await inventoryService.reserveStock(item.productId, item.quantity, order.id, userId);
-      reservedCount++;
+    order = await orderRepository.create(
+      userId,
+      items,
+      totalItems,
+      subtotal,
+      shippingAddress,
+      userId,
+      idempotencyKey,
+      generateOrderNumber()
+    );
+  } catch (error) {
+    // Competición de doble-POST con la misma clave: el índice único
+    // { userId, idempotencyKey } gana para un request; el otro devuelve la
+    // orden ya creada (idempotencia, decisión D1).
+    if ((error as { name?: string; code?: number }).name === "MongoServerError" && (error as { code?: number }).code === 11000) {
+      const concurrent = await orderRepository.findByUserAndIdempotencyKey(userId, idempotencyKey);
+      if (concurrent) {
+        return toResponse(concurrent);
+      }
     }
+    throw error;
+  }
+
+  try {
+    // Reserva atómica de TODO el carrito en un solo paso: si una línea no
+    // tiene stock disponible, no se reserva nada (decisión D5 → 409) y las
+    // líneas ya reservadas se compensan internamente.
+    await inventoryService.reserveForOrder(
+      items.map((item) => ({ productId: item.productId, quantity: item.quantity, name: item.name })),
+      order.id,
+      userId
+    );
   } catch (error) {
     try {
-      for (let i = 0; i < reservedCount; i++) {
-        await inventoryService.releaseReservation(items[i].productId, items[i].quantity, order.id, userId);
-      }
       await orderRepository.deleteById(order.id);
     } catch (rollbackError) {
       logger.error("Checkout rollback failed", {
@@ -190,7 +221,7 @@ export const create = async (userId: string, addressId: string) => {
     resource: "order",
     resourceId: order.id,
     success: true,
-    details: { totalItems, subtotal, itemCount: items.length },
+    details: { orderNumber: order.orderNumber, totalItems, subtotal, itemCount: items.length },
   });
 
   return toResponse(order);
@@ -210,6 +241,39 @@ export const findById = async (userId: string, orderId: string) => {
     throw new NotFoundError("Order not found");
   }
   return toResponse(order);
+};
+
+export const pay = async (userId: string, orderId: string) => {
+  const order = await orderRepository.findById(orderId);
+  if (!order) {
+    throw new NotFoundError("Order not found");
+  }
+  if (order.userId !== userId) {
+    throw new NotFoundError("Order not found");
+  }
+  if (!canTransitionPaymentStatus(order.paymentStatus, "paid")) {
+    throw new InvalidDataError(`Cannot pay order from payment status ${order.paymentStatus}`);
+  }
+
+  const updated = await orderRepository.updatePaymentStatus(orderId, order.paymentStatus, "paid");
+  if (!updated) {
+    const current = await orderRepository.findById(orderId);
+    if (!current) {
+      throw new NotFoundError("Order not found");
+    }
+    return toResponse(current);
+  }
+
+  void auditService.log({
+    userId,
+    action: "PAY_ORDER",
+    resource: "order",
+    resourceId: order.id,
+    success: true,
+    details: { from: order.paymentStatus, to: "paid" },
+  });
+
+  return toResponse(updated);
 };
 
 export const updateStatus = async (userId: string, orderId: string, newStatus: OrderStatus) => {

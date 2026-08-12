@@ -1,4 +1,4 @@
-import type { OrderStatus, UserRole } from "../../types";
+import type { OrderStatus, PaymentStatus, UserRole } from "../../types";
 
 export const ORDER_STATUS = {
   PENDING: "pending",
@@ -42,3 +42,18 @@ export const PAYMENT_STATUS = {
   FAILED: "failed",
   REFUNDED: "refunded",
 } as const;
+
+export const PAYMENT_TRANSITIONS: Record<PaymentStatus, readonly PaymentStatus[]> = {
+  [PAYMENT_STATUS.PENDING]: [PAYMENT_STATUS.PAID, PAYMENT_STATUS.FAILED],
+  [PAYMENT_STATUS.PAID]: [PAYMENT_STATUS.REFUNDED],
+  [PAYMENT_STATUS.FAILED]: [],
+  [PAYMENT_STATUS.REFUNDED]: [],
+};
+
+export const canTransitionPaymentStatus = (
+  current: PaymentStatus,
+  next: PaymentStatus
+): boolean => {
+  const allowed = PAYMENT_TRANSITIONS[current];
+  return allowed ? allowed.includes(next) : false;
+};

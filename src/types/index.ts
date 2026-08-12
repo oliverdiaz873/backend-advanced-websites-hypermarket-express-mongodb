@@ -111,6 +111,7 @@ export type AuditAction =
   | "INVENTORY_COMPLETE_SALE"
   | "CREATE_ORDER"
   | "UPDATE_ORDER_STATUS"
+  | "PAY_ORDER"
   | "CANCEL_ORDER";
 
 export interface AuditLog {
@@ -381,7 +382,11 @@ export interface OrderItem {
   productId: string;
   name: string;
   price: number;
+  originalPrice?: number;
+  discountPercentage?: number;
   image: string;
+  unit?: string;
+  unitQuantity?: number;
   quantity: number;
 }
 
@@ -401,6 +406,8 @@ export interface OrderCustomerSnapshot {
 export interface Order {
   id: string;
   userId: string;
+  idempotencyKey?: string;
+  orderNumber?: string;
   items: OrderItem[];
   shippingAddress?: Omit<Address, "id" | "userId" | "isDefault">;
   totalItems: number;

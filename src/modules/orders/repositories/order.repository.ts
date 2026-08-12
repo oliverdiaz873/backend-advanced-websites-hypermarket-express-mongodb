@@ -7,6 +7,7 @@ import type {
   OrderItem,
   OrderPageResult,
   OrderStatus,
+  PaymentStatus,
   SortDirection,
 } from "../../../types";
 
@@ -78,6 +79,15 @@ export const findByUserId = async (userId: string): Promise<Order[]> => {
   return docs.map((doc) => doc.toJSON() as unknown as Order);
 };
 
+export const findByUserAndIdempotencyKey = async (
+  userId: string,
+  idempotencyKey: string
+): Promise<Order | null> => {
+  if (!isValidObjectId(userId) || !idempotencyKey) return null;
+  const doc = await OrderModel.findOne({ userId: toObjectId(userId), idempotencyKey });
+  return doc ? (doc.toJSON() as unknown as Order) : null;
+};
+
 export const findById = async (orderId: string): Promise<Order | null> => {
   if (!isValidObjectId(orderId)) return null;
   const doc = await OrderModel.findById(orderId);
@@ -90,10 +100,14 @@ export const create = async (
   totalItems: number,
   subtotal: number,
   shippingAddress?: Order["shippingAddress"],
-  createdBy?: string
+  createdBy?: string,
+  idempotencyKey?: string,
+  orderNumber?: string
 ): Promise<Order> => {
   const doc = await OrderModel.create({
     userId: toObjectId(userId),
+    idempotencyKey,
+    orderNumber,
     items,
     shippingAddress,
     totalItems,
@@ -117,6 +131,26 @@ export const updateStatus = async (
     { status, $push: { statusHistory: historyEntry } },
     { returnDocument: "after" }
   );
+  return doc ? (doc.toJSON() as unknown as Order) : null;
+};
+
+export const updatePaymentStatus = async (
+  orderId: string,
+  expectedPaymentStatus: PaymentStatus,
+  paymentStatus: PaymentStatus
+): Promise<Order | null> => {
+  if (!isValidObjectId(orderId)) return null;
+  const doc = await OrderModel.findOneAndUpdate(
+    { _id: orderId, paymentStatus: expectedPaymentStatus },
+    { paymentStatus },
+    { returnDocument: "after" }
+  );
+  return doc ? (doc.toJSON() as unknown as Order) : null;
+};
+
+export const findByOrderNumber = async (orderNumber: string): Promise<Order | null> => {
+  if (!orderNumber) return null;
+  const doc = await OrderModel.findOne({ orderNumber });
   return doc ? (doc.toJSON() as unknown as Order) : null;
 };
 
