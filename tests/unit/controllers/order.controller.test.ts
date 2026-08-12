@@ -28,11 +28,11 @@ describe("order.controller", () => {
   });
 
   describe("POST /api/orders", () => {
-    it("responde 400 si falta addressId", async () => {
+    it("responde 400 si faltan addressId e idempotencyKey", async () => {
       const res = await request(app).post("/api/orders").set("Authorization", `Bearer ${authToken}`).send({});
 
       expect(res.status).toBe(400);
-      expect(res.body.message).toBe("Missing required fields: addressId");
+      expect(res.body.message).toBe("Missing required fields: addressId, idempotencyKey");
     });
 
     it("crea la orden y responde 201", async () => {
@@ -42,9 +42,9 @@ describe("order.controller", () => {
       const res = await request(app)
         .post("/api/orders")
         .set("Authorization", `Bearer ${authToken}`)
-        .send({ addressId: "64b0000000000000000000e1" });
+        .send({ addressId: "64b0000000000000000000e1", idempotencyKey: "key-1" });
 
-      expect(mockOrderService.create).toHaveBeenCalledWith(USER_ID, "64b0000000000000000000e1");
+      expect(mockOrderService.create).toHaveBeenCalledWith(USER_ID, "64b0000000000000000000e1", "key-1");
       expect(res.status).toBe(201);
       expect(res.body).toEqual({ success: true, data: toJson(order) });
     });
@@ -55,7 +55,7 @@ describe("order.controller", () => {
       const res = await request(app)
         .post("/api/orders")
         .set("Authorization", `Bearer ${authToken}`)
-        .send({ addressId: "64b0000000000000000000e1" });
+        .send({ addressId: "64b0000000000000000000e1", idempotencyKey: "key-1" });
 
       expect(res.status).toBe(400);
       expect(res.body.message).toBe("Cart is empty");
@@ -67,7 +67,7 @@ describe("order.controller", () => {
       const res = await request(app)
         .post("/api/orders")
         .set("Authorization", `Bearer ${authToken}`)
-        .send({ addressId: "64b0000000000000000000e1" });
+        .send({ addressId: "64b0000000000000000000e1", idempotencyKey: "key-1" });
 
       expect(res.status).toBe(409);
       expect(res.body.statusCode).toBe(409);
@@ -79,7 +79,7 @@ describe("order.controller", () => {
       const res = await request(app)
         .post("/api/orders")
         .set("Authorization", `Bearer ${authToken}`)
-        .send({ addressId: "inexistente" });
+        .send({ addressId: "inexistente", idempotencyKey: "key-1" });
 
       expect(res.status).toBe(404);
       expect(res.body).toEqual({ success: false, message: "Address not found", statusCode: 404, code: "NOT_FOUND" });
@@ -115,6 +115,32 @@ describe("order.controller", () => {
       mockOrderService.findById.mockRejectedValue(new NotFoundError("Order not found"));
 
       const res = await request(app).get(`/api/orders/${ORDER_ID}`).set("Authorization", `Bearer ${authToken}`);
+
+      expect(res.status).toBe(404);
+      expect(res.body.message).toBe("Order not found");
+    });
+  });
+
+  describe("POST /api/orders/:id/pay", () => {
+    it("marca la orden como pagada y responde 200", async () => {
+      const paid = makeOrder({ paymentStatus: "paid" });
+      mockOrderService.pay.mockResolvedValue(paid);
+
+      const res = await request(app)
+        .post(`/api/orders/${ORDER_ID}/pay`)
+        .set("Authorization", `Bearer ${authToken}`);
+
+      expect(mockOrderService.pay).toHaveBeenCalledWith(USER_ID, ORDER_ID);
+      expect(res.status).toBe(200);
+      expect(res.body.data).toEqual(toJson(paid));
+    });
+
+    it("responde 404 si la orden no existe", async () => {
+      mockOrderService.pay.mockRejectedValue(new NotFoundError("Order not found"));
+
+      const res = await request(app)
+        .post(`/api/orders/${ORDER_ID}/pay`)
+        .set("Authorization", `Bearer ${authToken}`);
 
       expect(res.status).toBe(404);
       expect(res.body.message).toBe("Order not found");

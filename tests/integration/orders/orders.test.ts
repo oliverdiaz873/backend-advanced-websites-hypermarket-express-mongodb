@@ -28,7 +28,7 @@ describe("E2E: /api/orders", () => {
     const adminHeaders = createAuthHeaders(createAuthToken(admin));
     await addToCart(headers, product.id, 2);
 
-    const res = await request(app).post("/api/orders").set(headers).send({ addressId: address.id });
+    const res = await request(app).post("/api/orders").set(headers).send({ addressId: address.id, idempotencyKey: "it-key-address" });
 
     expect(res.status).toBe(201);
     expect(res.body.data).toMatchObject({
@@ -52,7 +52,7 @@ describe("E2E: /api/orders", () => {
     const res = await request(app).post("/api/orders").set(headers).send({});
 
     expect(res.status).toBe(400);
-    expect(res.body.message).toBe("Missing required fields: addressId");
+    expect(res.body.message).toBe("Missing required fields: addressId, idempotencyKey");
   });
 
   it("POST / responde 404 si el carrito no existe", async () => {
@@ -60,7 +60,7 @@ describe("E2E: /api/orders", () => {
     const headers = createAuthHeaders(createAuthToken(user));
     const address = await createTestAddress(user.id);
 
-    const res = await request(app).post("/api/orders").set(headers).send({ addressId: address.id });
+    const res = await request(app).post("/api/orders").set(headers).send({ addressId: address.id, idempotencyKey: "it-key-address" });
 
     expect(res.status).toBe(404);
     expect(res.body.message).toBe("Cart not found");
@@ -72,7 +72,7 @@ describe("E2E: /api/orders", () => {
     const address = await createTestAddress(user.id);
     await request(app).get("/api/cart").set(headers);
 
-    const res = await request(app).post("/api/orders").set(headers).send({ addressId: address.id });
+    const res = await request(app).post("/api/orders").set(headers).send({ addressId: address.id, idempotencyKey: "it-key-address" });
 
     expect(res.status).toBe(400);
     expect(res.body.message).toBe("Cart is empty");
@@ -84,7 +84,7 @@ describe("E2E: /api/orders", () => {
     const otherUser = await createTestUser();
     const otherAddress = await createTestAddress(otherUser.id);
 
-    const res = await request(app).post("/api/orders").set(headers).send({ addressId: otherAddress.id });
+    const res = await request(app).post("/api/orders").set(headers).send({ addressId: otherAddress.id, idempotencyKey: "it-key-other" });
 
     expect(res.status).toBe(404);
     expect(res.body.message).toBe("Address not found");
@@ -94,7 +94,7 @@ describe("E2E: /api/orders", () => {
     const { user, headers, product, address } = await setupCheckout();
     await addToCart(headers, product.id, 10);
 
-    const res = await request(app).post("/api/orders").set(headers).send({ addressId: address.id });
+    const res = await request(app).post("/api/orders").set(headers).send({ addressId: address.id, idempotencyKey: "it-key-address" });
 
     expect(res.status).toBe(409);
     expect(res.body.message).toBe(`Insufficient stock for product ${product.name}`);
@@ -162,7 +162,7 @@ describe("E2E: /api/orders", () => {
     const admin = await createTestAdmin();
     const adminHeaders = createAuthHeaders(createAuthToken(admin));
     await addToCart(headers, product.id, 2);
-    const created = await request(app).post("/api/orders").set(headers).send({ addressId: (await createTestAddress(user.id)).id });
+    const created = await request(app).post("/api/orders").set(headers).send({ addressId: (await createTestAddress(user.id)).id, idempotencyKey: "it-key-cancel" });
 
     const res = await request(app)
       .patch(`/api/orders/${created.body.data.id}/status`)
@@ -200,7 +200,7 @@ describe("E2E: /api/orders", () => {
     const address = await createTestAddress(user.id);
     await addToCart(headers, product.id, 5);
 
-    await request(app).post("/api/orders").set(headers).send({ addressId: address.id });
+    await request(app).post("/api/orders").set(headers).send({ addressId: address.id, idempotencyKey: "it-key-address" });
 
     const inventory = await request(app).get(`/api/inventory/product/${product.id}`).set(adminHeaders);
     expect(inventory.body.data.stock).toBe(100);
@@ -217,7 +217,7 @@ describe("E2E: /api/orders", () => {
     await createTestInventory(product.id, { stock: 100 });
     const address = await createTestAddress(user.id);
     await addToCart(headers, product.id, 5);
-    const created = await request(app).post("/api/orders").set(headers).send({ addressId: address.id });
+    const created = await request(app).post("/api/orders").set(headers).send({ addressId: address.id, idempotencyKey: "it-key-address" });
     const orderId = created.body.data.id;
 
     for (const status of ["confirmed", "processing", "shipped", "completed"]) {
@@ -248,8 +248,8 @@ describe("E2E: /api/orders", () => {
     await addToCart(headersB, product.id, 5);
 
     const [resA, resB] = await Promise.all([
-      request(app).post("/api/orders").set(headersA).send({ addressId: addressA.id }),
-      request(app).post("/api/orders").set(headersB).send({ addressId: addressB.id }),
+      request(app).post("/api/orders").set(headersA).send({ addressId: addressA.id, idempotencyKey: "it-key-a" }),
+      request(app).post("/api/orders").set(headersB).send({ addressId: addressB.id, idempotencyKey: "it-key-b" }),
     ]);
 
     const statuses = [resA.status, resB.status].sort();

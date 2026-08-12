@@ -170,6 +170,77 @@ describe("inventory.service", () => {
     });
   });
 
+  describe("reserveForOrder", () => {
+    it("reserva todos los productos y registra un movimiento por línea", async () => {
+      const inventory = makeInventory({ stock: 50, reservedStock: 0, availableStock: 50 });
+      mockInventoryRepository.findByIds.mockResolvedValue([inventory]);
+      mockInventoryRepository.reserveStock.mockResolvedValue(
+        makeInventory({ stock: 50, reservedStock: 2, availableStock: 48 })
+      );
+
+      await expect(
+        inventoryService.reserveForOrder([{ productId: PRODUCT_ID, quantity: 2 }], "order-1", "actor-1")
+      ).resolves.toBeUndefined();
+
+      expect(mockInventoryRepository.findByIds).toHaveBeenCalledWith([PRODUCT_ID]);
+      expect(mockInventoryRepository.reserveStock).toHaveBeenCalledWith(PRODUCT_ID, 2);
+      expect(mockInventoryMovementService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "reserve", productId: PRODUCT_ID, orderId: "order-1", quantity: 2 })
+      );
+    });
+
+    it("lanza InsufficientStockError y no reserva nada si falta una línea", async () => {
+      mockInventoryRepository.findByIds.mockResolvedValue([makeInventory()]);
+      mockInventoryRepository.reserveStock.mockResolvedValue(makeInventory());
+
+      await expect(
+        inventoryService.reserveForOrder([
+          { productId: PRODUCT_ID, quantity: 2 },
+          { productId: "product-faltante", quantity: 1 },
+        ])
+      ).rejects.toThrow(InsufficientStockError);
+
+      expect(mockInventoryRepository.reserveStock).not.toHaveBeenCalled();
+    });
+
+    it("lanza InsufficientStockError si una línea no tiene stock disponible", async () => {
+      mockInventoryRepository.findByIds.mockResolvedValue([
+        makeInventory({ stock: 1, reservedStock: 1, availableStock: 0 }),
+      ]);
+
+      await expect(
+        inventoryService.reserveForOrder([{ productId: PRODUCT_ID, quantity: 1 }])
+      ).rejects.toThrow(InsufficientStockError);
+
+      expect(mockInventoryRepository.reserveStock).not.toHaveBeenCalled();
+    });
+
+    it("compensa liberando las líneas ya reservadas si una reserva falla", async () => {
+      mockInventoryRepository.findByIds.mockResolvedValue([
+        makeInventory(),
+        makeInventory({ productId: "segundo" }),
+      ]);
+      mockInventoryRepository.reserveStock
+        .mockResolvedValueOnce(makeInventory())
+        .mockResolvedValueOnce(null);
+
+      await expect(
+        inventoryService.reserveForOrder([
+          { productId: PRODUCT_ID, quantity: 2 },
+          { productId: "segundo", quantity: 1 },
+        ])
+      ).rejects.toThrow(InsufficientStockError);
+
+      expect(mockInventoryRepository.releaseReservation).toHaveBeenCalledWith(PRODUCT_ID, 2);
+    });
+
+    it("lanza InvalidDataError si una cantidad no es un entero positivo", async () => {
+      await expect(
+        inventoryService.reserveForOrder([{ productId: PRODUCT_ID, quantity: 0 }])
+      ).rejects.toThrow(InvalidDataError);
+    });
+  });
+
   describe("completeReservation", () => {
     it("consume la reserva (stock y reservedStock) y registra el movimiento", async () => {
       mockInventoryRepository.completeReservation.mockResolvedValue(

@@ -28,7 +28,10 @@ describe("E2E: /api/admin/orders", () => {
     await createTestInventory(product.id, { stock: 5 });
     const address = await createTestAddress(user.id);
     await request(app).post("/api/cart/items").set(userHeaders).send({ productId: product.id, quantity });
-    const created = await request(app).post("/api/orders").set(userHeaders).send({ addressId: address.id });
+    const created = await request(app)
+      .post("/api/orders")
+      .set(userHeaders)
+      .send({ addressId: address.id, idempotencyKey: `admin-setup-${Date.now()}-${quantity}` });
     return { created, product, userHeaders };
   };
 

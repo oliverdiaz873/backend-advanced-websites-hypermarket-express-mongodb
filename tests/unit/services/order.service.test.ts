@@ -50,30 +50,30 @@ describe("order.service", () => {
     it("lanza NotFoundError si el carrito no existe", async () => {
       mockCartRepository.findByUserId.mockResolvedValue(null);
 
-      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow(NotFoundError);
-      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow("Cart not found");
+      await expect(orderService.create(USER_ID, "address-id", "it-key")).rejects.toThrow(NotFoundError);
+      await expect(orderService.create(USER_ID, "address-id", "it-key")).rejects.toThrow("Cart not found");
     });
 
     it("lanza InvalidDataError si el carrito está vacío", async () => {
       mockCartRepository.findByUserId.mockResolvedValue(makeCart({ items: [] }));
 
-      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow(InvalidDataError);
-      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow("Cart is empty");
+      await expect(orderService.create(USER_ID, "address-id", "it-key")).rejects.toThrow(InvalidDataError);
+      await expect(orderService.create(USER_ID, "address-id", "it-key")).rejects.toThrow("Cart is empty");
     });
 
     it("lanza NotFoundError si la dirección no existe", async () => {
       mockCartRepository.findByUserId.mockResolvedValue(makeCart());
       mockAddressRepository.findById.mockResolvedValue(null);
 
-      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow(NotFoundError);
-      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow("Address not found");
+      await expect(orderService.create(USER_ID, "address-id", "it-key")).rejects.toThrow(NotFoundError);
+      await expect(orderService.create(USER_ID, "address-id", "it-key")).rejects.toThrow("Address not found");
     });
 
     it("lanza NotFoundError si la dirección es de otro usuario", async () => {
       mockCartRepository.findByUserId.mockResolvedValue(makeCart());
       mockAddressRepository.findById.mockResolvedValue(makeAddress({ userId: "otro-usuario" }));
 
-      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow(NotFoundError);
+      await expect(orderService.create(USER_ID, "address-id", "it-key")).rejects.toThrow(NotFoundError);
     });
 
     it("lanza NotFoundError si un producto del carrito ya no existe", async () => {
@@ -81,18 +81,19 @@ describe("order.service", () => {
       mockAddressRepository.findById.mockResolvedValue(makeAddress());
       mockProductRepository.findByIds.mockResolvedValue([]);
 
-      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow(NotFoundError);
-      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow("Product not found");
+      await expect(orderService.create(USER_ID, "address-id", "it-key")).rejects.toThrow(NotFoundError);
+      await expect(orderService.create(USER_ID, "address-id", "it-key")).rejects.toThrow("Product not found");
     });
 
     it("lanza InsufficientStockError si no hay stock disponible", async () => {
       mockCartRepository.findByUserId.mockResolvedValue(makeCart());
       mockAddressRepository.findById.mockResolvedValue(makeAddress());
       mockProductRepository.findByIds.mockResolvedValue([makeProduct()]);
-      mockInventoryService.getByProductId.mockResolvedValue(makeInventory({ stock: 1, reservedStock: 1, availableStock: 0 }));
+      mockOrderRepository.create.mockResolvedValue(makeOrder());
+      mockInventoryService.reserveForOrder.mockRejectedValue(new InsufficientStockError("Insufficient stock for product Arroz 1kg"));
 
-      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow(InsufficientStockError);
-      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow("Insufficient stock for product Arroz 1kg");
+      await expect(orderService.create(USER_ID, "address-id", "it-key")).rejects.toThrow(InsufficientStockError);
+      await expect(orderService.create(USER_ID, "address-id", "it-key")).rejects.toThrow("Insufficient stock");
     });
 
     it("crea la orden, reserva stock y limpia el carrito", async () => {
@@ -100,16 +101,28 @@ describe("order.service", () => {
       mockCartRepository.findByUserId.mockResolvedValue(makeCart());
       mockAddressRepository.findById.mockResolvedValue(makeAddress());
       mockProductRepository.findByIds.mockResolvedValue([makeProduct()]);
-      mockInventoryService.getByProductId.mockResolvedValue(makeInventory());
-      mockInventoryService.reserveStock.mockResolvedValue(undefined);
+      mockInventoryService.reserveForOrder.mockResolvedValue(undefined);
       mockOrderRepository.create.mockResolvedValue(order);
       mockCartRepository.clearCart.mockResolvedValue(true);
 
-      const result = await orderService.create(USER_ID, "address-id");
+      const result = await orderService.create(USER_ID, "address-id", "it-key");
 
-      const expectedItems = [{ productId: PRODUCT_ID, name: "Arroz 1kg", price: 89.5, image: "https://example.com/arroz.png", quantity: 2 }];
-      expect(mockOrderRepository.create).toHaveBeenCalledWith(USER_ID, expectedItems, 2, 179, shippingAddress, USER_ID);
-      expect(mockInventoryService.reserveStock).toHaveBeenCalledWith(PRODUCT_ID, 2, order.id, USER_ID);
+      const expectedItems = [{ productId: PRODUCT_ID, name: "Arroz 1kg", price: 89.5, image: "https://example.com/arroz.png", unit: "kg", unitQuantity: 1, quantity: 2 }];
+      expect(mockOrderRepository.create).toHaveBeenCalledWith(
+        USER_ID,
+        expectedItems,
+        2,
+        179,
+        shippingAddress,
+        USER_ID,
+        "it-key",
+        expect.stringMatching(/^HM-\d{8}-[A-F0-9]{6}$/)
+      );
+      expect(mockInventoryService.reserveForOrder).toHaveBeenCalledWith(
+        [{ productId: PRODUCT_ID, quantity: 2, name: "Arroz 1kg" }],
+        order.id,
+        USER_ID
+      );
       expect(mockCartRepository.clearCart).toHaveBeenCalledWith(USER_ID);
       expect(result).toEqual({
         id: order.id,
@@ -133,20 +146,21 @@ describe("order.service", () => {
       );
       mockAddressRepository.findById.mockResolvedValue(makeAddress());
       mockProductRepository.findByIds.mockResolvedValue([makeProduct()]);
-      mockInventoryService.getByProductId.mockResolvedValue(makeInventory());
-      mockInventoryService.reserveStock.mockResolvedValue(undefined);
+      mockInventoryService.reserveForOrder.mockResolvedValue(undefined);
       mockOrderRepository.create.mockResolvedValue(order);
       mockCartRepository.clearCart.mockResolvedValue(true);
 
-      await orderService.create(USER_ID, "address-id");
+      await orderService.create(USER_ID, "address-id", "it-key");
 
       expect(mockOrderRepository.create).toHaveBeenCalledWith(
         USER_ID,
-        [{ productId: PRODUCT_ID, name: "Arroz 1kg", price: 80, image: "https://example.com/arroz.png", quantity: 2 }],
+        [{ productId: PRODUCT_ID, name: "Arroz 1kg", price: 80, originalPrice: 100, discountPercentage: 20, image: "https://example.com/arroz.png", unit: "kg", unitQuantity: 1, quantity: 2 }],
         2,
         160,
         shippingAddress,
-        USER_ID
+        USER_ID,
+        "it-key",
+        expect.stringMatching(/^HM-\d{8}-[A-F0-9]{6}$/)
       );
     });
 
@@ -166,19 +180,90 @@ describe("order.service", () => {
         makeProduct(),
         makeProduct({ id: SECOND_PRODUCT_ID, name: "Aceite 1L", price: 15, image: "https://example.com/aceite.png" }),
       ]);
-      mockInventoryService.getByProductId.mockResolvedValue(makeInventory());
+      mockInventoryService.reserveForOrder.mockRejectedValue(new InsufficientStockError("stock"));
       mockOrderRepository.create.mockResolvedValue(order);
-      mockInventoryService.reserveStock
-        .mockResolvedValueOnce(undefined)
-        .mockRejectedValueOnce(new InsufficientStockError("stock"));
-      mockInventoryService.releaseReservation.mockResolvedValue(undefined);
       mockOrderRepository.deleteById.mockResolvedValue(true);
 
-      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow(InsufficientStockError);
+      await expect(orderService.create(USER_ID, "address-id", "it-key")).rejects.toThrow(InsufficientStockError);
 
-      expect(mockInventoryService.releaseReservation).toHaveBeenCalledWith(PRODUCT_ID, 2, order.id, USER_ID);
+      expect(mockInventoryService.reserveForOrder).toHaveBeenCalledWith(
+        [
+          { productId: PRODUCT_ID, quantity: 2, name: "Arroz 1kg" },
+          { productId: SECOND_PRODUCT_ID, quantity: 1, name: "Aceite 1L" },
+        ],
+        order.id,
+        USER_ID
+      );
       expect(mockOrderRepository.deleteById).toHaveBeenCalledWith(ORDER_ID);
       expect(mockCartRepository.clearCart).not.toHaveBeenCalled();
+    });
+
+    it("lanza InvalidDataError si falta idempotencyKey", async () => {
+      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow(InvalidDataError);
+      await expect(orderService.create(USER_ID, "address-id")).rejects.toThrow("idempotencyKey is required");
+    });
+
+    it("devuelve la orden existente si la clave ya fue usada (idempotencia)", async () => {
+      const existing = makeOrder();
+      mockOrderRepository.findByUserAndIdempotencyKey.mockResolvedValue(existing);
+
+      const result = await orderService.create(USER_ID, "address-id", "it-key");
+
+      expect(mockOrderRepository.findByUserAndIdempotencyKey).toHaveBeenCalledWith(USER_ID, "it-key");
+      expect(mockCartRepository.findByUserId).not.toHaveBeenCalled();
+      expect(mockOrderRepository.create).not.toHaveBeenCalled();
+      expect(result.id).toBe(ORDER_ID);
+    });
+
+    it("retorna la orden concurrente si el insert choca con el índice único", async () => {
+      const concurrent = makeOrder();
+      const duplicateError = new Error("dup key");
+      Object.assign(duplicateError, { name: "MongoServerError", code: 11000 });
+      mockOrderRepository.findByUserAndIdempotencyKey.mockResolvedValueOnce(null).mockResolvedValueOnce(concurrent);
+      mockOrderRepository.create.mockRejectedValue(duplicateError);
+
+      const result = await orderService.create(USER_ID, "address-id", "it-key");
+
+      expect(mockOrderRepository.findByUserAndIdempotencyKey).toHaveBeenCalledTimes(2);
+      expect(result.id).toBe(concurrent.id);
+    });
+
+    it("no relanza como idempotente un error distinto de 11000", async () => {
+      mockOrderRepository.findByUserAndIdempotencyKey.mockResolvedValue(null);
+      mockOrderRepository.create.mockRejectedValue(new Error("boom"));
+
+      await expect(orderService.create(USER_ID, "address-id", "it-key")).rejects.toThrow("boom");
+    });
+  });
+
+  describe("pay", () => {
+    it("lanza NotFoundError si la orden no existe", async () => {
+      mockOrderRepository.findById.mockResolvedValue(null);
+
+      await expect(orderService.pay(USER_ID, ORDER_ID)).rejects.toThrow(NotFoundError);
+    });
+
+    it("lanza NotFoundError si la orden es de otro usuario", async () => {
+      mockOrderRepository.findById.mockResolvedValue(makeOrder({ userId: "otro-usuario" }));
+
+      await expect(orderService.pay(USER_ID, ORDER_ID)).rejects.toThrow(NotFoundError);
+    });
+
+    it("transiciona pending -> paid", async () => {
+      const paid = makeOrder({ paymentStatus: "paid" });
+      mockOrderRepository.findById.mockResolvedValue(makeOrder());
+      mockOrderRepository.updatePaymentStatus.mockResolvedValue(paid);
+
+      const result = await orderService.pay(USER_ID, ORDER_ID);
+
+      expect(mockOrderRepository.updatePaymentStatus).toHaveBeenCalledWith(ORDER_ID, "pending", "paid");
+      expect(result.paymentStatus).toBe("paid");
+    });
+
+    it("lanza InvalidDataError si no se puede pagar (paid -> paid)", async () => {
+      mockOrderRepository.findById.mockResolvedValue(makeOrder({ paymentStatus: "paid" }));
+
+      await expect(orderService.pay(USER_ID, ORDER_ID)).rejects.toThrow(InvalidDataError);
     });
   });
 
