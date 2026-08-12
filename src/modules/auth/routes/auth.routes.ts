@@ -1,8 +1,9 @@
-import { Router } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import * as authController from "../controllers/auth.controller";
 import authMiddleware from "../../../shared/middleware/auth.middleware";
 import { rateLimit } from "../../../shared/middleware/rate-limit.middleware";
 import { validateRequiredFields } from "../../../shared/middleware/validation.middleware";
+import config from "../../../config";
 
 const router = Router();
 
@@ -18,8 +19,23 @@ const registerRateLimit = rateLimit({
   message: "Too many registration attempts, please try again later",
 });
 
-router.post("/register", registerRateLimit, validateRequiredFields(["email", "password"]), authController.register);
-router.post("/login", loginRateLimit, authController.login);
+const authRateLimit =
+  (limiter: (req: Request, res: Response, next: NextFunction) => void) =>
+  (req: Request, res: Response, next: NextFunction): void => {
+    if (config.nodeEnv !== "production") {
+      next();
+      return;
+    }
+    limiter(req, res, next);
+  };
+
+router.post(
+  "/register",
+  authRateLimit(registerRateLimit),
+  validateRequiredFields(["email", "password"]),
+  authController.register
+);
+router.post("/login", authRateLimit(loginRateLimit), authController.login);
 router.post("/logout", authController.logout);
 router.get("/me", authMiddleware, authController.getMe);
 
