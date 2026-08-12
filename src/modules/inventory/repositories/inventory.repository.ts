@@ -71,6 +71,11 @@ export const findByProductId = async (productId: string): Promise<Inventory | nu
   return doc ? toInventory(doc) : null;
 };
 
+export const findByIds = async (productIds: string[]): Promise<Inventory[]> => {
+  const docs = await InventoryModel.find({ productId: { $in: productIds } });
+  return docs.map(toInventory);
+};
+
 export const findLowStock = async (): Promise<Inventory[]> => {
   const docs = await InventoryModel.find({ minStock: { $ne: null }, $expr: { $lte: ["$stock", "$minStock"] } });
   return docs.map(toInventory);

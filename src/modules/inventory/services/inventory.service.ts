@@ -106,6 +106,77 @@ export const reserveStock = async (
   });
 };
 
+export const reserveForOrder = async (
+  items: Array<{ productId: string; quantity: number; name?: string }>,
+  orderId?: string,
+  actorId?: string
+): Promise<void> => {
+  if (items.length === 0) {
+    return;
+  }
+
+  for (const item of items) {
+    assertQuantity(item.quantity, 1);
+  }
+
+  const describeProduct = (item: { productId: string; name?: string }): string =>
+    item.name ?? item.productId;
+
+  const uniqueProductIds = Array.from(new Set(items.map((item) => item.productId)));
+  const records = await inventoryRepository.findByIds(uniqueProductIds);
+  const byProductId = new Map(records.map((record) => [record.productId, record]));
+
+  for (const item of items) {
+    const record = byProductId.get(item.productId);
+    const available = record ? record.stock - record.reservedStock : 0;
+    if (available < item.quantity) {
+      throw new InsufficientStockError(`Insufficient stock for product ${describeProduct(item)}`);
+    }
+  }
+
+  const reserved: Array<{ productId: string; quantity: number; record: Inventory }> = [];
+  try {
+    for (const item of items) {
+      const record = await inventoryRepository.reserveStock(item.productId, item.quantity);
+      if (!record) {
+        throw new InsufficientStockError(`Insufficient stock for product ${describeProduct(item)}`);
+      }
+      await inventoryMovementService.record({
+        inventoryId: record.id,
+        productId: item.productId,
+        orderId,
+        type: "reserve",
+        quantity: item.quantity,
+        previousStock: record.stock,
+        newStock: record.stock,
+        previousReservedStock: record.reservedStock - item.quantity,
+        newReservedStock: record.reservedStock,
+        reason: "order_reserved",
+        createdBy: actorId,
+      });
+      reserved.push({ productId: item.productId, quantity: item.quantity, record });
+    }
+  } catch (error) {
+    for (const item of reserved) {
+      await inventoryRepository
+        .releaseReservation(item.productId, item.quantity)
+        .catch(() => undefined);
+    }
+    throw error;
+  }
+
+  for (const item of items) {
+    void auditService.log({
+      userId: actorId,
+      action: "INVENTORY_RESERVE",
+      resource: "inventory",
+      resourceId: item.productId,
+      success: true,
+      details: { productId: item.productId, quantity: item.quantity, orderId },
+    });
+  }
+};
+
 export const releaseReservation = async (
   productId: string,
   quantity: number,
