@@ -20,6 +20,7 @@ export interface PublicProduct {
   unitQuantity?: number;
   status: ProductStatus;
   isAvailable: boolean;
+  featured: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -48,6 +49,7 @@ export interface AdminProduct {
   unitQuantity?: number;
   status: ProductStatus;
   isAvailable: boolean;
+  featured: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -101,6 +103,7 @@ export const toPublicProduct = (product: Product, lang?: Lang): PublicProduct =>
   unitQuantity: product.unitQuantity,
   status: product.status,
   isAvailable: product.isAvailable,
+  featured: product.featured === true,
   createdAt: product.createdAt,
   updatedAt: product.updatedAt,
 });
@@ -127,6 +130,7 @@ export const toAdminProduct = (product: Product): AdminProduct => ({
   unitQuantity: product.unitQuantity,
   status: product.status,
   isAvailable: product.isAvailable,
+  featured: product.featured === true,
   createdAt: product.createdAt,
   updatedAt: product.updatedAt,
 });

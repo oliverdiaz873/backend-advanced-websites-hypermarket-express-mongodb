@@ -149,6 +149,26 @@ describe("E2E: /api/products (CRUD admin)", () => {
       });
     });
 
+    it("marca un producto como featured (E4.6) y el toggle es reversible", async () => {
+      const product = await createTestProduct({ name: "Destacable" });
+
+      const on = await request(app)
+        .patch(`/api/products/${product.id}`)
+        .set(adminHeaders)
+        .send({ featured: true });
+
+      expect(on.status).toBe(200);
+      expect(on.body.data.featured).toBe(true);
+
+      const off = await request(app)
+        .patch(`/api/products/${product.id}`)
+        .set(adminHeaders)
+        .send({ featured: false });
+
+      expect(off.status).toBe(200);
+      expect(off.body.data.featured).toBe(false);
+    });
+
     it("responde 404 si el producto no existe", async () => {
       const res = await request(app).patch("/api/products/prod_inexistente").set(adminHeaders).send({ price: 1 });
       expect(res.status).toBe(404);

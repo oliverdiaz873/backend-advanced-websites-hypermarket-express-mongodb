@@ -35,5 +35,6 @@ export const mapProduct = (
     unitQuantity: raw.unitQuantity || undefined,
     status: "active",
     isAvailable: true,
+    featured: raw.featured === true,
   };
 };

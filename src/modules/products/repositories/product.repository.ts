@@ -21,13 +21,14 @@ export const findAll = async (): Promise<Product[]> => {
 };
 
 export const findPage = async (query: ProductQuery): Promise<ProductPageResult> => {
-  const { page, limit, q, category, brand, status, isAvailable, sortBy, sortOrder } = query;
+  const { page, limit, q, category, brand, status, isAvailable, featured, sortBy, sortOrder } = query;
 
   const filter: Record<string, unknown> = {};
   if (category) filter["category.slug"] = category.trim().toLowerCase();
   if (brand) filter["brand.slug"] = brand.trim().toLowerCase();
   if (status) filter.status = status;
   if (isAvailable === true) filter.isAvailable = true;
+  if (featured === true) filter.featured = true;
   if (q && q.trim()) filter.name = { $regex: escapeRegExp(q.trim()), $options: "i" };
   const skip = (page - 1) * limit;
   const sort = buildSort(sortBy, sortOrder ?? "desc");

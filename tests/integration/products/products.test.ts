@@ -76,6 +76,72 @@ describe("E2E: /api/products", () => {
   });
 });
 
+describe("E4.6 /api/products?featured=true", () => {
+  it("sin ?featured el comportamiento no cambia y featured viene con default false", async () => {
+    await createTestProduct({ name: "Normal" });
+    await createTestProduct({ name: "Destacado", featured: true });
+
+    const res = await request(app).get("/api/products");
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(2);
+    const normal = res.body.data.find((p: { name: string }) => p.name === "Normal");
+    expect(normal.featured).toBe(false);
+  });
+
+  it("GET /?featured=true devuelve solo los productos destacados visibles", async () => {
+    await createTestProduct({ name: "Normal" });
+    const featured = await createTestProduct({ name: "Destacado", featured: true });
+    await createTestProduct({ name: "Destacado Oculto", featured: true, status: "inactive", isAvailable: false });
+
+    const res = await request(app).get("/api/products").query({ featured: "true" });
+
+    expect(res.status).toBe(200);
+    const ids = res.body.data.map((p: { id: string }) => p.id);
+    expect(ids).toEqual([featured.id]);
+    expect(res.body.data[0].featured).toBe(true);
+    expect(res.body.pagination.total).toBe(1);
+  });
+
+  it("?featured=true combina con q manteniendo el contrato público", async () => {
+    await createTestProduct({ name: "Destacado Rojo", featured: true });
+    await createTestProduct({ name: "Otro Destacado", featured: true });
+    await createTestProduct({ name: "Rojo normal" });
+
+    const res = await request(app).get("/api/products").query({ featured: "true", q: "rojo" });
+
+    expect(res.status).toBe(200);
+    const names = res.body.data.map((p: { name: string }) => p.name);
+    expect(names).toEqual(["Destacado Rojo"]);
+    expect(res.body.data[0]).not.toHaveProperty("imageKey");
+    expect(res.body.data[0]).not.toHaveProperty("translations");
+  });
+
+  it("la curaduría de los 7 destacados se refleja en la API (reseed reproducible)", async () => {
+    const featuredIds = [
+      "televisor_samsung_75_pulgadas",
+      "nevera_lg",
+      "ventilador_daiwa",
+      "sofa_cama_blanco",
+      "carne_de_res_para_hamburguesas",
+      "pollo_entero_don_pollo",
+      "atun_dimar",
+    ];
+    for (const pid of featuredIds) {
+      await createTestProduct({ id: pid, name: pid, featured: true });
+    }
+    await createTestProduct({ name: "No destacado" });
+
+    const res = await request(app).get("/api/products").query({ featured: "true", limit: 100 });
+
+    expect(res.status).toBe(200);
+    const ids = res.body.data.map((p: { id: string }) => p.id).sort();
+    expect(ids).toEqual([...featuredIds].sort());
+    expect(res.body.data.every((p: { featured: boolean }) => p.featured === true)).toBe(true);
+    expect(res.body.pagination.total).toBe(7);
+  });
+});
+
 describe("E2E: visibilidad pública de productos (F1)", () => {
   let admin: User;
   let adminHeaders: { Authorization: string };

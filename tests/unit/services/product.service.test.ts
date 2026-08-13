@@ -130,6 +130,33 @@ describe("product.service", () => {
       });
     });
 
+    it("propaga ?featured=true como filtro featured al repositorio", async () => {
+      mockProductRepository.findPage.mockResolvedValue({
+        items: [],
+        total: 0,
+        pagination: { page: 1, limit: 50, total: 0, pages: 1 },
+      });
+
+      await productService.getPage({ featured: "true" });
+
+      expect(mockProductRepository.findPage).toHaveBeenCalledWith(
+        expect.objectContaining({ featured: true })
+      );
+    });
+
+    it("deja featured sin filtrar cuando no viene ?featured=true", async () => {
+      mockProductRepository.findPage.mockResolvedValue({
+        items: [],
+        total: 0,
+        pagination: { page: 1, limit: 50, total: 0, pages: 1 },
+      });
+
+      await productService.getPage({});
+
+      const call = mockProductRepository.findPage.mock.calls[0][0];
+      expect(call.featured).toBeUndefined();
+    });
+
     it("no amplía el catálogo hacia ?status=inactive: responde vacío sin consultar", async () => {
       const result = await productService.getPage({ status: "inactive" });
 
@@ -218,6 +245,7 @@ describe("product.service", () => {
           category: { name: "Bebidas", slug: "bebidas" },
           status: "inactive",
           isAvailable: false,
+          featured: false,
         })
       );
       expect(mockProductRepository.create.mock.calls[0][0].image).toBeUndefined();
@@ -401,6 +429,20 @@ describe("product.service", () => {
         expect.objectContaining({ updatedAt: expect.any(Date) }),
         { unset: ["brandId", "brand"] }
       );
+    });
+
+    it("actualiza el flag featured cuando viene en el PATCH", async () => {
+      mockProductRepository.findById.mockResolvedValue(makeProduct({ featured: false }));
+      mockProductRepository.updateById.mockResolvedValue(makeProduct({ featured: true }));
+
+      const result = await productService.updateById(PRODUCT_ID, { featured: true });
+
+      expect(mockProductRepository.updateById).toHaveBeenCalledWith(
+        PRODUCT_ID,
+        expect.objectContaining({ featured: true, updatedAt: expect.any(Date) }),
+        { unset: [] }
+      );
+      expect(result.featured).toBe(true);
     });
   });
 
@@ -618,6 +660,36 @@ expect.objectContaining({
       mockProductRepository.findById.mockResolvedValue(null);
 
       await expect(productService.updateAdminById(PRODUCT_ID, {})).rejects.toThrow(NotFoundError);
+    });
+  });
+
+  describe("F4: getAdminPage con featured", () => {
+    it("propaga ?featured=true al repositorio conservando el filtro admin", async () => {
+      mockProductRepository.findPage.mockResolvedValue({
+        items: [],
+        total: 0,
+        pagination: { page: 1, limit: 50, total: 0, pages: 1 },
+      });
+
+      await productService.getAdminPage({ featured: "true" });
+
+      expect(mockProductRepository.findPage).toHaveBeenCalledWith(
+        expect.objectContaining({ featured: true })
+      );
+    });
+
+    it("devuelve el boundary admin con featured cuando el repo lo reporta", async () => {
+      const product = makeProduct({ featured: true });
+      mockProductRepository.findPage.mockResolvedValue({
+        items: [product],
+        total: 1,
+        pagination: { page: 1, limit: 50, total: 1, pages: 1 },
+      });
+
+      const result = await productService.getAdminPage({});
+
+      expect(result.data[0].featured).toBe(true);
+      expect(result.data[0]).toMatchObject({ id: product.id, name: product.name });
     });
   });
 

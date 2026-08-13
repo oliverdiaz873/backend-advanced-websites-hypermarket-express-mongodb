@@ -1,4 +1,15 @@
-const products = [
+type ProductSeedData = {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  category: string;
+  unit?: string;
+  unitQuantity?: number;
+  featured?: boolean;
+};
+
+const products: ProductSeedData[] = [
   { id: "coca_cola", name: "Coca Cola", price: 80, image: "products/bebidas/coca-cola.avif", category: "bebidas", unit: "litro", unitQuantity: 2 },
   { id: "coca_cola_zero", name: "Coca Cola Zero", price: 80, image: "products/bebidas/coca-cola-zero.avif", category: "bebidas", unit: "litro", unitQuantity: 2 },
   { id: "country_club_frambuesa", name: "Country Club Frambuesa", price: 70, image: "products/bebidas/country-club-frambuesa.avif", category: "bebidas", unit: "litro", unitQuantity: 2 },
@@ -9,9 +20,9 @@ const products = [
   { id: "red_bull", name: "Red Bull", price: 90, image: "products/bebidas/red-bull.avif", category: "bebidas" },
   { id: "camarones_crudos", name: "Camarones Crudos", price: 350, image: "products/carnes-pescados-mariscos/camarones-crudos.avif", category: "carnes-pescados-mariscos", unit: "lb" },
   { id: "camarones_precocidos", name: "Camarones Pre-cocidos", price: 400, image: "products/carnes-pescados-mariscos/camarones-pre-cocidos.avif", category: "carnes-pescados-mariscos", unit: "lb" },
-  { id: "carne_de_res_para_hamburguesas", name: "Carne de Res para Hamburguesas", price: 370, image: "products/carnes-pescados-mariscos/carne-de-res.avif", category: "carnes-pescados-mariscos", unit: "lb" },
+  { id: "carne_de_res_para_hamburguesas", name: "Carne de Res para Hamburguesas", price: 370, image: "products/carnes-pescados-mariscos/carne-de-res.avif", category: "carnes-pescados-mariscos", unit: "lb", featured: true },
   { id: "chuleta_de_cerdo", name: "Chuleta de Cerdo", price: 300, image: "products/carnes-pescados-mariscos/chuleta-de-cerdo.avif", category: "carnes-pescados-mariscos", unit: "lb" },
-  { id: "pollo_entero_don_pollo", name: "Pollo Entero Don Pollo", price: 300, image: "products/carnes-pescados-mariscos/pollo.avif", category: "carnes-pescados-mariscos", unit: "unidad" },
+  { id: "pollo_entero_don_pollo", name: "Pollo Entero Don Pollo", price: 300, image: "products/carnes-pescados-mariscos/pollo.avif", category: "carnes-pescados-mariscos", unit: "unidad", featured: true },
   { id: "tilapia_roja", name: "Tilapia Roja", price: 250, image: "products/carnes-pescados-mariscos/tilapia-roja.avif", category: "carnes-pescados-mariscos", unit: "lb" },
   { id: "aceite_crisol", name: "Aceite Crisol", price: 95, image: "products/despensa/aceite-crisol.avif", category: "despensa" },
   { id: "aceite_oliva_extra_virgen", name: "Aceite de Oliva Extra Virgen", price: 230, image: "products/despensa/aceite-de-oliva-extra-virgen.avif", category: "despensa" },
@@ -20,7 +31,7 @@ const products = [
   { id: "sazon_completo_maggi", name: "Sazón Completo Maggi", price: 80, image: "products/despensa/sazon-completo-maggi.avif", category: "despensa" },
   { id: "sopita_dona_gallina", name: "Sopita Doña Gallina", price: 150, image: "products/despensa/sopita-dona-gallina.avif", category: "despensa", unit: "caja" },
   { id: "vinagre_baldom", name: "Vinagre Baldom", price: 87, image: "products/despensa/vinagre-baldom.avif", category: "despensa", unit: "botella" },
-  { id: "atun_dimar", name: "Atún Dimar", price: 120, image: "products/enlatados/atun-dimar.avif", category: "enlatados", unit: "lata" },
+  { id: "atun_dimar", name: "Atún Dimar", price: 120, image: "products/enlatados/atun-dimar.avif", category: "enlatados", unit: "lata", featured: true },
   { id: "gandules_verdes_goya", name: "Gandules Verdes Goya", price: 180, image: "products/enlatados/gandules-verdes-goya.avif", category: "enlatados", unit: "lata" },
   { id: "habichuelas_negras_goya", name: "Habichuelas Negras Goya", price: 50, image: "products/enlatados/habichuelas-negras-goya.avif", category: "enlatados", unit: "lata" },
   { id: "maiz_la_famosa", name: "Maíz La Famosa", price: 45, image: "products/enlatados/maiz-la-famosa.avif", category: "enlatados", unit: "lata" },
@@ -47,7 +58,7 @@ const products = [
   { id: "yogurt_natural_rica", name: "Yogurt Natural Rica", price: 210, image: "products/lacteos-y-huevos/yogurt-natural.avif", category: "lacteos-y-huevos", unit: "litro", unitQuantity: 2 },
   { id: "aire-acondicionado_tecnomaster", name: "Aire Acondicionado tecnomaster", price: 33000, image: "products/climatizacion/aire-acondicionado-tecnomaster.png", category: "climatizacion", unit: "unidad" },
   { id: "aire-acondicionado_whirlpool", name: "Aire Acondicionado whirlpool", price: 40000, image: "products/climatizacion/aire-acondicionado-whirlpool.png", category: "climatizacion", unit: "unidad" },
-  { id: "ventilador_daiwa", name: "Ventilador Daiwa", price: 15000, image: "products/climatizacion/ventilador-daiwa.png", category: "climatizacion", unit: "unidad" },
+  { id: "ventilador_daiwa", name: "Ventilador Daiwa", price: 15000, image: "products/climatizacion/ventilador-daiwa.png", category: "climatizacion", unit: "unidad", featured: true },
   { id: "ventilador_kdk", name: "Ventilador KDK", price: 6000, image: "products/climatizacion/ventilador-kdk.avif", category: "climatizacion", unit: "unidad" },
   { id: "ventilador_pequeno", name: "Ventilador Pequeño", price: 2500, image: "products/climatizacion/ventilador-pequeno.png", category: "climatizacion", unit: "unidad" },
   { id: "ventilador_de_techo_kdk", name: "Ventilador de Techo KDK", price: 20000, image: "products/climatizacion/ventilador-de-techo-kdk.avif", category: "climatizacion", unit: "unidad" },
@@ -56,7 +67,7 @@ const products = [
   { id: "estufa_lg", name: "Estufa LG", price: 66000, image: "products/cocina/estufa-lg.avif", category: "cocina", unit: "unidad" },
   { id: "extractor-de-grasa_drija", name: "Extractor de grasa drija", price: 6000, image: "products/cocina/extractor-de-grasa-drija.avif", category: "cocina", unit: "unidad" },
   { id: "freezer_7_pies", name: "Freezer 7 Pies", price: 16500, image: "products/cocina/freezer-7pies.png", category: "cocina", unit: "unidad" },
-  { id: "nevera_lg", name: "Nevera LG Grande Moderna", price: 80000, image: "products/cocina/nevera-lg.png", category: "cocina", unit: "unidad" },
+  { id: "nevera_lg", name: "Nevera LG Grande Moderna", price: 80000, image: "products/cocina/nevera-lg.png", category: "cocina", unit: "unidad", featured: true },
   { id: "lavadora_dimensions", name: "Lavadora Dimensions", price: 10000, image: "products/lavado/lavadora-dimensions.png", category: "lavado", unit: "unidad" },
   { id: "lavadora_frigidaire", name: "Lavadora Frigidaire", price: 35000, image: "products/lavado/lavadora-frigidaire.png", category: "lavado", unit: "unidad" },
   { id: "lavadora_lg", name: "Lavadora LG", price: 53000, image: "products/lavado/lavadora-lg.avif", category: "lavado", unit: "unidad" },
@@ -128,7 +139,7 @@ const products = [
   { id: "sillon_blanco", name: "Sillón Blanco", price: 4000, image: "products/sillones/sillon-blanco.avif", category: "sillones", unit: "unidad" },
   { id: "sillon_gris", name: "Sillón Gris", price: 5000, image: "products/sillones/sillon-gris.avif", category: "sillones", unit: "unidad" },
   { id: "sillon_verde", name: "Sillón Verde", price: 7000, image: "products/sillones/sillon-verde.avif", category: "sillones", unit: "unidad" },
-  { id: "sofa_cama_blanco", name: "Sofá Cama Blanco por unidad", price: 9000, image: "products/sofas/sofa-cama-blanco.png", category: "sofas", unit: "unidad" },
+  { id: "sofa_cama_blanco", name: "Sofá Cama Blanco por unidad", price: 9000, image: "products/sofas/sofa-cama-blanco.png", category: "sofas", unit: "unidad", featured: true },
   { id: "sofa_gris", name: "Sofá Gris", price: 8000, image: "products/sofas/sofa-gris.avif", category: "sofas", unit: "unidad" },
   { id: "sofa_media_luna", name: "Sofá Media Luna", price: 3000, image: "products/sofas/sofa-media-luna.avif", category: "sofas", unit: "unidad" },
   { id: "sofa_negro", name: "Sofá Negro", price: 5000, image: "products/sofas/sofa-negro.avif", category: "sofas" },
@@ -182,7 +193,7 @@ const products = [
   { id: "televisor_led_lg", name: "Televisor LED LG", price: 57000, image: "products/televisores/tv-led-lg.png", category: "televisores" },
   { id: "televisor_led_samsung", name: "Televisor LED Samsung", price: 56000, image: "products/televisores/tv-led-samsung.avif", category: "televisores" },
   { id: "televisor_led_tecnomaster", name: "Televisor LED tecnomaster", price: 55200, image: "products/televisores/tv-led-tecnomaster.avif", category: "televisores" },
-  { id: "televisor_samsung_75_pulgadas", name: "Televisor Samsung 75 pulgadas", price: 44000, image: "products/televisores/tv-samsung.png", category: "televisores" },
+  { id: "televisor_samsung_75_pulgadas", name: "Televisor Samsung 75 pulgadas", price: 44000, image: "products/televisores/tv-samsung.png", category: "televisores", featured: true },
 ];
 
 export default products;

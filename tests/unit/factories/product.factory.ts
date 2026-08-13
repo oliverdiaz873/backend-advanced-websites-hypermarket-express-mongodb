@@ -17,6 +17,7 @@ export const makeProduct = (overrides: Partial<Product> = {}): Product => ({
   unitQuantity: 1,
   status: "active",
   isAvailable: true,
+  featured: false,
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
   updatedAt: new Date("2026-01-01T00:00:00.000Z"),
   ...overrides,

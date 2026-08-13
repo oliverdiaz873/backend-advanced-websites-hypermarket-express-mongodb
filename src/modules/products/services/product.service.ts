@@ -35,6 +35,7 @@ export interface CreateProductInput {
   translations?: ProductTranslations;
   stock?: number;
   minStock?: number;
+  featured?: boolean;
 }
 
 export interface UpdateProductInput {
@@ -52,6 +53,7 @@ export interface UpdateProductInput {
   unitQuantity?: number;
   status?: ProductStatus;
   isAvailable?: boolean;
+  featured?: boolean;
 }
 
 /** Patch de traducciones administrativas: solo `en`, con campos opcionales para merge. */
@@ -168,6 +170,7 @@ export const create = async (data: CreateProductInput, actorId?: string): Promis
         translations: data.translations,
         status: "inactive",
         isAvailable: false,
+        featured: data.featured === true,
       });
 
       await inventoryService.createForProduct({
@@ -261,6 +264,7 @@ const performUpdate = async (id: string, data: UpdateProductInput, actorId?: str
       if (data.unitQuantity !== undefined) updates.unitQuantity = data.unitQuantity;
       if (data.status !== undefined) updates.status = data.status;
       if (data.isAvailable !== undefined) updates.isAvailable = data.isAvailable;
+      if (data.featured !== undefined) updates.featured = data.featured;
 
       if (data.image !== undefined) {
         if (typeof data.image !== "string" || !data.image.trim()) {
@@ -396,6 +400,7 @@ export const getPage = async (
     brand: typeof query.brand === "string" ? query.brand : undefined,
     status: "active",
     isAvailable: true,
+    featured: query.featured === "true" ? true : undefined,
     sortBy,
     sortOrder,
   });
@@ -431,6 +436,7 @@ export const getAdminPage = async (
     brand: typeof query.brand === "string" ? query.brand : undefined,
     status,
     isAvailable: query.isAvailable === "true" ? true : undefined,
+    featured: query.featured === "true" ? true : undefined,
     sortBy,
     sortOrder,
   });

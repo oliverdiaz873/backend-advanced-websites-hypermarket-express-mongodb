@@ -39,6 +39,7 @@ export interface IProduct {
   unitQuantity?: number;
   status: "active" | "inactive";
   isAvailable: boolean;
+  featured?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -94,6 +95,7 @@ const productSchema = new Schema<IProduct>(
     unitQuantity: { type: Number },
     status: { type: String, enum: ["active", "inactive"], default: "active" },
     isAvailable: { type: Boolean, default: true },
+    featured: { type: Boolean, default: false },
   },
   { timestamps: true, toJSON: toJSONOptions }
 );
