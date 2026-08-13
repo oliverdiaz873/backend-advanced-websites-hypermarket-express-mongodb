@@ -1,7 +1,10 @@
 import mongoose from "mongoose";
 import { ObjectId } from "mongodb";
+import type { Document } from "mongodb";
 import migration1 from "../../src/database/migrations/0001-create-indexes";
 import migration2 from "../../src/database/migrations/0002-add-fields";
+import migration7 from "../../src/database/migrations/0007-add-product-featured";
+import migration8 from "../../src/database/migrations/0008-set-featured-products";
 
 describe("migraciones", () => {
   let id: ObjectId;
@@ -49,6 +52,73 @@ describe("migraciones", () => {
       const after = await products.findOne({ _id: id });
       expect(after?.isDeleted).toBeUndefined();
       expect(after?.deletedAt).toBeUndefined();
+    });
+  });
+
+  describe("0007-add-product-featured", () => {
+    it("up rellena featured:false solo en docs sin el campo e indexa; down lo revierte", async () => {
+      const db = mongoose.connection.db!;
+      const products = db.collection("products");
+      await products.insertOne({ _id: id, name: "Legacy" });
+      await products.insertOne({ _id: new ObjectId(), name: "Ya destacado", featured: true });
+
+      await migration7.up(db);
+
+      const legacy = await products.findOne({ _id: id });
+      expect(legacy?.featured).toBe(false);
+
+      const featured = await products.findOne({ name: "Ya destacado" });
+      expect(featured?.featured).toBe(true);
+
+      const indexes = await products.indexes();
+      expect(indexes.map((i) => i.name)).toContain("featured_1");
+
+      await migration7.down(db);
+
+      const after = await products.findOne({ _id: id });
+      expect(after?.featured).toBeUndefined();
+      const afterIndexes = await products.indexes();
+      expect(afterIndexes.map((i) => i.name)).not.toContain("featured_1");
+    });
+  });
+
+  describe("0008-set-featured-products", () => {
+    const featuredIds = [
+      "televisor_samsung_75_pulgadas",
+      "nevera_lg",
+      "ventilador_daiwa",
+      "sofa_cama_blanco",
+      "carne_de_res_para_hamburguesas",
+      "pollo_entero_don_pollo",
+      "atun_dimar",
+    ];
+
+    it("up marca los 7 destacados (idempotente) y down solo los revierte a false", async () => {
+      const db = mongoose.connection.db!;
+      const products = db.collection("products");
+      await products.insertMany([
+        ...featuredIds.map((pid) => ({ _id: pid, name: pid })),
+        { _id: new ObjectId(), name: "No destacado", featured: false },
+      ] as Document[]);
+
+      await migration8.up(db);
+      await migration8.up(db);
+
+      const featuredDocs = await products.find({ featured: true }).toArray();
+      expect(featuredDocs.map((f) => f._id).sort()).toEqual([...featuredIds].sort());
+
+      const noDestacado = await products.findOne({ name: "No destacado" });
+      expect(noDestacado?.featured).toBe(false);
+
+      await migration8.down(db);
+
+      const after = await products
+        .find({ _id: { $in: featuredIds as unknown as ObjectId[] } })
+        .toArray();
+      for (const doc of after) {
+        expect(doc?.featured).toBe(false);
+      }
+      expect(await products.countDocuments({ featured: true })).toBe(0);
     });
   });
 });

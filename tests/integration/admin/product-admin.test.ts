@@ -74,6 +74,21 @@ describe("E2E: /api/admin/products (F4)", () => {
 
       expect(res.body.data.map((p: { id: string }) => p.id)).toEqual(["admin_ia"]);
     });
+
+    it("filtra por featured incluyendo drafts (E4.6)", async () => {
+      await createTestProduct({ id: "admin_feat_act", name: "Feat Active", featured: true, status: "active", isAvailable: true });
+      await createTestProduct({ id: "admin_feat_draft", name: "Feat Draft", featured: true, status: "inactive", isAvailable: false });
+      await createTestProduct({ id: "admin_not_feat", name: "Not Featured", featured: false });
+
+      const res = await request(app).get("/api/admin/products").set(adminHeaders).query({ featured: "true" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.map((p: { id: string }) => p.id)).toEqual(
+        expect.arrayContaining(["admin_feat_act", "admin_feat_draft"])
+      );
+      expect(res.body.data.map((p: { id: string }) => p.id)).not.toContain("admin_not_feat");
+      expect(res.body.data.every((p: { featured: boolean }) => p.featured === true)).toBe(true);
+    });
   });
 
   describe("GET /api/admin/products/:id", () => {
