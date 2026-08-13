@@ -61,7 +61,8 @@ export const login = async (email: string, password: string): Promise<{ token: s
     { expiresIn: config.jwtExpiresIn } as SignOptions
   );
 
-  const { password: _, ...publicUser } = user;
+  const { id, name, email: userEmail, role, createdAt, updatedAt } = user;
+  const publicUser: PublicUser = { id, name, email: userEmail, role, createdAt, updatedAt };
 
   void auditService.log({
     userId: user.id,
@@ -79,6 +80,6 @@ export const getMe = async (userId: string): Promise<PublicUser> => {
   if (!user) {
     throw new UnauthorizedError("User not found");
   }
-  const { password: _, ...publicUser } = user;
-  return publicUser;
+  const { id, name, email, role, createdAt, updatedAt } = user;
+  return { id, name, email, role, createdAt, updatedAt };
 };
