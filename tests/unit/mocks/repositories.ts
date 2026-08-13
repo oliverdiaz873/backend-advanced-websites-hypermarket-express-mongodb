@@ -9,6 +9,17 @@ export const mockUserRepository = {
   deleteById: jest.fn(),
 };
 
+export const mockCustomerRepository = {
+  findPage: jest.fn(),
+  findById: jest.fn(),
+  findByEmail: jest.fn(),
+  updateById: jest.fn(),
+  updateStatus: jest.fn(),
+  countAll: jest.fn(),
+  countByStatus: jest.fn(),
+  countNewThisMonth: jest.fn(),
+};
+
 export const mockProductRepository = {
   findAll: jest.fn(),
   findPage: jest.fn(),
@@ -148,6 +159,14 @@ export const mockUserService = {
   create: jest.fn(),
   updateById: jest.fn(),
   deleteById: jest.fn(),
+};
+
+export const mockCustomerService = {
+  getPage: jest.fn(),
+  getById: jest.fn(),
+  updateById: jest.fn(),
+  updateStatus: jest.fn(),
+  getStats: jest.fn(),
 };
 
 export const mockAuthService = {

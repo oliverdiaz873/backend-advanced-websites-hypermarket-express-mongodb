@@ -4,12 +4,14 @@ import type { InventoryMovementType } from "../modules/inventory/constants/inven
 import type { InventorySortField } from "../modules/inventory/constants/inventory-sort-fields";
 import type { InventoryStatus } from "../modules/inventory/constants/inventory-status";
 import type { OrderSortField } from "../modules/orders/constants/order-sort-fields";
+import type { CustomerSortField } from "../modules/customers/constants/customer-sort-fields";
 
 export type { AdjustmentReason } from "../modules/inventory/constants/inventory-adjustment-reasons";
 export type { InventoryMovementType } from "../modules/inventory/constants/inventory-movement-types";
 export type { InventorySortField } from "../modules/inventory/constants/inventory-sort-fields";
 export type { InventoryStatus } from "../modules/inventory/constants/inventory-status";
 export type { OrderSortField } from "../modules/orders/constants/order-sort-fields";
+export type { CustomerSortField } from "../modules/customers/constants/customer-sort-fields";
 
 
 export type SortDirection = "asc" | "desc";
@@ -35,6 +37,7 @@ export interface ProductQuery {
   brand?: string;
   status?: ProductStatus;
   isAvailable?: boolean;
+  featured?: boolean;
   sortBy?: ProductSortField;
   sortOrder?: SortDirection;
 }
@@ -203,6 +206,7 @@ export interface Product {
   unitQuantity?: number;
   status: ProductStatus;
   isAvailable: boolean;
+  featured?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -300,6 +304,15 @@ export interface OfferData {
 }
 
 /**
+ * Oferta admin (E4.3). Igual que `OfferData` más el nombre del producto
+ * unido, para que el Dashboard pueda listar y gestionar TODAS las ofertas
+ * (incluidas inactivas/expiradas) sin depender de la proyección pública.
+ */
+export interface AdminOffer extends OfferData {
+  productName: string;
+}
+
+/**
  * Oferta pública (contrato F2). Solo productos `status: "active"` AND
  * `isAvailable: true`; `image` es la URL pública (cache-bust `?v=`) y el
  * `name` respeta `?lang=` con fallback. `priceLabel` y el formateo de precio
@@ -335,6 +348,56 @@ export interface PublicUser {
   role: UserRole;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export type CustomerStatus = "active" | "blocked" | "pending";
+
+export interface CustomerAddress {
+  street?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
+}
+
+/**
+ * Cliente admin (contrato `/api/admin/customers`). Vive en la colección `users`
+ * con `role: "customer"`; los campos `phone`/`avatar`/`address`/`status` son
+ * opcionales en el documento (migración `0006`) y `status` por defecto `active`.
+ */
+export interface Customer {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  avatar?: string;
+  address?: CustomerAddress;
+  status: CustomerStatus;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CustomerQuery {
+  page: number;
+  limit: number;
+  q?: string;
+  status?: CustomerStatus;
+  sortBy?: CustomerSortField;
+  sortOrder?: SortDirection;
+}
+
+export interface CustomerPageResult {
+  items: Customer[];
+  total: number;
+  pagination: PaginationMeta;
+}
+
+export interface CustomerStats {
+  total: number;
+  active: number;
+  blocked: number;
+  pending: number;
+  newThisMonth: number;
 }
 
 /** Item persistido en la colección Cart: referencia + snapshot server-side. */
