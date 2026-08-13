@@ -44,6 +44,24 @@ describe("rate-limit middleware", () => {
     expect(res.headers["retry-after"]).toMatch(/^\d+$/);
   });
 
+  it("Retry-After es un número de segundos >= 1 acotado por la ventana", async () => {
+    const app = buildApp(2_000, 1);
+    await request(app).get("/ping");
+    const res = await request(app).get("/ping").expect(429);
+
+    const seconds = Number(res.headers["retry-after"]);
+    expect(seconds).toBeGreaterThanOrEqual(1);
+    expect(seconds).toBeLessThanOrEqual(Math.ceil(2_000 / 1000));
+  });
+
+  it("no incluye Retry-After en respuestas que no son 429", async () => {
+    const app = buildApp(60_000, 5);
+    await request(app).get("/ping").expect(200);
+    const res = await request(app).get("/ping").expect(200);
+
+    expect(res.headers["retry-after"]).toBeUndefined();
+  });
+
   it("aplica el límite por IP de forma independiente con trust proxy", async () => {
     const app = express();
     app.set("trust proxy", 1);
