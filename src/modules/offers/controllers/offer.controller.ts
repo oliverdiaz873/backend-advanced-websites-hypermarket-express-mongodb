@@ -10,6 +10,15 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
   }
 };
 
+export const listAllAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const offers = await offerService.listAll();
+    res.json({ success: true, data: offers });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const create = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const offer = await offerService.create(req.body, req.user?.id);

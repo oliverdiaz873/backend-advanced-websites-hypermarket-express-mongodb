@@ -4,7 +4,7 @@ import * as auditService from "../../../modules/audit/services/audit.service";
 import { normalizeLang, isPubliclyVisible, toPublicProduct } from "../../products/presenters/product.presenter";
 import { NotFoundError } from "../../../shared/errors/not-found.error";
 import { InvalidDataError } from "../../../shared/errors/invalid-data.error";
-import type { OfferData, OfferResponse } from "../../../types";
+import type { AdminOffer, OfferData, OfferResponse } from "../../../types";
 
 export interface CreateOfferInput {
   productId: string;
@@ -25,6 +25,19 @@ export interface UpdateOfferInput {
   isActive?: boolean;
   title?: string;
 }
+
+/** Listado admin: TODAS las ofertas (incluidas inactivas/expiradas), con el nombre del producto. */
+export const listAll = async (): Promise<AdminOffer[]> => {
+  const offers = await offerRepository.findAllSorted();
+  const productIds = [...new Set(offers.map((offer) => offer.productId))];
+  const products = await productRepository.findByIds(productIds);
+  const nameByProduct = new Map(products.map((product) => [product.id, product.name]));
+
+  return offers.map((offer) => ({
+    ...offer,
+    productName: nameByProduct.get(offer.productId) ?? "Producto eliminado",
+  }));
+};
 
 export const getAll = async (rawLang?: unknown): Promise<OfferResponse[]> => {
   const lang = normalizeLang(rawLang);

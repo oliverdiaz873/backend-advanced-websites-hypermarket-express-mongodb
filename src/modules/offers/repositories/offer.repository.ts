@@ -6,6 +6,11 @@ export const findAll = async (): Promise<OfferData[]> => {
   return docs.map((doc) => doc.toJSON() as unknown as OfferData);
 };
 
+export const findAllSorted = async (): Promise<OfferData[]> => {
+  const docs = await OfferModel.find().sort({ createdAt: -1 });
+  return docs.map((doc) => doc.toJSON() as unknown as OfferData);
+};
+
 export const findAllActive = async (now: Date): Promise<OfferData[]> => {
   const docs = await OfferModel.find({
     isActive: true,

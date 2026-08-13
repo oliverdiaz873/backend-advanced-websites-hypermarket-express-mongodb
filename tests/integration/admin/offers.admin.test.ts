@@ -188,4 +188,53 @@ describe("E2E: /api/offers (CRUD admin)", () => {
       expect(res.status).toBe(404);
     });
   });
+
+  describe("GET /api/admin/offers", () => {
+    it("responde 401 sin token", async () => {
+      const res = await request(app).get("/api/admin/offers");
+      expect(res.status).toBe(401);
+    });
+
+    it("responde 403 para customer", async () => {
+      const res = await request(app).get("/api/admin/offers").set(customerHeaders);
+      expect(res.status).toBe(403);
+    });
+
+    it("responde 200 y lista TODAS las ofertas (activas, inactivas y expiradas) con productName", async () => {
+      const now = new Date();
+      const past = new Date(now.getTime() - 1000 * 60 * 60 * 24);
+      const future = new Date(now.getTime() + 1000 * 60 * 60 * 24);
+
+      const pActive = await createTestProduct({ name: "Arroz Activo" });
+      const pExpired = await createTestProduct({ name: "Arroz Expirado" });
+      const pFuture = await createTestProduct({ name: "Arroz Futuro" });
+      const pInactive = await createTestProduct({ name: "Arroz Inactivo" });
+
+      const oActive = await createTestOffer(pActive.id, { startDate: past, endDate: future });
+      const oExpired = await createTestOffer(pExpired.id, { startDate: past, endDate: past });
+      const oFuture = await createTestOffer(pFuture.id, { startDate: future, endDate: undefined });
+      const oInactive = await createTestOffer(pInactive.id, { isActive: false, startDate: past, endDate: future });
+
+      const res = await request(app).get("/api/admin/offers").set(adminHeaders);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(Array.isArray(res.body.data)).toBe(true);
+
+      const offers = res.body.data as Array<{ id: string; productName: string; isActive: boolean }>;
+      expect(offers.map((o) => o.id).sort()).toEqual([oActive.id, oExpired.id, oFuture.id, oInactive.id].sort());
+      const byId = new Map(offers.map((o) => [o.id, o]));
+      expect(byId.get(oInactive.id)?.isActive).toBe(false);
+      expect(byId.get(oActive.id)?.productName).toBe("Arroz Activo");
+      expect(byId.get(oExpired.id)?.productName).toBe("Arroz Expirado");
+      expect(byId.get(oFuture.id)?.productName).toBe("Arroz Futuro");
+    });
+
+    it("responde 200 con array vacío cuando no hay ofertas", async () => {
+      const res = await request(app).get("/api/admin/offers").set(adminHeaders);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toEqual([]);
+    });
+  });
 });
