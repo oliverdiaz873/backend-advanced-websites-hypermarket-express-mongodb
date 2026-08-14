@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { OrderModel } from "../../src/modules/orders/models/order.model";
 
 beforeAll(async () => {
   jest.spyOn(console, "log").mockImplementation(() => undefined);
@@ -8,6 +9,7 @@ beforeAll(async () => {
   }
   const workerId = process.env.JEST_WORKER_ID ?? "1";
   await mongoose.connect(uri, { dbName: `test_${workerId}` });
+  await OrderModel.init();
 });
 
 afterEach(async () => {
