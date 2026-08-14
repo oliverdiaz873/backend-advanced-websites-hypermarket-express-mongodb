@@ -309,6 +309,10 @@ export const mockStatsService = {
   getInventorySummary: jest.fn(),
 };
 
+export const mockAdminSearchService = {
+  search: jest.fn(),
+};
+
 export const mockAuditRepository = {
   create: jest.fn(),
   findPage: jest.fn(),

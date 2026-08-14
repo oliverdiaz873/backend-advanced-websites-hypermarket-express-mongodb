@@ -23,6 +23,7 @@ import inventoryMovementRoutes from "./modules/inventory-movements/routes/invent
 import contactRoutes from "./modules/contact/routes/contact.routes";
 import adminContactRoutes from "./modules/contact/routes/admin-contact.routes";
 import statsRoutes from "./modules/stats/routes/stats.routes";
+import adminSearchRoutes from "./modules/admin-search/routes/admin-search.routes";
 import auditRoutes from "./modules/audit/routes/audit.routes";
 import uploadRoutes from "./modules/uploads/routes/upload.routes";
 import localUploadRoutes from "./modules/uploads/routes/local-upload.routes";
@@ -88,6 +89,7 @@ app.use("/api/inventory-movements", inventoryMovementRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/admin/contact", adminContactRoutes);
 app.use("/api/admin/stats", statsRoutes);
+app.use("/api/admin/search", adminSearchRoutes);
 app.use("/api/admin/audit-logs", auditRoutes);
 app.use("/api/admin/uploads", uploadRoutes);
 
