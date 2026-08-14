@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "seed": "tsx src/database/seed.ts",
+    "seed:storage": "tsx scripts/seed-storage.ts",
     "clear": "tsx src/database/clear.ts",
     "clear:seed": "npm run clear && npm run seed",
     "sync:i18n": "tsx scripts/sync-i18n.ts",
