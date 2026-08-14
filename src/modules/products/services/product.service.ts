@@ -340,7 +340,7 @@ export const updateById = async (id: string, data: UpdateProductInput, actorId?:
 };
 
 export const remove = async (id: string, actorId?: string): Promise<void> => {
-  await auditService.runAudited(
+  return auditService.runAudited(
     { userId: actorId, action: "DELETE_PRODUCT", resource: "product", resourceId: id },
     async () => {
       const existing = await productRepository.findById(id);
@@ -348,16 +348,20 @@ export const remove = async (id: string, actorId?: string): Promise<void> => {
         throw new NotFoundError("Product not found");
       }
 
-      await productRepository.deleteById(id);
-      await inventoryService.removeByProductId(id);
+      // Soft-delete: el producto desaparece de las consultas activas pero se
+      // conservan inventario e imágenes para que `restore` sea reversible.
+      await productRepository.softDeleteById(id);
+    }
+  );
+};
 
-      try {
-        await getStorageProvider().deletePrefix(`products/${id}/`);
-      } catch (error) {
-        logger.warn("Failed to delete product image prefix", {
-          productId: id,
-          error: error instanceof Error ? error.message : String(error),
-        });
+export const restore = async (id: string, actorId?: string): Promise<void> => {
+  return auditService.runAudited(
+    { userId: actorId, action: "RESTORE_PRODUCT", resource: "product", resourceId: id },
+    async () => {
+      const restored = await productRepository.restoreById(id);
+      if (!restored) {
+        throw new NotFoundError("Product not found");
       }
     }
   );

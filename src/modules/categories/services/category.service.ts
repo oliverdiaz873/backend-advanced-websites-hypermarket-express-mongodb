@@ -125,7 +125,19 @@ export const remove = async (id: string, actorId?: string): Promise<void> => {
         throw new ConflictError("Cannot delete category with referenced products");
       }
 
-      await categoryRepository.deleteById(id);
+      await categoryRepository.softDeleteById(id);
+    }
+  );
+};
+
+export const restore = async (id: string, actorId?: string): Promise<void> => {
+  return auditService.runAudited(
+    { userId: actorId, action: "RESTORE_CATEGORY", resource: "category", resourceId: id },
+    async () => {
+      const restored = await categoryRepository.restoreById(id);
+      if (!restored) {
+        throw new NotFoundError("Category not found");
+      }
     }
   );
 };

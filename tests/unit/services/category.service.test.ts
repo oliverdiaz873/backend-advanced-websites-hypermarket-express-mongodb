@@ -139,13 +139,13 @@ describe("category.service", () => {
   });
 
   describe("remove", () => {
-    it("borra la categoría si no tiene productos referenciados", async () => {
+    it("soft-borra la categoría si no tiene productos referenciados", async () => {
       mockCategoryRepository.findById.mockResolvedValue(makeCategory());
       mockProductRepository.existsByCategoryId.mockResolvedValue(false);
-      mockCategoryRepository.deleteById.mockResolvedValue(true);
+      mockCategoryRepository.softDeleteById.mockResolvedValue(true);
 
       await expect(categoryService.remove(CATEGORY_ID)).resolves.toBeUndefined();
-      expect(mockCategoryRepository.deleteById).toHaveBeenCalledWith(CATEGORY_ID);
+      expect(mockCategoryRepository.softDeleteById).toHaveBeenCalledWith(CATEGORY_ID);
     });
 
     it("lanza ConflictError si tiene productos referenciados", async () => {
@@ -154,14 +154,29 @@ describe("category.service", () => {
 
       await expect(categoryService.remove(CATEGORY_ID)).rejects.toThrow(ConflictError);
       await expect(categoryService.remove(CATEGORY_ID)).rejects.toThrow("Cannot delete category with referenced products");
-      expect(mockCategoryRepository.deleteById).not.toHaveBeenCalled();
+      expect(mockCategoryRepository.softDeleteById).not.toHaveBeenCalled();
     });
 
     it("lanza NotFoundError si no existe", async () => {
       mockCategoryRepository.findById.mockResolvedValue(null);
 
       await expect(categoryService.remove(CATEGORY_ID)).rejects.toThrow(NotFoundError);
-      expect(mockCategoryRepository.deleteById).not.toHaveBeenCalled();
+      expect(mockCategoryRepository.softDeleteById).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("restore", () => {
+    it("restaura la categoría soft-borrada", async () => {
+      mockCategoryRepository.restoreById.mockResolvedValue(true);
+
+      await expect(categoryService.restore(CATEGORY_ID)).resolves.toBeUndefined();
+      expect(mockCategoryRepository.restoreById).toHaveBeenCalledWith(CATEGORY_ID);
+    });
+
+    it("lanza NotFoundError si la categoría no existe (ni siquiera borrada)", async () => {
+      mockCategoryRepository.restoreById.mockResolvedValue(false);
+
+      await expect(categoryService.restore(CATEGORY_ID)).rejects.toThrow(NotFoundError);
     });
   });
 });

@@ -1,4 +1,5 @@
 import { OfferModel } from "../models/offer.model";
+import { type ISoftDeleteDocument } from "../../../shared/plugins/soft-delete.plugin";
 import type { OfferData } from "../../../types";
 
 export const findAll = async (): Promise<OfferData[]> => {
@@ -49,7 +50,16 @@ export const updateById = async (
   return doc ? (doc.toJSON() as unknown as OfferData) : null;
 };
 
-export const deleteById = async (id: string): Promise<boolean> => {
-  const result = await OfferModel.deleteOne({ _id: id });
-  return result.deletedCount > 0;
+export const softDeleteById = async (id: string): Promise<boolean> => {
+  const doc = (await OfferModel.findById(id)) as unknown as ISoftDeleteDocument | null;
+  if (!doc) return false;
+  await doc.softDelete();
+  return true;
+};
+
+export const restoreById = async (id: string): Promise<boolean> => {
+  const doc = (await OfferModel.findOne({ _id: id, includeDeleted: true })) as unknown as ISoftDeleteDocument | null;
+  if (!doc) return false;
+  await doc.restore();
+  return true;
 };

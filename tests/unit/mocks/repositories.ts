@@ -35,6 +35,8 @@ export const mockProductRepository = {
   create: jest.fn(),
   updateById: jest.fn(),
   deleteById: jest.fn(),
+  softDeleteById: jest.fn(),
+  restoreById: jest.fn(),
 };
 
 export const mockCategoryRepository = {
@@ -45,6 +47,8 @@ export const mockCategoryRepository = {
   create: jest.fn(),
   updateById: jest.fn(),
   deleteById: jest.fn(),
+  softDeleteById: jest.fn(),
+  restoreById: jest.fn(),
 };
 
 export const mockBrandRepository = {
@@ -55,6 +59,8 @@ export const mockBrandRepository = {
   create: jest.fn(),
   updateById: jest.fn(),
   deleteById: jest.fn(),
+  softDeleteById: jest.fn(),
+  restoreById: jest.fn(),
 };
 
 export const mockOfferRepository = {
@@ -64,6 +70,8 @@ export const mockOfferRepository = {
     create: jest.fn(),
     updateById: jest.fn(),
     deleteById: jest.fn(),
+    softDeleteById: jest.fn(),
+    restoreById: jest.fn(),
     findActiveByProductId: jest.fn(),
   };
 
@@ -182,6 +190,7 @@ export const mockProductService = {
   create: jest.fn(),
   updateById: jest.fn(),
   remove: jest.fn(),
+  restore: jest.fn(),
 };
 
 export const mockCategoryService = {
@@ -190,6 +199,7 @@ export const mockCategoryService = {
   create: jest.fn(),
   updateById: jest.fn(),
   remove: jest.fn(),
+  restore: jest.fn(),
 };
 
 export const mockBrandService = {
@@ -198,6 +208,7 @@ export const mockBrandService = {
   create: jest.fn(),
   updateById: jest.fn(),
   remove: jest.fn(),
+  restore: jest.fn(),
 };
 
 export const mockOfferService = {
@@ -205,6 +216,7 @@ export const mockOfferService = {
   create: jest.fn(),
   updateById: jest.fn(),
   remove: jest.fn(),
+  restore: jest.fn(),
 };
 
 export const mockCartService = {

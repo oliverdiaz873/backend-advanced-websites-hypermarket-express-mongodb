@@ -131,7 +131,19 @@ export const remove = async (id: string, actorId?: string): Promise<void> => {
         throw new ConflictError("Cannot delete brand with referenced products");
       }
 
-      await brandRepository.deleteById(id);
+      await brandRepository.softDeleteById(id);
+    }
+  );
+};
+
+export const restore = async (id: string, actorId?: string): Promise<void> => {
+  return auditService.runAudited(
+    { userId: actorId, action: "RESTORE_BRAND", resource: "brand", resourceId: id },
+    async () => {
+      const restored = await brandRepository.restoreById(id);
+      if (!restored) {
+        throw new NotFoundError("Brand not found");
+      }
     }
   );
 };

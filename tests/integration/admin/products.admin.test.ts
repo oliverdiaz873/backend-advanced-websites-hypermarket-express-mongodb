@@ -196,7 +196,7 @@ describe("E2E: /api/products (CRUD admin)", () => {
       expect(res.status).toBe(403);
     });
 
-    it("responde 204 y borra producto e inventario", async () => {
+    it("responde 204 y conserva el inventario (soft-delete)", async () => {
       const product = await createTestProduct();
       const inventory = await InventoryModel.create({ productId: product.id, stock: 10 });
 
@@ -204,7 +204,7 @@ describe("E2E: /api/products (CRUD admin)", () => {
 
       expect(res.status).toBe(204);
       const found = await InventoryModel.findById(inventory.id);
-      expect(found).toBeNull();
+      expect(found).not.toBeNull();
     });
 
     it("continúa aunque el inventario ya no exista (idempotente)", async () => {

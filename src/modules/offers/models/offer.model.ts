@@ -1,5 +1,6 @@
 import { Schema, model } from "mongoose";
 import { toJSONOptions } from "../../../shared/utils/mongo";
+import { softDeletePlugin, type SoftDeleteModel } from "../../../shared/plugins/soft-delete.plugin";
 
 export interface IOffer {
   id: string;
@@ -10,6 +11,8 @@ export interface IOffer {
   endDate?: Date;
   isActive: boolean;
   title?: string;
+  isDeleted: boolean;
+  deletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,5 +43,6 @@ const offerSchema = new Schema<IOffer>(
 offerSchema.index({ productId: 1 });
 offerSchema.index({ isActive: 1, startDate: 1, endDate: 1 });
 offerSchema.index({ createdAt: 1 });
+offerSchema.plugin(softDeletePlugin);
 
-export const OfferModel = model<IOffer>("Offer", offerSchema);
+export const OfferModel = model<IOffer, SoftDeleteModel<IOffer>>("Offer", offerSchema);

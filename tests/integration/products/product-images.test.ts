@@ -152,6 +152,6 @@ describe("E2E: flujo de imagen de producto (F1)", () => {
 
     const del = await request(app).delete(`/api/products/${id}`).set(adminHeaders);
     expect(del.status).toBe(204);
-    expect(fs.existsSync(path.join(storageDir, "products", id))).toBe(false);
+    expect(fs.existsSync(path.join(storageDir, "products", id))).toBe(true);
   });
 });

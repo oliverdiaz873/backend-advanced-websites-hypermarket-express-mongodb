@@ -7,5 +7,6 @@ const router = Router();
 router.use(authMiddleware, authorizeRole("admin"));
 
 router.get("/", offerController.listAllAdmin);
+router.post("/:id/restore", offerController.restore);
 
 export default router;

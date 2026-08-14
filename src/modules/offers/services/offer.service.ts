@@ -206,7 +206,19 @@ export const remove = async (id: string, actorId?: string): Promise<void> => {
       if (!existing) {
         throw new NotFoundError("Offer not found");
       }
-      await offerRepository.deleteById(id);
+      await offerRepository.softDeleteById(id);
+    }
+  );
+};
+
+export const restore = async (id: string, actorId?: string): Promise<void> => {
+  return auditService.runAudited(
+    { userId: actorId, action: "RESTORE_OFFER", resource: "offer", resourceId: id },
+    async () => {
+      const restored = await offerRepository.restoreById(id);
+      if (!restored) {
+        throw new NotFoundError("Offer not found");
+      }
     }
   );
 };

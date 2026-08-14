@@ -27,3 +27,12 @@ export const updateAdmin = async (req: Request, res: Response, next: NextFunctio
     next(error);
   }
 };
+
+export const restore = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    await productService.restore(req.params.id as string, req.user?.id);
+    res.json({ success: true, data: null });
+  } catch (error) {
+    next(error);
+  }
+};

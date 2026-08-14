@@ -1,5 +1,6 @@
 import { ProductModel } from "../models/product.model";
 import { PRODUCT_SORT_FIELDS, ProductSortField } from "../constants/product-sort-fields";
+import { type ISoftDeleteDocument } from "../../../shared/plugins/soft-delete.plugin";
 import type { Product, ProductPageResult, ProductQuery, SortDirection } from "../../../types";
 
 const ESCAPE_RE = /[.*+?^${}()|[\]\\]/g;
@@ -114,9 +115,18 @@ export const updateById = async (
   return doc ? (doc.toJSON() as unknown as Product) : null;
 };
 
-export const deleteById = async (id: string): Promise<boolean> => {
-  const result = await ProductModel.deleteOne({ _id: id });
-  return result.deletedCount > 0;
+export const softDeleteById = async (id: string): Promise<boolean> => {
+  const doc = (await ProductModel.findById(id)) as unknown as ISoftDeleteDocument | null;
+  if (!doc) return false;
+  await doc.softDelete();
+  return true;
+};
+
+export const restoreById = async (id: string): Promise<boolean> => {
+  const doc = (await ProductModel.findOne({ _id: id, includeDeleted: true })) as unknown as ISoftDeleteDocument | null;
+  if (!doc) return false;
+  await doc.restore();
+  return true;
 };
 
 export const search = async (query: string, category?: string): Promise<Product[]> => {

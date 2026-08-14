@@ -9,5 +9,6 @@ router.get("/:id", brandController.getById);
 router.post("/", authMiddleware, authorizeRole("admin"), brandController.create);
 router.patch("/:id", authMiddleware, authorizeRole("admin"), brandController.update);
 router.delete("/:id", authMiddleware, authorizeRole("admin"), brandController.remove);
+router.post("/:id/restore", authMiddleware, authorizeRole("admin"), brandController.restore);
 
 export default router;

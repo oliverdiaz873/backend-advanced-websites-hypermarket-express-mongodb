@@ -117,13 +117,13 @@ describe("brand.service", () => {
   });
 
   describe("remove", () => {
-    it("borra la marca si no tiene productos referenciados", async () => {
+    it("soft-borra la marca si no tiene productos referenciados", async () => {
       mockBrandRepository.findById.mockResolvedValue(makeBrand());
       mockProductRepository.existsByBrandId.mockResolvedValue(false);
-      mockBrandRepository.deleteById.mockResolvedValue(true);
+      mockBrandRepository.softDeleteById.mockResolvedValue(true);
 
       await expect(brandService.remove(BRAND_ID)).resolves.toBeUndefined();
-      expect(mockBrandRepository.deleteById).toHaveBeenCalledWith(BRAND_ID);
+      expect(mockBrandRepository.softDeleteById).toHaveBeenCalledWith(BRAND_ID);
     });
 
     it("lanza ConflictError si tiene productos referenciados", async () => {
@@ -132,14 +132,29 @@ describe("brand.service", () => {
 
       await expect(brandService.remove(BRAND_ID)).rejects.toThrow(ConflictError);
       await expect(brandService.remove(BRAND_ID)).rejects.toThrow("Cannot delete brand with referenced products");
-      expect(mockBrandRepository.deleteById).not.toHaveBeenCalled();
+      expect(mockBrandRepository.softDeleteById).not.toHaveBeenCalled();
     });
 
     it("lanza NotFoundError si no existe", async () => {
       mockBrandRepository.findById.mockResolvedValue(null);
 
       await expect(brandService.remove(BRAND_ID)).rejects.toThrow(NotFoundError);
-      expect(mockBrandRepository.deleteById).not.toHaveBeenCalled();
+      expect(mockBrandRepository.softDeleteById).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("restore", () => {
+    it("restaura la marca soft-borrada", async () => {
+      mockBrandRepository.restoreById.mockResolvedValue(true);
+
+      await expect(brandService.restore(BRAND_ID)).resolves.toBeUndefined();
+      expect(mockBrandRepository.restoreById).toHaveBeenCalledWith(BRAND_ID);
+    });
+
+    it("lanza NotFoundError si la marca no existe (ni siquiera borrada)", async () => {
+      mockBrandRepository.restoreById.mockResolvedValue(false);
+
+      await expect(brandService.restore(BRAND_ID)).rejects.toThrow(NotFoundError);
     });
   });
 });

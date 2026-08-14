@@ -228,19 +228,34 @@ describe("offer.service", () => {
   });
 
   describe("remove", () => {
-    it("borra la oferta si existe", async () => {
+    it("soft-borra la oferta si existe", async () => {
       mockOfferRepository.findById.mockResolvedValue(makeOffer());
-      mockOfferRepository.deleteById.mockResolvedValue(true);
+      mockOfferRepository.softDeleteById.mockResolvedValue(true);
 
       await expect(offerService.remove(OFFER_ID)).resolves.toBeUndefined();
-      expect(mockOfferRepository.deleteById).toHaveBeenCalledWith(OFFER_ID);
+      expect(mockOfferRepository.softDeleteById).toHaveBeenCalledWith(OFFER_ID);
     });
 
     it("lanza NotFoundError si no existe", async () => {
       mockOfferRepository.findById.mockResolvedValue(null);
 
       await expect(offerService.remove(OFFER_ID)).rejects.toThrow(NotFoundError);
-      expect(mockOfferRepository.deleteById).not.toHaveBeenCalled();
+      expect(mockOfferRepository.softDeleteById).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("restore", () => {
+    it("restaura la oferta soft-borrada", async () => {
+      mockOfferRepository.restoreById.mockResolvedValue(true);
+
+      await expect(offerService.restore(OFFER_ID)).resolves.toBeUndefined();
+      expect(mockOfferRepository.restoreById).toHaveBeenCalledWith(OFFER_ID);
+    });
+
+    it("lanza NotFoundError si la oferta no existe (ni siquiera borrada)", async () => {
+      mockOfferRepository.restoreById.mockResolvedValue(false);
+
+      await expect(offerService.restore(OFFER_ID)).rejects.toThrow(NotFoundError);
     });
   });
 });

@@ -45,3 +45,12 @@ export const remove = async (req: Request, res: Response, next: NextFunction): P
     next(error);
   }
 };
+
+export const restore = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    await brandService.restore(req.params.id as string, req.user?.id);
+    res.json({ success: true, data: null });
+  } catch (error) {
+    next(error);
+  }
+};

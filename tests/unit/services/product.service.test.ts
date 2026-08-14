@@ -447,30 +447,36 @@ describe("product.service", () => {
   });
 
   describe("remove", () => {
-    it("borra el producto y su inventario", async () => {
+    it("soft-borra el producto conservando el inventario", async () => {
       mockProductRepository.findById.mockResolvedValue(makeProduct());
-      mockProductRepository.deleteById.mockResolvedValue(true);
-      mockInventoryService.removeByProductId.mockResolvedValue(undefined);
+      mockProductRepository.softDeleteById.mockResolvedValue(true);
 
       await expect(productService.remove(PRODUCT_ID)).resolves.toBeUndefined();
 
-      expect(mockProductRepository.deleteById).toHaveBeenCalledWith(PRODUCT_ID);
-      expect(mockInventoryService.removeByProductId).toHaveBeenCalledWith(PRODUCT_ID);
-    });
-
-    it("continúa aunque el inventario no exista (idempotente)", async () => {
-      mockProductRepository.findById.mockResolvedValue(makeProduct());
-      mockProductRepository.deleteById.mockResolvedValue(true);
-      mockInventoryService.removeByProductId.mockResolvedValue(undefined);
-
-      await expect(productService.remove(PRODUCT_ID)).resolves.toBeUndefined();
+      expect(mockProductRepository.softDeleteById).toHaveBeenCalledWith(PRODUCT_ID);
+      expect(mockInventoryService.removeByProductId).not.toHaveBeenCalled();
     });
 
     it("lanza NotFoundError si el producto no existe", async () => {
       mockProductRepository.findById.mockResolvedValue(null);
 
       await expect(productService.remove(PRODUCT_ID)).rejects.toThrow(NotFoundError);
-      expect(mockProductRepository.deleteById).not.toHaveBeenCalled();
+      expect(mockProductRepository.softDeleteById).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("restore", () => {
+    it("restaura el producto soft-borrado", async () => {
+      mockProductRepository.restoreById.mockResolvedValue(true);
+
+      await expect(productService.restore(PRODUCT_ID)).resolves.toBeUndefined();
+      expect(mockProductRepository.restoreById).toHaveBeenCalledWith(PRODUCT_ID);
+    });
+
+    it("lanza NotFoundError si el producto no existe (ni siquiera borrado)", async () => {
+      mockProductRepository.restoreById.mockResolvedValue(false);
+
+      await expect(productService.restore(PRODUCT_ID)).rejects.toThrow(NotFoundError);
     });
   });
 
@@ -693,26 +699,16 @@ expect.objectContaining({
     });
   });
 
-  describe("remove con borrado de storage (F1)", () => {
-    it("borra el producto, su inventario y el prefijo de imágenes", async () => {
+  describe("remove conserva storage e inventario (E6.1.1)", () => {
+    it("soft-borra el producto sin tocar inventario ni prefijo de imágenes", async () => {
       mockProductRepository.findById.mockResolvedValue(makeProduct());
-      mockProductRepository.deleteById.mockResolvedValue(true);
-      mockInventoryService.removeByProductId.mockResolvedValue(undefined);
+      mockProductRepository.softDeleteById.mockResolvedValue(true);
 
       await productService.remove(PRODUCT_ID);
 
-      expect(mockProductRepository.deleteById).toHaveBeenCalledWith(PRODUCT_ID);
-      expect(mockInventoryService.removeByProductId).toHaveBeenCalledWith(PRODUCT_ID);
-      expect(storageProviderMock.deletePrefix).toHaveBeenCalledWith(`products/${PRODUCT_ID}/`);
-    });
-
-    it("continúa aunque el borrado del prefijo falle (best-effort)", async () => {
-      mockProductRepository.findById.mockResolvedValue(makeProduct());
-      mockProductRepository.deleteById.mockResolvedValue(true);
-      mockInventoryService.removeByProductId.mockResolvedValue(undefined);
-      storageProviderMock.deletePrefix.mockRejectedValue(new Error("s3 down"));
-
-      await expect(productService.remove(PRODUCT_ID)).resolves.toBeUndefined();
+      expect(mockProductRepository.softDeleteById).toHaveBeenCalledWith(PRODUCT_ID);
+      expect(mockInventoryService.removeByProductId).not.toHaveBeenCalled();
+      expect(storageProviderMock.deletePrefix).not.toHaveBeenCalled();
     });
   });
 });

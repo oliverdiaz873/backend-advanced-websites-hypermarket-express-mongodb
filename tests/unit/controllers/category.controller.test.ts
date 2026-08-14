@@ -166,4 +166,36 @@ describe("category.controller", () => {
       expect(res.status).toBe(409);
     });
   });
+
+  describe("POST /api/categories/:id/restore", () => {
+    it("responde 403 si no es admin", async () => {
+      const res = await request(app)
+        .post(`/api/categories/${CATEGORY_ID}/restore`)
+        .set("Authorization", `Bearer ${customerToken}`);
+
+      expect(res.status).toBe(403);
+    });
+
+    it("responde 200 y restaura la categoría (admin)", async () => {
+      mockCategoryService.restore.mockResolvedValue(undefined);
+
+      const res = await request(app)
+        .post(`/api/categories/${CATEGORY_ID}/restore`)
+        .set("Authorization", `Bearer ${adminToken}`);
+
+      expect(mockCategoryService.restore).toHaveBeenCalledWith(CATEGORY_ID, "64b000000000000000000002");
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ success: true, data: null });
+    });
+
+    it("responde 404 si la categoría no existe", async () => {
+      mockCategoryService.restore.mockRejectedValue(new NotFoundError("Category not found"));
+
+      const res = await request(app)
+        .post(`/api/categories/${CATEGORY_ID}/restore`)
+        .set("Authorization", `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(404);
+    });
+  });
 });

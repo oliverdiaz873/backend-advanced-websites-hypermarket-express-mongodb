@@ -9,5 +9,6 @@ router.use(authMiddleware, authorizeRole("admin"));
 router.get("/", adminProductController.getPageAdmin);
 router.get("/:id", adminProductController.findByIdAdmin);
 router.patch("/:id", adminProductController.updateAdmin);
+router.post("/:id/restore", adminProductController.restore);
 
 export default router;

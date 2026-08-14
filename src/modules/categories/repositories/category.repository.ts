@@ -1,4 +1,5 @@
 import { CategoryModel } from "../models/category.model";
+import { type ISoftDeleteDocument } from "../../../shared/plugins/soft-delete.plugin";
 import type { Category } from "../../../types";
 
 export const findAll = async (): Promise<Category[]> => {
@@ -34,7 +35,16 @@ export const updateById = async (
   return doc ? (doc.toJSON() as unknown as Category) : null;
 };
 
-export const deleteById = async (id: string): Promise<boolean> => {
-  const result = await CategoryModel.deleteOne({ _id: id });
-  return result.deletedCount > 0;
+export const softDeleteById = async (id: string): Promise<boolean> => {
+  const doc = (await CategoryModel.findById(id)) as unknown as ISoftDeleteDocument | null;
+  if (!doc) return false;
+  await doc.softDelete();
+  return true;
+};
+
+export const restoreById = async (id: string): Promise<boolean> => {
+  const doc = (await CategoryModel.findOne({ _id: id, includeDeleted: true })) as unknown as ISoftDeleteDocument | null;
+  if (!doc) return false;
+  await doc.restore();
+  return true;
 };

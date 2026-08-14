@@ -1,5 +1,6 @@
 import { Schema, model } from "mongoose";
 import { toJSONOptions } from "../../../shared/utils/mongo";
+import { softDeletePlugin, type SoftDeleteModel } from "../../../shared/plugins/soft-delete.plugin";
 
 export interface IProductCategory {
   name: string;
@@ -40,6 +41,8 @@ export interface IProduct {
   status: "active" | "inactive";
   isAvailable: boolean;
   featured?: boolean;
+  isDeleted: boolean;
+  deletedAt: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -79,7 +82,7 @@ const translationsEmbed = new Schema<IProductTranslations>(
 const productSchema = new Schema<IProduct>(
   {
     _id: { type: String, required: true },
-    sku: { type: String, required: true, unique: true, trim: true },
+    sku: { type: String, required: true, trim: true },
     name: { type: String, required: true, trim: true },
     description: { type: String },
     price: { type: Number, required: true, min: 0 },
@@ -100,9 +103,15 @@ const productSchema = new Schema<IProduct>(
   { timestamps: true, toJSON: toJSONOptions }
 );
 
+productSchema.plugin(softDeletePlugin);
+
 productSchema.index({ categoryId: 1 });
 productSchema.index({ brandId: 1 });
 productSchema.index({ "category.slug": 1 });
 productSchema.index({ name: "text" });
+productSchema.index(
+  { sku: 1 },
+  { unique: true, partialFilterExpression: { isDeleted: { $eq: false } }, name: "sku_partial_unique" }
+);
 
-export const ProductModel = model<IProduct>("Product", productSchema);
+export const ProductModel = model<IProduct, SoftDeleteModel<IProduct>>("Product", productSchema);

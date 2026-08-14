@@ -166,4 +166,36 @@ describe("brand.controller", () => {
       expect(res.status).toBe(409);
     });
   });
+
+  describe("POST /api/brands/:id/restore", () => {
+    it("responde 403 si no es admin", async () => {
+      const res = await request(app)
+        .post(`/api/brands/${BRAND_ID}/restore`)
+        .set("Authorization", `Bearer ${customerToken}`);
+
+      expect(res.status).toBe(403);
+    });
+
+    it("responde 200 y restaura la marca (admin)", async () => {
+      mockBrandService.restore.mockResolvedValue(undefined);
+
+      const res = await request(app)
+        .post(`/api/brands/${BRAND_ID}/restore`)
+        .set("Authorization", `Bearer ${adminToken}`);
+
+      expect(mockBrandService.restore).toHaveBeenCalledWith(BRAND_ID, "64b000000000000000000002");
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ success: true, data: null });
+    });
+
+    it("responde 404 si la marca no existe", async () => {
+      mockBrandService.restore.mockRejectedValue(new NotFoundError("Brand not found"));
+
+      const res = await request(app)
+        .post(`/api/brands/${BRAND_ID}/restore`)
+        .set("Authorization", `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(404);
+    });
+  });
 });

@@ -36,5 +36,7 @@ export const mapProduct = (
     status: "active",
     isAvailable: true,
     featured: raw.featured === true,
+    isDeleted: false,
+    deletedAt: null,
   };
 };
