@@ -157,6 +157,38 @@ describe("product.service", () => {
       expect(call.featured).toBeUndefined();
     });
 
+    it("resuelve ?lang=en en el paginado y nunca expone translations", async () => {
+      const products = [
+        makeProduct({ translations: { en: { name: "Rice 1kg", description: "White rice" } } }),
+      ];
+      mockProductRepository.findPage.mockResolvedValue({
+        items: products,
+        total: 1,
+        pagination: { page: 1, limit: 50, total: 1, pages: 1 },
+      });
+
+      const result = await productService.getPage({ lang: "en" });
+
+      expect(result.data[0].name).toBe("Rice 1kg");
+      expect(result.data[0].description).toBe("White rice");
+      expect(result.data[0]).not.toHaveProperty("translations");
+    });
+
+    it("getPage con lang ausente o inválido devuelve root (ES)", async () => {
+      const products = [makeProduct({ translations: { en: { name: "Rice 1kg" } } })];
+      mockProductRepository.findPage.mockResolvedValue({
+        items: products,
+        total: 1,
+        pagination: { page: 1, limit: 50, total: 1, pages: 1 },
+      });
+
+      const noLang = await productService.getPage({});
+      expect(noLang.data[0].name).toBe("Arroz 1kg");
+
+      const invalidLang = await productService.getPage({ lang: "es-es" });
+      expect(invalidLang.data[0].name).toBe("Arroz 1kg");
+    });
+
     it("no amplía el catálogo hacia ?status=inactive: responde vacío sin consultar", async () => {
       const result = await productService.getPage({ status: "inactive" });
 
@@ -497,6 +529,22 @@ describe("product.service", () => {
       const resultEs = await productService.getById(PRODUCT_ID, "es");
       expect(resultEs.name).toBe("Arroz (ES)");
       expect(resultEs.description).toBe("Arroz blanco");
+    });
+
+    it("con lang ausente o inválido devuelve root (ES)", async () => {
+      mockProductRepository.findById.mockResolvedValue(
+        makeProduct({
+          translations: { en: { name: "Rice", description: "White rice" } },
+        })
+      );
+
+      const noLang = await productService.getById(PRODUCT_ID);
+      expect(noLang.name).toBe("Arroz 1kg");
+      expect(noLang.description).toBe("Arroz blanco premium");
+
+      const invalidLang = await productService.getById(PRODUCT_ID, "fr");
+      expect(invalidLang.name).toBe("Arroz 1kg");
+      expect(invalidLang.description).toBe("Arroz blanco premium");
     });
 
     it("no expone imageKey ni translations en la respuesta pública", async () => {

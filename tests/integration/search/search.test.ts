@@ -119,4 +119,18 @@ describe("E2E: /api/search visibilidad pública (F1)", () => {
     expect(item.name).toBe("Search Cookies");
     expect(item).not.toHaveProperty("translations");
   });
+
+  it("?lang=en sin translations.en devuelve el nombre root (fallback ES)", async () => {
+    const draft = await createDraft("Galletas Sin Traduccion");
+    await request(app)
+      .patch(`/api/products/${draft.id}`)
+      .set(adminHeaders)
+      .send({ status: "active", isAvailable: true })
+      .expect(200);
+
+    const res = await request(app).get("/api/search").query({ q: "galletas", lang: "en" });
+    const item = res.body.data.find((p: { id: string }) => p.id === draft.id);
+    expect(item).toBeDefined();
+    expect(item.name).toBe("Galletas Sin Traduccion");
+  });
 });
