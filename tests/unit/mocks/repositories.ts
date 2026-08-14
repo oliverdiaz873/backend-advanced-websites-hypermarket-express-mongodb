@@ -181,6 +181,7 @@ export const mockAuthService = {
   register: jest.fn(),
   login: jest.fn(),
   getMe: jest.fn(),
+  updateMe: jest.fn(),
 };
 
 export const mockProductService = {

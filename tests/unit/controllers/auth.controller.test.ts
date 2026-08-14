@@ -178,4 +178,55 @@ describe("auth.controller", () => {
       expect(res.status).toBe(401);
     });
   });
+
+  describe("PATCH /api/auth/me", () => {
+    const token = createAuthToken({ id: USER_ID, email: "oliver@example.com", role: "customer" });
+
+    it("responde 200 y actualiza el perfil autenticado", async () => {
+      const publicUser = makePublicUser({ name: "Nuevo", phone: "809-123-4567" });
+      mockAuthService.updateMe.mockResolvedValue(publicUser);
+
+      const res = await request(app)
+        .patch("/api/auth/me")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ name: "Nuevo", phone: "809-123-4567" });
+
+      expect(mockAuthService.updateMe).toHaveBeenCalledWith(USER_ID, {
+        name: "Nuevo",
+        phone: "809-123-4567",
+      });
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ success: true, data: toJson(publicUser) });
+    });
+
+    it("responde 401 sin token", async () => {
+      const res = await request(app).patch("/api/auth/me").send({ name: "Nuevo" });
+
+      expect(res.status).toBe(401);
+    });
+
+    it("propaga 400 cuando el service rechaza campos prohibidos", async () => {
+      mockAuthService.updateMe.mockRejectedValue(
+        new InvalidDataError("Only name and phone can be updated")
+      );
+
+      const res = await request(app)
+        .patch("/api/auth/me")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ email: "nuevo@example.com" });
+
+      expect(res.status).toBe(400);
+    });
+
+    it("propaga 401 cuando el usuario no existe", async () => {
+      mockAuthService.updateMe.mockRejectedValue(new UnauthorizedError("User not found"));
+
+      const res = await request(app)
+        .patch("/api/auth/me")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ name: "Nuevo" });
+
+      expect(res.status).toBe(401);
+    });
+  });
 });

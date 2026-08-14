@@ -219,4 +219,118 @@ describe("E2E: /api/auth", () => {
       expect(res.body.message).toBe("User not found");
     });
   });
+
+  describe("PATCH /api/auth/me", () => {
+    const loginAs = async (user: { email: string }): Promise<string> => {
+      const login = await request(app)
+        .post("/api/auth/login")
+        .set(withIp())
+        .send({ email: user.email, password: "secret123" });
+      return login.body.data.token as string;
+    };
+
+    it("actualiza name y phone y GET /me lo refleja", async () => {
+      const user = await createTestUser();
+      const token = await loginAs(user);
+
+      const res = await request(app)
+        .patch("/api/auth/me")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ name: "Nuevo Nombre", phone: "809-123-4567" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toMatchObject({ name: "Nuevo Nombre", phone: "809-123-4567" });
+      expect(res.body.data.password).toBeUndefined();
+
+      const me = await request(app).get("/api/auth/me").set("Authorization", `Bearer ${token}`);
+      expect(me.status).toBe(200);
+      expect(me.body.data).toMatchObject({ name: "Nuevo Nombre", phone: "809-123-4567" });
+    });
+
+    it("el mismo token sigue funcionando tras el PATCH", async () => {
+      const user = await createTestUser();
+      const token = await loginAs(user);
+
+      const patch = await request(app)
+        .patch("/api/auth/me")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ phone: "829-000-0000" });
+      expect(patch.status).toBe(200);
+
+      const me = await request(app).get("/api/auth/me").set("Authorization", `Bearer ${token}`);
+      expect(me.status).toBe(200);
+      expect(me.body.data.phone).toBe("829-000-0000");
+    });
+
+    it("responde 401 sin token", async () => {
+      const res = await request(app).patch("/api/auth/me").send({ name: "Nuevo" });
+
+      expect(res.status).toBe(401);
+    });
+
+    it("responde 401 con token inválido", async () => {
+      const res = await request(app)
+        .patch("/api/auth/me")
+        .set("Authorization", "Bearer token-invalido")
+        .send({ name: "Nuevo" });
+
+      expect(res.status).toBe(401);
+    });
+
+    it("responde 400 con campos prohibidos", async () => {
+      const user = await createTestUser();
+      const token = await loginAs(user);
+
+      const res = await request(app)
+        .patch("/api/auth/me")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ email: "nuevo@example.com" });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe("Only name and phone can be updated");
+    });
+
+    it("responde 400 con body vacío", async () => {
+      const user = await createTestUser();
+      const token = await loginAs(user);
+
+      const res = await request(app)
+        .patch("/api/auth/me")
+        .set("Authorization", `Bearer ${token}`)
+        .send({});
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe("Nothing to update");
+    });
+
+    it("responde 400 con name vacío", async () => {
+      const user = await createTestUser();
+      const token = await loginAs(user);
+
+      const res = await request(app)
+        .patch("/api/auth/me")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ name: "   " });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe("Name must be a non-empty string");
+    });
+
+    it("responde 401 si el usuario no existe (token de un id eliminado)", async () => {
+      const token = jwt.sign(
+        { id: "507f1f77bcf86cd799439011", email: "ghost@example.com", role: "customer" },
+        config.jwtSecret,
+        { expiresIn: "1h" }
+      );
+
+      const res = await request(app)
+        .patch("/api/auth/me")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ name: "Nuevo" });
+
+      expect(res.status).toBe(401);
+      expect(res.body.message).toBe("User not found");
+    });
+  });
 });

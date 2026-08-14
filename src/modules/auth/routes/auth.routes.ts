@@ -33,5 +33,6 @@ router.post(
 router.post("/login", authRateLimit(loginRateLimit), authController.login);
 router.post("/logout", authController.logout);
 router.get("/me", authMiddleware, authController.getMe);
+router.patch("/me", authMiddleware, authController.updateMe);
 
 export default router;

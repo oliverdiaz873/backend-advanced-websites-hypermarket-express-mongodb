@@ -38,3 +38,12 @@ export const getMe = async (req: Request, res: Response, next: NextFunction): Pr
     next(error);
   }
 };
+
+export const updateMe = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const user = await authService.updateMe(req.user!.id, req.body);
+    res.json({ success: true, data: user });
+  } catch (error) {
+    next(error);
+  }
+};

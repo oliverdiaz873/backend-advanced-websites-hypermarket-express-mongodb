@@ -160,4 +160,84 @@ describe("auth.service", () => {
       await expect(authService.getMe(USER_ID)).rejects.toThrow("User not found");
     });
   });
+
+  describe("updateMe", () => {
+    it("actualiza name y phone (trim) y devuelve el usuario público", async () => {
+      const updated = makeUser({ name: "Nuevo Nombre", phone: "809-123-4567" });
+      mockUserRepository.updateById.mockResolvedValue(updated);
+
+      const result = await authService.updateMe(USER_ID, { name: "  Nuevo Nombre  ", phone: "  809-123-4567  " });
+
+      expect(mockUserRepository.updateById).toHaveBeenCalledWith(USER_ID, {
+        name: "Nuevo Nombre",
+        phone: "809-123-4567",
+      });
+      expect(result).toEqual(makePublicUser({ name: "Nuevo Nombre", phone: "809-123-4567" }));
+      expect(result).not.toHaveProperty("password");
+    });
+
+    it("actualiza solo name", async () => {
+      mockUserRepository.updateById.mockResolvedValue(makeUser({ name: "Nuevo" }));
+
+      await authService.updateMe(USER_ID, { name: "Nuevo" });
+
+      expect(mockUserRepository.updateById).toHaveBeenCalledWith(USER_ID, { name: "Nuevo" });
+    });
+
+    it("actualiza solo phone y permite '' para limpiarlo", async () => {
+      mockUserRepository.updateById.mockResolvedValue(makeUser({ phone: "" }));
+
+      await authService.updateMe(USER_ID, { phone: "  " });
+
+      expect(mockUserRepository.updateById).toHaveBeenCalledWith(USER_ID, { phone: "" });
+    });
+
+    it.each(["email", "role", "password", "status", "address", "avatar"])(
+      "rechaza el campo prohibido %s",
+      async (forbidden) => {
+        await expect(authService.updateMe(USER_ID, { [forbidden]: "x" })).rejects.toThrow(InvalidDataError);
+        await expect(authService.updateMe(USER_ID, { [forbidden]: "x" })).rejects.toThrow(
+          "Only name and phone can be updated"
+        );
+        expect(mockUserRepository.updateById).not.toHaveBeenCalled();
+      }
+    );
+
+    it("rechaza campos desconocidos", async () => {
+      await expect(authService.updateMe(USER_ID, { foo: "bar" })).rejects.toThrow(InvalidDataError);
+      expect(mockUserRepository.updateById).not.toHaveBeenCalled();
+    });
+
+    it("rechaza name vacío", async () => {
+      await expect(authService.updateMe(USER_ID, { name: "" })).rejects.toThrow(
+        "Name must be a non-empty string"
+      );
+      expect(mockUserRepository.updateById).not.toHaveBeenCalled();
+    });
+
+    it("rechaza name con whitespace", async () => {
+      await expect(authService.updateMe(USER_ID, { name: "   " })).rejects.toThrow(
+        "Name must be a non-empty string"
+      );
+      expect(mockUserRepository.updateById).not.toHaveBeenCalled();
+    });
+
+    it("rechaza tipos incorrectos", async () => {
+      await expect(authService.updateMe(USER_ID, { name: 123 })).rejects.toThrow(InvalidDataError);
+      await expect(authService.updateMe(USER_ID, { phone: { number: "x" } })).rejects.toThrow(InvalidDataError);
+      expect(mockUserRepository.updateById).not.toHaveBeenCalled();
+    });
+
+    it("rechaza un body sin campos", async () => {
+      await expect(authService.updateMe(USER_ID, {})).rejects.toThrow("Nothing to update");
+      expect(mockUserRepository.updateById).not.toHaveBeenCalled();
+    });
+
+    it("lanza UnauthorizedError si el usuario no existe", async () => {
+      mockUserRepository.updateById.mockResolvedValue(null);
+
+      await expect(authService.updateMe(USER_ID, { name: "Nuevo" })).rejects.toThrow(UnauthorizedError);
+      await expect(authService.updateMe(USER_ID, { name: "Nuevo" })).rejects.toThrow("User not found");
+    });
+  });
 });

@@ -61,8 +61,8 @@ export const login = async (email: string, password: string): Promise<{ token: s
     { expiresIn: config.jwtExpiresIn } as SignOptions
   );
 
-  const { id, name, email: userEmail, role, createdAt, updatedAt } = user;
-  const publicUser: PublicUser = { id, name, email: userEmail, role, createdAt, updatedAt };
+  const { id, name, email: userEmail, role, phone, createdAt, updatedAt } = user;
+  const publicUser: PublicUser = { id, name, email: userEmail, role, phone, createdAt, updatedAt };
 
   void auditService.log({
     userId: user.id,
@@ -80,6 +80,55 @@ export const getMe = async (userId: string): Promise<PublicUser> => {
   if (!user) {
     throw new UnauthorizedError("User not found");
   }
-  const { id, name, email, role, createdAt, updatedAt } = user;
-  return { id, name, email, role, createdAt, updatedAt };
+  const { id, name, email, role, phone, createdAt, updatedAt } = user;
+  return { id, name, email, role, phone, createdAt, updatedAt };
+};
+
+const SELF_UPDATABLE = ["name", "phone"];
+
+/**
+ * E6.1.3 - El usuario autenticado solo puede actualizarse `name` y `phone`.
+ * Cualquier otra clave se rechaza con 400; el body nunca llega crudo al repositorio.
+ */
+export const updateMe = async (userId: string, data: Record<string, unknown>): Promise<PublicUser> => {
+  const updates: Record<string, unknown> = {};
+
+  for (const key of Object.keys(data)) {
+    if (!SELF_UPDATABLE.includes(key)) {
+      throw new InvalidDataError(`Only ${SELF_UPDATABLE.join(" and ")} can be updated`);
+    }
+    updates[key] = data[key];
+  }
+
+  if (updates.name !== undefined) {
+    if (typeof updates.name !== "string" || !updates.name.trim()) {
+      throw new InvalidDataError("Name must be a non-empty string");
+    }
+    updates.name = updates.name.trim();
+  }
+
+  if (updates.phone !== undefined) {
+    if (typeof updates.phone !== "string") {
+      throw new InvalidDataError("Phone must be a string");
+    }
+    updates.phone = updates.phone.trim();
+  }
+
+  if (Object.keys(updates).length === 0) {
+    throw new InvalidDataError("Nothing to update");
+  }
+
+  return auditService.runAudited(
+    { userId, action: "UPDATE_USER", resource: "user", resourceId: userId },
+    async () => {
+      const updated = await userRepository.updateById(userId, updates);
+      if (!updated) {
+        throw new UnauthorizedError("User not found");
+      }
+      const { id, name, email, role, phone: updatedPhone, createdAt, updatedAt } = updated;
+      return { id, name, email, role, phone: updatedPhone, createdAt, updatedAt };
+    },
+    undefined,
+    () => ({ fields: Object.keys(updates) })
+  );
 };

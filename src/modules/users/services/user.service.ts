@@ -10,8 +10,8 @@ const ALLOWED_UPDATABLE = ["name", "email", "password"];
 
 const toPublicUser = (user: User | null): PublicUser | null => {
   if (!user) return null;
-  const { id, name, email, role, createdAt, updatedAt } = user;
-  return { id, name, email, role, createdAt, updatedAt };
+  const { id, name, email, role, phone, createdAt, updatedAt } = user;
+  return { id, name, email, role, phone, createdAt, updatedAt };
 };
 
 export const getAll = async (): Promise<PublicUser[]> => {

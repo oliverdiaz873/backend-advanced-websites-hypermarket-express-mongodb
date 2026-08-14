@@ -341,6 +341,7 @@ export interface User {
   email: string;
   password: string;
   role: UserRole;
+  phone?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -350,6 +351,7 @@ export interface PublicUser {
   name: string;
   email: string;
   role: UserRole;
+  phone?: string;
   createdAt: Date;
   updatedAt: Date;
 }
