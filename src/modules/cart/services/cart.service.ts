@@ -97,9 +97,9 @@ export const addItem = async (userId: string, productId: string, quantity: numbe
 
   const snapshot = await buildSnapshot(product);
 
-  let cart = await cartRepository.findByUserId(userId);
+  const cart = await cartRepository.findByUserId(userId);
   if (!cart) {
-    cart = await cartRepository.createCart(userId);
+    await cartRepository.createCart(userId);
   }
 
   await cartRepository.addItem(userId, productId, quantity, snapshot);
@@ -149,9 +149,9 @@ export const removeItem = async (userId: string, productId: string): Promise<Car
 };
 
 export const clearCart = async (userId: string): Promise<CartResponse> => {
-  let cart = await cartRepository.findByUserId(userId);
+  const cart = await cartRepository.findByUserId(userId);
   if (!cart) {
-    cart = await cartRepository.createCart(userId);
+    await cartRepository.createCart(userId);
   }
 
   await cartRepository.clearCart(userId);
@@ -187,9 +187,9 @@ export const mergeCart = async (
     toMerge.push({ productId, quantity, ...snapshot });
   }
 
-  let cart = await cartRepository.findByUserId(userId);
+  const cart = await cartRepository.findByUserId(userId);
   if (!cart) {
-    cart = await cartRepository.createCart(userId);
+    await cartRepository.createCart(userId);
   }
 
   await cartRepository.mergeItems(userId, toMerge);

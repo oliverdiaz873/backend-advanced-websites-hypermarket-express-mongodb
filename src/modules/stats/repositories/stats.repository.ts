@@ -11,8 +11,6 @@ import type {
   TopProductStat,
 } from "../../../types";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 /** Construye el $match común sobre órdenes a partir del filtro resuelto. */
 const buildOrderMatch = (filter: StatsFilter): Record<string, unknown> => {
   const match: Record<string, unknown> = {};

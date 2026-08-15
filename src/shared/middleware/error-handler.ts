@@ -36,7 +36,7 @@ export const toErrorResponse = (
   return body;
 };
 
-const errorHandler = (err: AppError, req: Request, res: Response, next: NextFunction): void => {
+const errorHandler = (err: AppError, req: Request, res: Response, _next: NextFunction): void => {
   const mapped = mapError(err);
 
   logger.error(`Unhandled error: ${mapped.code}`, {

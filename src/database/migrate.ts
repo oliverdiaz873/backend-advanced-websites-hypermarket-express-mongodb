@@ -31,6 +31,8 @@ const loadMigrations = (): Migration[] => {
     .filter((file) => /^\d{4}-.*\.ts$/.test(file))
     .sort();
   return files.map((file) => {
+    // Las migraciones se descubren dinámicamente desde el directorio compilado.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod = require(path.join(MIGRATIONS_DIR, file)) as { default?: Migration };
     if (!mod.default) throw new Error(`La migración ${file} no exporta un default Migration`);
     return mod.default;
