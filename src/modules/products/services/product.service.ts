@@ -45,6 +45,8 @@ export interface UpdateProductInput {
   image?: string;
   imageKey?: string;
   imageThumbnailKey?: string;
+  /** Elimina la imagen del producto (image/imageKey/imageThumbnailKey) y su objeto de storage. */
+  removeImage?: boolean;
   translations?: ProductTranslationsPatch;
   categoryId?: string;
   sku?: string;
@@ -266,22 +268,31 @@ const performUpdate = async (id: string, data: UpdateProductInput, actorId?: str
       if (data.isAvailable !== undefined) updates.isAvailable = data.isAvailable;
       if (data.featured !== undefined) updates.featured = data.featured;
 
-      if (data.image !== undefined) {
-        if (typeof data.image !== "string" || !data.image.trim()) {
-          throw new InvalidDataError("Image cannot be empty");
-        }
-        updates.image = data.image;
-      }
+      let removedImageKey: string | undefined;
 
-      if (data.imageKey !== undefined) {
-        replacedImageKey = await applyImageKey(existing, data.imageKey, updates);
-      }
-      if (data.imageThumbnailKey !== undefined) {
-        const thumbnailKey = data.imageThumbnailKey;
-        if (typeof thumbnailKey !== "string" || !isSafeStorageKey(thumbnailKey) || !thumbnailKey.startsWith(`products/${id}/`)) {
-          throw new InvalidDataError("Invalid imageThumbnailKey");
+      if (data.removeImage === true) {
+        if (existing.imageKey) {
+          removedImageKey = existing.imageKey;
         }
-        updates.imageThumbnailKey = thumbnailKey;
+        unset.push("image", "imageKey", "imageThumbnailKey");
+      } else {
+        if (data.image !== undefined) {
+          if (typeof data.image !== "string" || !data.image.trim()) {
+            throw new InvalidDataError("Image cannot be empty");
+          }
+          updates.image = data.image;
+        }
+
+        if (data.imageKey !== undefined) {
+          replacedImageKey = await applyImageKey(existing, data.imageKey, updates);
+        }
+        if (data.imageThumbnailKey !== undefined) {
+          const thumbnailKey = data.imageThumbnailKey;
+          if (typeof thumbnailKey !== "string" || !isSafeStorageKey(thumbnailKey) || !thumbnailKey.startsWith(`products/${id}/`)) {
+            throw new InvalidDataError("Invalid imageThumbnailKey");
+          }
+          updates.imageThumbnailKey = thumbnailKey;
+        }
       }
 
       if (data.translations !== undefined) {
@@ -319,12 +330,15 @@ const performUpdate = async (id: string, data: UpdateProductInput, actorId?: str
         throw new NotFoundError("Product not found");
       }
 
-      if (replacedImageKey) {
+      const staleImageKeys = [replacedImageKey, removedImageKey].filter(
+        (key): key is string => Boolean(key)
+      );
+      for (const staleKey of staleImageKeys) {
         try {
-          await getStorageProvider().deleteObject(replacedImageKey);
+          await getStorageProvider().deleteObject(staleKey);
         } catch (error) {
-          logger.warn("Failed to delete replaced product image", {
-            imageKey: replacedImageKey,
+          logger.warn("Failed to delete product image", {
+            imageKey: staleKey,
             error: error instanceof Error ? error.message : String(error),
           });
         }

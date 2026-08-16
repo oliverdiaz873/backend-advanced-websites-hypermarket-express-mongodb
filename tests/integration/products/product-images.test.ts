@@ -128,6 +128,48 @@ describe("E2E: flujo de imagen de producto (F1)", () => {
     expect(fs.existsSync(path.join(storageDir, second.key))).toBe(true);
   });
 
+  it("removeImage limpia image/imageKey y borra el objeto de storage", async () => {
+    const { id } = await createDraft();
+
+    const signed = await presign(id, "quitar.webp");
+    await putUpload(signed.uploadUrl, WEBP);
+    const confirmed = await request(app)
+      .patch(`/api/products/${id}`)
+      .set(adminHeaders)
+      .send({ imageKey: signed.key });
+    expect(confirmed.status).toBe(200);
+    expect(confirmed.body.data.image).toContain(signed.key);
+    expect(fs.existsSync(path.join(storageDir, signed.key))).toBe(true);
+
+    const removed = await request(app)
+      .patch(`/api/products/${id}`)
+      .set(adminHeaders)
+      .send({ removeImage: true });
+
+    expect(removed.status).toBe(200);
+    expect(removed.body.data.image).toBeNull();
+    expect(removed.body.data).not.toHaveProperty("imageKey");
+    expect(fs.existsSync(path.join(storageDir, signed.key))).toBe(false);
+  });
+
+  it("removeImage en un producto sin imageKey limpia igualmente los campos", async () => {
+    const { id } = await createDraft();
+    await request(app)
+      .patch(`/api/products/${id}`)
+      .set(adminHeaders)
+      .send({ image: "products/bebidas/coca-cola.avif" })
+      .expect(200);
+
+    const removed = await request(app)
+      .patch(`/api/products/${id}`)
+      .set(adminHeaders)
+      .send({ removeImage: true });
+
+    expect(removed.status).toBe(200);
+    expect(removed.body.data.image).toBeNull();
+    expect(removed.body.data).not.toHaveProperty("imageKey");
+  });
+
   it("una imageKey invÃ¡lida se rechaza con 400/404", async () => {
     const { id } = await createDraft();
 
