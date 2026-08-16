@@ -5,7 +5,7 @@ const coverageSources = ["src/**/*.ts", "!src/**/*.d.ts", "!src/server.ts"];
 const coverageIgnores = ["/node_modules/", "/dist/", "/docs/", "/scripts/", "/tests/"];
 
 const transform = {
-  "^.+\\.tsx?$": ["ts-jest", { tsconfig: "<rootDir>/tsconfig.test.json" }],
+  "^.+\\.tsx?$": ["ts-jest", { tsconfig: "<rootDir>/tsconfig.test.json", isolatedModules: true }],
 };
 
 const config: Config = {
