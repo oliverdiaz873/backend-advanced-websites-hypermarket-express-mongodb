@@ -27,6 +27,9 @@ hypermarket-next          hypermarket-angular         hypermarket
                                       |
                                       ▼
                                  MongoDB
+
+                 hypermarket-superior-e2e (Playwright)
+                 E2E central que valida el ecosistema completo
 ```
 
 | Repository | Type | Technology | Purpose |
@@ -35,6 +38,17 @@ hypermarket-next          hypermarket-angular         hypermarket
 | pre-advanced-websites-hypermarket-next | Customer Frontend | Next.js + React | Tienda pública |
 | pre-advanced-websites-hypermarket-angular | Customer Frontend | Angular | Tienda pública alternativa |
 | dashboard-websites-hypermarket | Admin Frontend | Angular + Material + NgRx Signals | Panel administrativo |
+| hypermarket-superior-e2e | E2E Harness | Playwright | Infraestructura E2E central del ecosistema |
+
+### Centralized E2E Harness
+
+`hypermarket-superior-e2e` es el repositorio independiente de pruebas
+**End-to-End (Playwright)** del ecosistema. No contiene lógica de negocio: es
+infraestructura de validación que orquesta y valida varios repositorios a la
+vez, probando flujos completos (frontend → backend → persistencia → dashboard)
+y centralizando fixtures, helpers, configuración y specs E2E.
+
+[Centralized E2E Harness - hypermarket-superior-e2e](https://github.com/oliverdiaz873/hypermarket-superior-e2e)
 
 ### Consumed by
 
@@ -300,6 +314,10 @@ Este proyecto utiliza **Feature-Based Architecture**: cada funcionalidad del neg
 ## Testing
 
 Infraestructura de testing profesional con **Jest + ts-jest + MongoDB Memory Server**.
+
+> El testing **End-to-End transversal del ecosistema** vive en el repositorio
+> `hypermarket-superior-e2e` (Playwright); este repo conserva sus unit e
+> integration tests (Jest + MongoMemoryServer).
 
 ### Stack
 
