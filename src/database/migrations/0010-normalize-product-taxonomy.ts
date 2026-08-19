@@ -15,7 +15,10 @@ type ProductSnapshot = {
 };
 
 const buildTaxonomy = async (db: import("mongodb").Db): Promise<Map<string, TaxonomyEntry[]>> => {
-  const categories = await db.collection("categories").find({ isDeleted: { $ne: true } }).toArray();
+  const categories = await db
+    .collection("categories")
+    .find({ isDeleted: { $ne: true } })
+    .toArray();
   const map = new Map<string, TaxonomyEntry[]>();
 
   for (const category of categories) {
@@ -71,7 +74,10 @@ const printExamples = (items: Array<{ product: ProductSnapshot; entry: TaxonomyE
 };
 
 export const up = async (db: import("mongodb").Db): Promise<void> => {
-  const products = (await db.collection("products").find({}).toArray()) as unknown as ProductSnapshot[];
+  const products = (await db
+    .collection("products")
+    .find({})
+    .toArray()) as unknown as ProductSnapshot[];
   const taxonomy = await buildTaxonomy(db);
   const result = classify(products, taxonomy);
 
@@ -90,20 +96,20 @@ export const up = async (db: import("mongodb").Db): Promise<void> => {
       categoryId: product.categoryId,
       $or: [{ subcategoryId: null }, { subcategoryId: { $exists: false } }],
     } as import("mongodb").Filter<import("mongodb").Document>;
-    await db.collection("products").updateOne(
-      filter,
-      {
-        $set: {
-          categoryId: entry.parent.slug,
-          subcategoryId: entry.subcategory.slug,
-          category: entry.parent,
-          subcategory: entry.subcategory,
-        },
-      }
-    );
+    await db.collection("products").updateOne(filter, {
+      $set: {
+        categoryId: entry.parent.slug,
+        subcategoryId: entry.subcategory.slug,
+        category: entry.parent,
+        subcategory: entry.subcategory,
+      },
+    });
   }
 
-  const after = (await db.collection("products").find({}).toArray()) as unknown as ProductSnapshot[];
+  const after = (await db
+    .collection("products")
+    .find({})
+    .toArray()) as unknown as ProductSnapshot[];
   const afterResult = classify(after, taxonomy);
   console.log("[taxonomy] audit after", {
     total: after.length,
@@ -116,7 +122,9 @@ export const up = async (db: import("mongodb").Db): Promise<void> => {
 };
 
 export const down = async (): Promise<void> => {
-  throw new Error("La migración de taxonomía no admite down automático; requiere un backup verificado");
+  throw new Error(
+    "La migración de taxonomía no admite down automático; requiere un backup verificado",
+  );
 };
 
 const migration: Migration = {
