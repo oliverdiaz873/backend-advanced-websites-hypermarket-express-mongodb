@@ -7,6 +7,11 @@ export interface IProductCategory {
   slug: string;
 }
 
+export interface IProductSubcategory {
+  name: string;
+  slug: string;
+}
+
 export interface IProductBrand {
   name: string;
   slug: string;
@@ -33,7 +38,9 @@ export interface IProduct {
   imageThumbnailKey?: string;
   translations?: IProductTranslations;
   categoryId: string;
+  subcategoryId?: string | null;
   category: IProductCategory;
+  subcategory?: IProductSubcategory | null;
   brandId?: string;
   brand?: IProductBrand;
   unit?: string;
@@ -60,6 +67,11 @@ const brandEmbed = new Schema<IProductBrand>(
     name: { type: String },
     slug: { type: String },
   },
+  { _id: false }
+);
+
+const subcategoryEmbed = new Schema<IProductSubcategory>(
+  { name: { type: String, required: true }, slug: { type: String, required: true } },
   { _id: false }
 );
 
@@ -91,7 +103,9 @@ const productSchema = new Schema<IProduct>(
     imageThumbnailKey: { type: String },
     translations: { type: translationsEmbed },
     categoryId: { type: String, required: true },
+    subcategoryId: { type: String, default: null },
     category: { type: categoryEmbed, required: true },
+    subcategory: { type: subcategoryEmbed, default: null },
     brandId: { type: String },
     brand: { type: brandEmbed },
     unit: { type: String },
@@ -106,6 +120,7 @@ const productSchema = new Schema<IProduct>(
 productSchema.plugin(softDeletePlugin);
 
 productSchema.index({ categoryId: 1 });
+productSchema.index({ categoryId: 1, subcategoryId: 1 });
 productSchema.index({ brandId: 1 });
 productSchema.index({ "category.slug": 1 });
 productSchema.index({ name: "text" });

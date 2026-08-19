@@ -125,6 +125,12 @@ Todas las respuestas exitosas:
 
 ## 5. Products API
 
+Los productos pueden incluir `subcategoryId` además de `categoryId`. Cuando se
+envía, el backend valida que la subcategoría pertenezca a la categoría indicada
+y responde `400` ante una combinación inválida. Productos legacy pueden tener
+`subcategoryId: null`. Los filtros públicos y administrativos aceptan
+`categoryId` y `subcategoryId`.
+
 ### GET /products
 
 Obtiene los productos disponibles públicamente.

@@ -22,10 +22,12 @@ export const findAll = async (): Promise<Product[]> => {
 };
 
 export const findPage = async (query: ProductQuery): Promise<ProductPageResult> => {
-  const { page, limit, q, category, brand, status, isAvailable, featured, sortBy, sortOrder } = query;
+  const { page, limit, q, category, categoryId, subcategoryId, brand, status, isAvailable, featured, sortBy, sortOrder } = query;
 
   const filter: Record<string, unknown> = {};
   if (category) filter["category.slug"] = category.trim().toLowerCase();
+  if (categoryId) filter.categoryId = categoryId.trim();
+  if (subcategoryId) filter.subcategoryId = subcategoryId.trim();
   if (brand) filter["brand.slug"] = brand.trim().toLowerCase();
   if (status) filter.status = status;
   if (isAvailable === true) filter.isAvailable = true;

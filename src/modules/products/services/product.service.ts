@@ -27,6 +27,7 @@ export interface CreateProductInput {
   name: string;
   price: number;
   categoryId: string;
+  subcategoryId?: string | null;
   sku?: string;
   description?: string;
   brandId?: string;
@@ -49,6 +50,7 @@ export interface UpdateProductInput {
   removeImage?: boolean;
   translations?: ProductTranslationsPatch;
   categoryId?: string;
+  subcategoryId?: string | null;
   sku?: string;
   brandId?: string | null;
   unit?: string;
@@ -120,6 +122,17 @@ const resolveCategoryEmbed = async (categoryId: string): Promise<{ name: string;
   return { name: category.name, slug: category.slug };
 };
 
+const resolveSubcategoryEmbed = async (
+  categoryId: string,
+  subcategoryId?: string | null
+): Promise<{ name: string; slug: string } | null> => {
+  if (!subcategoryId) return null;
+  const category = await categoryRepository.findById(categoryId);
+  const subcategory = category?.subcategories.find((item) => item.slug === subcategoryId);
+  if (!subcategory) throw new InvalidDataError("subcategoryId does not belong to categoryId");
+  return { name: subcategory.name, slug: subcategory.slug };
+};
+
 const resolveBrandEmbed = async (brandId: string): Promise<{ name: string; slug: string } | null> => {
   const brand = await brandRepository.findById(brandId);
   if (!brand) {
@@ -146,6 +159,7 @@ export const create = async (data: CreateProductInput, actorId?: string): Promis
       }
 
       const category = await resolveCategoryEmbed(data.categoryId);
+      const subcategory = await resolveSubcategoryEmbed(data.categoryId, data.subcategoryId);
       const brand = data.brandId ? await resolveBrandEmbed(data.brandId) : null;
 
       const sku =
@@ -164,7 +178,9 @@ export const create = async (data: CreateProductInput, actorId?: string): Promis
         description: data.description,
         price: data.price,
         categoryId: data.categoryId,
+        subcategoryId: data.subcategoryId ?? null,
         category,
+        subcategory,
         brandId: brand ? data.brandId : undefined,
         brand: brand ?? undefined,
         unit: data.unit,
@@ -309,10 +325,15 @@ const performUpdate = async (id: string, data: UpdateProductInput, actorId?: str
         updates.sku = sku;
       }
 
-      if (data.categoryId !== undefined) {
-        const category = await resolveCategoryEmbed(data.categoryId);
-        updates.categoryId = data.categoryId;
+      if (data.categoryId !== undefined || data.subcategoryId !== undefined) {
+        const categoryId = data.categoryId ?? existing.categoryId;
+        const category = await resolveCategoryEmbed(categoryId);
+        const subcategoryId = data.subcategoryId === undefined ? existing.subcategoryId : data.subcategoryId;
+        const subcategory = await resolveSubcategoryEmbed(categoryId, subcategoryId);
+        updates.categoryId = categoryId;
+        updates.subcategoryId = subcategoryId ?? null;
         updates.category = category;
+        updates.subcategory = subcategory;
       }
 
       if (data.brandId !== undefined) {
@@ -415,6 +436,8 @@ export const getPage = async (
     limit,
     q: typeof query.q === "string" ? query.q : undefined,
     category: typeof query.category === "string" ? query.category : undefined,
+    categoryId: typeof query.categoryId === "string" ? query.categoryId : undefined,
+    subcategoryId: typeof query.subcategoryId === "string" ? query.subcategoryId : undefined,
     brand: typeof query.brand === "string" ? query.brand : undefined,
     status: "active",
     isAvailable: true,
@@ -451,6 +474,8 @@ export const getAdminPage = async (
     limit,
     q: typeof query.q === "string" ? query.q : undefined,
     category: typeof query.category === "string" ? query.category : undefined,
+    categoryId: typeof query.categoryId === "string" ? query.categoryId : undefined,
+    subcategoryId: typeof query.subcategoryId === "string" ? query.subcategoryId : undefined,
     brand: typeof query.brand === "string" ? query.brand : undefined,
     status,
     isAvailable: query.isAvailable === "true" ? true : undefined,

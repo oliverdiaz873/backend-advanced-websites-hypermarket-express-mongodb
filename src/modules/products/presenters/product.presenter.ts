@@ -13,7 +13,9 @@ export interface PublicProduct {
   price: number;
   image: string | null;
   categoryId: string;
+  subcategoryId?: string | null;
   category: { name: string; slug: string };
+  subcategory?: { name: string; slug: string } | null;
   brandId?: string;
   brand?: { name: string; slug: string };
   unit?: string;
@@ -42,7 +44,9 @@ export interface AdminProduct {
   imageThumbnailKey?: string;
   translations?: { en?: { name: string; description?: string } };
   categoryId: string;
+  subcategoryId?: string | null;
   category: { name: string; slug: string };
+  subcategory?: { name: string; slug: string } | null;
   brandId?: string;
   brand?: { name: string; slug: string };
   unit?: string;
@@ -96,7 +100,9 @@ export const toPublicProduct = (product: Product, lang?: Lang): PublicProduct =>
   price: product.price,
   image: resolvePublicImage(product),
   categoryId: product.categoryId,
+  subcategoryId: product.subcategoryId ?? null,
   category: product.category,
+  subcategory: product.subcategory ?? null,
   brandId: product.brandId,
   brand: product.brand,
   unit: product.unit,
@@ -123,7 +129,9 @@ export const toAdminProduct = (product: Product): AdminProduct => ({
   imageThumbnailKey: product.imageThumbnailKey,
   translations: product.translations?.en ? { en: product.translations.en } : undefined,
   categoryId: product.categoryId,
+  subcategoryId: product.subcategoryId ?? null,
   category: product.category,
+  subcategory: product.subcategory ?? null,
   brandId: product.brandId,
   brand: product.brand,
   unit: product.unit,

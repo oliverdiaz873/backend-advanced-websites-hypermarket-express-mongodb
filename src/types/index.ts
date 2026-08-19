@@ -34,6 +34,8 @@ export interface ProductQuery {
   limit: number;
   q?: string;
   category?: string;
+  categoryId?: string;
+  subcategoryId?: string;
   brand?: string;
   status?: ProductStatus;
   isAvailable?: boolean;
@@ -198,10 +200,12 @@ export interface Product {
   imageThumbnailKey?: string;
   translations?: ProductTranslations;
   categoryId: string;
+  subcategoryId?: string | null;
   category: {
     name: string;
     slug: string;
   };
+  subcategory?: { name: string; slug: string } | null;
   brandId?: string;
   brand?: {
     name: string;
