@@ -81,6 +81,7 @@ export interface Config {
   storageProvider: "local" | "s3";
   storageLocalDir: string;
   storagePublicBaseUrl: string;
+  storagePublicRelative: boolean;
   uploadMaxSizeBytes: number;
   uploadPresignExpiresSeconds: number;
   r2AccountId?: string;

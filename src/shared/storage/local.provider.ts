@@ -61,7 +61,7 @@ export class LocalStorageProvider implements ObjectStorageProvider {
     if (!isSafeStorageKey(key)) {
       throw new InvalidDataError("Invalid storage key");
     }
-    return `${this.baseUrl}/uploads/${key}`;
+    return config.storagePublicRelative ? `/uploads/${key}` : `${this.baseUrl}/uploads/${key}`;
   }
 
   async objectExists(key: string): Promise<boolean> {

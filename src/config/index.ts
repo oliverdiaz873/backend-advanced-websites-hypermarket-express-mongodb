@@ -28,6 +28,10 @@ const config: Config = {
   storageProvider,
   storageLocalDir: process.env.STORAGE_LOCAL_DIR || path.resolve(process.cwd(), "storage"),
   storagePublicBaseUrl: process.env.STORAGE_PUBLIC_BASE_URL || `http://localhost:${Number(process.env.PORT) || 3000}`,
+  storagePublicRelative:
+    process.env.STORAGE_PUBLIC_RELATIVE !== "false" &&
+    storageProvider === "local" &&
+    (process.env.NODE_ENV || "development") !== "production",
   uploadMaxSizeBytes: Number(process.env.UPLOAD_MAX_SIZE_BYTES) || 5 * 1024 * 1024,
   uploadPresignExpiresSeconds: Number(process.env.UPLOAD_PRESIGN_EXPIRES_SECONDS) || 600,
   r2AccountId: process.env.R2_ACCOUNT_ID || undefined,
