@@ -11,6 +11,8 @@ export const makeProduct = (overrides: Partial<Product> = {}): Product => ({
   image: "https://example.com/arroz.png",
   categoryId: "64b0000000000000000000c1",
   category: { name: "Granos", slug: "granos" },
+  subcategoryId: null,
+  subcategory: null,
   brandId: "64b0000000000000000000b1",
   brand: { name: "MarcaX", slug: "marcax" },
   unit: "kg",
